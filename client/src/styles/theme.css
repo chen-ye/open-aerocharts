@@ -1,10 +1,18 @@
-@import "open-props/style";
-@import "open-props/normalize";
 @import "maplibre-gl/dist/maplibre-gl.css";
 
 /* Base Theme Configuration */
 :root {
   color-scheme: light dark;
+
+  /* Local replacements for Open Props */
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --gray-9: #111113;
+  --gray-1: #ffffff;
+  --text-1: #eeeeee;
+  --size-4: 16px;
+  --size-2: 8px;
+  --radius-3: 8px;
+  --radius-4: 16px;
 
   --crimson-vfr: #e93d82; /* Radix crimson-9 — airports, Class C/E */
   --glass-bg: rgba(25, 25, 30, 0.55);
@@ -73,7 +81,7 @@ body {
     right: var(--size-4);
     width: auto;
   }
-  
+
   .settings-card {
     width: 320px !important;
     max-height: 80vh;
@@ -112,4 +120,3 @@ body {
     display: none !important;
   }
 }
-

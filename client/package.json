@@ -16,7 +16,6 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.575.0",
     "maplibre-gl": "^5.18.0",
-    "open-props": "^1.7.23",
     "pmtiles": "^4.4.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
