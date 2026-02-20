@@ -40,5 +40,8 @@ def fetch_latest_cifp():
 
     print("Done. Extracted contents.")
 
-if __name__ == "__main__":
+def main():
     fetch_latest_cifp()
+
+if __name__ == "__main__":
+    main()

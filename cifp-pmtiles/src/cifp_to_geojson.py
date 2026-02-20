@@ -260,8 +260,11 @@ def build_pmtiles_geojson(cifp_path):
 
     print("GeoJSON generation complete.", flush=True)
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) < 2:
-        print("Usage: python cifp_to_geojson.py <FAACIFP18_file>")
+        print("Usage: <command> <FAACIFP18_file>")
         sys.exit(1)
     build_pmtiles_geojson(sys.argv[1])
+
+if __name__ == "__main__":
+    main()

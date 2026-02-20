@@ -24,6 +24,6 @@ tippecanoe -zg -o output/cifp_data.pmtiles --drop-densest-as-needed -f \
 echo "Pipeline complete! Generated cifp_data.pmtiles"
 
 # Symlink the output PMTiles to the frontend public directory
-echo "Symlinking output to public/..."
-ln -sf ../cifp-pmtiles/output/cifp_data.pmtiles ../public/cifp_data.pmtiles
+echo "Symlinking output to client/public/..."
+ln -sf ../cifp-pmtiles/output/cifp_data.pmtiles ../client/public/cifp_data.pmtiles
 echo "Done."
