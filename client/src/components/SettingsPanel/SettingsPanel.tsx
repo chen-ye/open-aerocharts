@@ -29,12 +29,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <Box
-      position="absolute"
-      top="4"
-      right="4"
-      style={{ zIndex: 10, width: isOpen ? 'max-content' : 'auto' }}
-    >
+    <Box className="settings-panel-container">
       {!isOpen ? (
         <IconButton
           size="3"
@@ -51,7 +46,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <Layers size={20} />
         </IconButton>
       ) : (
-        <Card size="2" style={{ width: 320, backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))', boxShadow: '0 0 0 1px var(--glass-border)' }}>
+        <Card className="settings-card" size="2" style={{ backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))', boxShadow: '0 0 0 1px var(--glass-border)' }}>
           <Flex direction="column" gap="4">
             <Flex align="center" justify="between">
               <Heading size="3" as="h2">Map Settings</Heading>

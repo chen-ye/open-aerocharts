@@ -94,11 +94,32 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
   const mapRef = React.useRef<maplibregl.Map | null>(null);
 
+  const addAirwayBgIcon = (map: maplibregl.Map, isDark: boolean) => {
+    const svgBgColor = isDark ? '#222222' : '#ffffff';
+    const svgBorderColor = isDark ? '#666666' : '#222222';
+    const svgStr = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="22" height="22" rx="4" fill="${svgBgColor}" stroke="${svgBorderColor}" stroke-width="2"/></svg>`;
+    const img = new Image(24, 24);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      if (map.hasImage('airway-bg')) map.removeImage('airway-bg');
+      map.addImage('airway-bg', img, {
+        stretchX: [[8, 16]],
+        stretchY: [[8, 16]],
+        content: [4, 4, 20, 20],
+        pixelRatio: 1
+      });
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onMapLoad = useCallback((e: any) => {
     mapRef.current = e.target;
     const svgHaloColor = isDarkMap ? '#000000' : '#ffffff';
     addAeroIcons(e.target, svgHaloColor, 0.95);
+    addAirwayBgIcon(e.target, isDarkMap);
   }, [isDarkMap]);
 
   // Reload icons when dark/light mode changes
@@ -106,6 +127,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     if (!mapRef.current) return;
     const svgHaloColor = isDarkMap ? '#000000' : '#ffffff';
     addAeroIcons(mapRef.current, svgHaloColor, 0.95);
+    addAirwayBgIcon(mapRef.current, isDarkMap);
   }, [isDarkMap]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -194,28 +216,55 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'line-opacity': 0.6
   }), [isDarkMap]);
 
-  const airwaySymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => ({
-    'symbol-placement': 'line-center',
-    'text-field': [
-      'format',
-      ['to-string', ['get', 'mea']], { 'font-scale': 0.85 },
-      '\n', {},
-      ['get', 'airway'], { 'font-scale': 1.0 },
-      '\n', {},
-      ['to-string', ['get', 'distance']], { 'font-scale': 0.85 }
-    ] as unknown as maplibregl.ExpressionSpecification,
-    'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
-    'text-size': 11,
-    'text-allow-overlap': false,
-    'text-ignore-placement': false,
-    'text-rotation-alignment': 'map',
-    'text-pitch-alignment': 'map'
-  }), []);
+  const airwaySymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => {
+    return {
+      'symbol-placement': 'line',
+      'symbol-spacing': 500000,
+      'icon-image': 'airway-bg',
+      'icon-text-fit': 'both',
+      'icon-text-fit-padding': [2, 4, 2, 4],
+      'text-field': ['get', 'airway'],
+      'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+      'text-size': 11,
+      'text-allow-overlap': false,
+      'text-ignore-placement': false,
+      'text-rotation-alignment': 'map',
+      'text-pitch-alignment': 'map'
+    };
+  }, []);
+
+  const airwayDetailLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => {
+    const minDetailZoom = Math.max(0, 8 - aeronauticalLayers.declutterLevel);
+    return {
+      'symbol-placement': 'line',
+      'symbol-spacing': 500000,
+      'text-field': [
+        'step', ['zoom'],
+        '', // Hide completely at lower zooms
+        minDetailZoom,
+        ['format',
+          ['to-string', ['get', 'mea']], { 'font-scale': 0.85 },
+          '\n\n\n', {}, // spacing to jump over the main airway box
+          ['to-string', ['get', 'distance']], { 'font-scale': 0.85 }
+        ]
+      ] as unknown as maplibregl.ExpressionSpecification,
+      'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+      'text-size': 11,
+      'text-allow-overlap': false,
+      'text-ignore-placement': false,
+      'text-rotation-alignment': 'map',
+      'text-pitch-alignment': 'map'
+    };
+  }, [aeronauticalLayers.declutterLevel]);
 
   const airwaySymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
+    'text-color': textColor
+  }), [textColor]);
+
+  const airwayDetailPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
     'text-color': textColor,
     'text-halo-color': haloColor,
-    'text-halo-width': 2,
+    'text-halo-width': 1.5
   }), [textColor, haloColor]);
 
   const airportSymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => ({
@@ -323,21 +372,15 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
       {/* Feature Sidebar (Left) */}
       {selectedFeatures && (
-        <Box
-          position="absolute"
-          top="4"
-          left="4"
-          style={{ zIndex: 20 }}
-        >
+        <Box className="map-feature-panel">
           <Card
             size="2"
             style={{
-              width: 320,
-              maxHeight: 'calc(100vh - 48px)',
-              overflowY: 'auto',
-              backgroundColor: 'var(--glass-bg)',
-              backdropFilter: 'blur(var(--glass-blur))',
-              boxShadow: '0 0 0 1px var(--glass-border)'
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'transparent', // Handled by CSS class
+              boxShadow: 'none', // Handled by CSS class
+              overflowY: 'auto'
             }}
           >
             <Flex direction="column" gap="4">
@@ -429,6 +472,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
         <>
           <Source id="src-airspaces" type="vector"
             url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}airspaces.pmtiles`}
+          />
+          <Source id="src-enroute" type="vector"
+            url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}enroute.pmtiles`}
           />
           <Source id="src-boundary" type="vector"
             url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}boundary.pmtiles`}
@@ -544,7 +590,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-b"
                     type="line"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
                     paint={{ 'line-color': violet.violet9, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }}
@@ -552,7 +598,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-b-fill"
                     type="fill"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
                     paint={{ 'fill-opacity': 0 }}
@@ -560,7 +606,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-c-hairline"
                     type="line"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
                     paint={{ 'line-color': crimson.crimson9, 'line-width': 1 }} // crimson-9
@@ -568,7 +614,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-c"
                     type="line"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
                     paint={{ 'line-color': crimson.crimson9, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }} // crimson-9
@@ -576,7 +622,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-c-fill"
                     type="fill"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
                     paint={{ 'fill-opacity': 0 }}
@@ -584,7 +630,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-d-hairline"
                     type="line"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
                     paint={{ 'line-color': indigo.indigo9, 'line-width': 1, 'line-dasharray': [4, 4] }} // indigo-9
@@ -592,7 +638,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   {/* <Layer
                     id="airspaces-class-d"
                     type="line"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
                     paint={{ 'line-color': indigo.indigo9, 'line-width': 8, 'line-dasharray': [4/8, 4/8], 'line-opacity': 0.2, "line-offset": 5 }} // indigo-9
@@ -600,7 +646,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-d-fill"
                     type="fill"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
                     paint={{ 'fill-opacity': 0 }}
@@ -608,7 +654,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-b-label"
                     type="symbol"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     minzoom={8}
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
@@ -622,7 +668,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-c-label"
                     type="symbol"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     minzoom={8}
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
@@ -636,7 +682,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-d-label"
                     type="symbol"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     minzoom={8}
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
@@ -654,7 +700,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-sua-hairline"
                     type="line"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
                     paint={{ 'line-color': slateDark.slate8, 'line-width': 1 }}
@@ -662,7 +708,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-sua"
                     type="line"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
                     paint={{ 'line-color': slateDark.slate8, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }}
@@ -670,7 +716,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-sua-fill"
                     type="fill"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
                     paint={{ 'fill-opacity': 0 }}
@@ -678,7 +724,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-sua-label"
                     type="symbol"
-                    source="src-airspaces"
+                    source="src-enroute"
                     source-layer="airspaces"
                     minzoom={8}
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
@@ -779,19 +825,23 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             <>
               {aeronauticalLayers.enrouteLow && (
                 <>
-                  <Layer id="airways-low-line" type="line" source="src-other" source-layer="airways" filter={['==', ['get', 'structure'], 'Low']} paint={airwayLinePaint} />
+                  <Layer id="airways-low-line" type="line" source="src-enroute" source-layer="airways" filter={['==', ['get', 'structure'], 'Low']} paint={airwayLinePaint} />
                   <>
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <Layer id="airways-low-symbol" type="symbol" source="src-other" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
+                    <Layer id="airways-low-symbol" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    <Layer id="airways-low-detail" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwayDetailLayout, 'symbol-sort-key': 21 } as any} paint={airwayDetailPaint} />
                   </>
                 </>
               )}
               {aeronauticalLayers.enrouteHigh && (
                 <>
-                  <Layer id="airways-high-line" type="line" source="src-other" source-layer="airways" filter={['==', ['get', 'structure'], 'High']} paint={airwayLinePaint} />
+                  <Layer id="airways-high-line" type="line" source="src-enroute" source-layer="airways" filter={['==', ['get', 'structure'], 'High']} paint={airwayLinePaint} />
                   <>
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <Layer id="airways-high-symbol" type="symbol" source="src-other" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
+                    <Layer id="airways-high-symbol" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    <Layer id="airways-high-detail" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwayDetailLayout, 'symbol-sort-key': 21 } as any} paint={airwayDetailPaint} />
                   </>
                 </>
               )}
