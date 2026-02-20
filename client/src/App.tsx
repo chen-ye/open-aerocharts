@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AeroMap } from './components/Map/AeroMap';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { FlightPlanPanel } from './components/FlightPlanPanel/FlightPlanPanel';
+import { MobileBottomSheet } from './components/MobileBottomSheet/MobileBottomSheet';
 import { defaultAeronauticalState } from './types/AeronauticalLayerState';
 import type { AeronauticalLayerState } from './types/AeronauticalLayerState';
 import type { FlightPlan } from './types/FlightPlan';
@@ -28,6 +29,8 @@ function App() {
   });
 
   const [flightPlan, setFlightPlan] = useState<FlightPlan | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedFeatures, setSelectedFeatures] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
 
   const [aeronauticalLayers, setAeronauticalLayers] = useState<AeronauticalLayerState>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -127,8 +130,15 @@ function App() {
           aeronauticalLayers={aeronauticalLayers}
           basemapBrightness={basemapBrightness}
           flightPlan={flightPlan}
+          selectedFeatures={selectedFeatures}
+          onSelectFeatures={setSelectedFeatures}
         />
         <FlightPlanPanel onFlightPlanChange={setFlightPlan} />
+        <MobileBottomSheet 
+          selectedFeatures={selectedFeatures} 
+          onCloseFeatures={() => setSelectedFeatures(null)}
+          onFlightPlanChange={setFlightPlan}
+        />
       </div>
     </Theme>
   );

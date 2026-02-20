@@ -10,53 +10,7 @@ import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState'
 import type { FlightPlan } from '../../types/FlightPlan';
 import { accentColor, grayColor } from '../../App.tsx';
 import { crimson, crimsonDark, indigo, indigoDark, violet, violetDark, blue, gray, grayDark, purple, purpleDark, slate, slateDark, brown, brownDark, blueDark, mint } from '@radix-ui/colors';
-
-const FeatureList = ({
-  features,
-  limit,
-  separatorMargin,
-  titleBottomMargin = '2'
-}: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  features: any[],
-  limit?: number,
-  separatorMargin?: string,
-  titleBottomMargin?: string
-}) => {
-  const displayFeatures = limit ? features.slice(0, limit) : features;
-  return (
-    <>
-      {displayFeatures.map((f, i) => (
-        <React.Fragment key={i}>
-          <Box>
-            <Text
-              as="div"
-              weight="bold"
-              size="1"
-              color={grayColor}
-              mb={titleBottomMargin}
-              style={{ textTransform: 'uppercase' }}
-            >
-              {f.sourceLayer || f.layer?.id}
-            </Text>
-            {Object.entries(f.properties || {}).map(([key, value]) => {
-              if (key === 'source_id' || key === 'geometry') return null;
-              return (
-                <Flex key={key} justify="between" gap="3" style={{ lineHeight: '1.2', paddingBottom: '2px' }}>
-                  <Text size="1" color={grayColor}>{key}:</Text>
-                  <Text size="1" weight="medium" style={{ textAlign: 'right', wordBreak: 'break-word' }}>
-                    {String(value)}
-                  </Text>
-                </Flex>
-              );
-            })}
-          </Box>
-          {i < displayFeatures.length - 1 && <Separator size="4" my={separatorMargin} />}
-        </React.Fragment>
-      ))}
-    </>
-  );
-};
+import { FeatureList } from './FeatureList';
 
 interface AeroMapProps {
   basemapUrlOrId: string;
@@ -64,6 +18,8 @@ interface AeroMapProps {
   aeronauticalLayers: AeronauticalLayerState;
   basemapBrightness: number;
   flightPlan: FlightPlan | null;
+  onSelectFeatures?: (features: { lngLat: [number, number]; features: any[] } | null) => void;
+  selectedFeatures?: { lngLat: [number, number]; features: any[] } | null;
 }
 
 export const AeroMap: React.FC<AeroMapProps> = ({
@@ -72,6 +28,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   aeronauticalLayers,
   basemapBrightness,
   flightPlan,
+  onSelectFeatures,
+  selectedFeatures: propSelectedFeatures
 }) => {
   const mapStyle = useMemo<string | maplibregl.StyleSpecification>(() => {
     // If the basemapUrlOrId is a URL, treat it as a style URL
@@ -161,7 +119,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [hoverInfo, setHoverInfo] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedFeatures, setSelectedFeatures] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
+  const [localSelectedFeatures, setLocalSelectedFeatures] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
+
+  const selectedFeatures = propSelectedFeatures !== undefined ? propSelectedFeatures : localSelectedFeatures;
+  const setSelectedFeatures = onSelectFeatures || setLocalSelectedFeatures;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onMouseMove = useCallback((e: any) => {
@@ -189,7 +150,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     } else {
       setSelectedFeatures(null);
     }
-  }, []);
+  }, [setSelectedFeatures]);
 
   const interactiveLayerIds = useMemo(() => [
     'airspaces-class-b',
@@ -247,7 +208,12 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   const airwaySymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => {
     const minDetailZoom = Math.max(0, 10 - aeronauticalLayers.declutterLevel);
     return {
-      'symbol-placement': 'line-center',
+      'symbol-placement': [
+        'step', ['zoom'],
+        'line',
+        minDetailZoom,
+        'line-center'
+      ] as unknown as maplibregl.ExpressionSpecification,
       'symbol-spacing': 500000,
       'icon-image': [
         'step', ['zoom'],
@@ -474,7 +440,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
       {/* Feature Sidebar (Left) */}
       {selectedFeatures && (
-        <Box className="map-feature-panel">
+        <Box className="map-feature-panel desktop-only">
           <Card
             size="2"
             style={{
