@@ -8,12 +8,18 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "cifparse>=2.0.9",
     "geojson>=3.2.0",
+    "geopandas>=1.1.2",
+    "pyogrio>=0.12.1",
+    "pyshp>=2.3.1",
     "requests>=2.32.5",
+    "tippecanoe>=2.7.0",
 ]
 
 [project.scripts]
 fetch-cifp = "src.fetch_cifp:main"
-cifp-to-geojson = "src.cifp_to_geojson:main"
+cifp-to-fgb = "src.cifp_to_fgb:main"
+fetch-airspace-shp = "src.fetch_airspace_shp:main"
+shp-to-fgb = "src.shp_to_fgb:main"
 
 [build-system]
 requires = ["hatchling"]

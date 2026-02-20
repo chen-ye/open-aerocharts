@@ -72,7 +72,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'airports-heliport',
     'airports-other',
     'navaids-symbol',
-    'localizers-symbol'
+    'localizers-symbol',
+    'obstacles-symbol',
   ], []);
 
   React.useEffect(() => {
@@ -93,12 +94,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       'LFMF', '#8B4513',
       '#0ea5e9' // default light blue
     ] as unknown as maplibregl.ExpressionSpecification,
-    'line-width': [
-      'case',
-      ['>', ['get', 'width'], 5], 4,
-      1.5 // default thin line
-    ] as unknown as maplibregl.ExpressionSpecification,
-    'line-opacity': 0.7
+    'line-width': 4,
+    'line-opacity': 0.1
   }), []);
 
   const airwaySymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => ({
@@ -126,7 +123,16 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   }), []);
 
   const airportSymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => ({
-    'icon-image': 'airport-magenta',
+    'icon-image': [
+      'match', ['get', 'facility_type'],
+      'civil_hard', 'apt-civil-paved-small',
+      'civil_soft', 'apt-civil-unpaved',
+      'seaplane', 'apt-seaplane',
+      'military', 'apt-military',
+      'private', 'apt-private',
+      'heliport', 'apt-heliport',
+      'apt-civil-unpaved' // default/fallback
+    ] as unknown as maplibregl.ExpressionSpecification,
     'icon-size': 0.8,
     'icon-allow-overlap': true,
     'icon-ignore-placement': true,
@@ -141,15 +147,23 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'symbol-sort-key': [
       'match',
       ['get', 'facility_type'],
-      'public', 1,
-      'private', 2,
-      'heliport', 3,
-      4 // other
+      'civil_hard', 1,
+      'civil_soft', 2,
+      'military', 3,
+      'seaplane', 4,
+      'heliport', 5,
+      'private', 6,
+      7 // other
     ] as unknown as maplibregl.ExpressionSpecification
   }), []);
 
   const airportSymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
-    'text-color': '#A8007F',
+    'text-color': [
+      'case',
+      ['==', ['get', 'facility_type'], 'military'], '#e012a6',
+      ['==', ['get', 'is_ifr'], false], '#e012a6',
+      '#e012a6'
+    ] as unknown as maplibregl.ExpressionSpecification,
     'text-halo-color': 'rgba(255, 255, 255, 0.95)',
     'text-halo-width': 1.5
   }), []);
@@ -382,7 +396,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           )}
 
           {/* Airways */}
-          {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.airways && (
+          {aeronauticalLayers.showAirwaysMaster && (
             <>
               {aeronauticalLayers.enrouteLow && (
                 <>
@@ -396,6 +410,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer id="airways-high-symbol" type="symbol" source="cifp" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'High']} layout={airwaySymbolLayout} paint={airwaySymbolPaint} />
                 </>
               )}
+              {/* Note: 'airways' sublayer toggle currently has no specific extra layers beyond low/high,
+                  but we check it here for future-proofing or if it should control the lines specifically */}
             </>
           )}
           {/* Airports */}
@@ -414,7 +430,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 />
               )}
               {aeronauticalLayers.publicAirports && (
-                <Layer id="airports-public" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'public']} layout={airportSymbolLayout} paint={airportSymbolPaint} />
+                <Layer id="airports-public" type="symbol" source="cifp" source-layer="airports" filter={['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military']]]} layout={airportSymbolLayout} paint={airportSymbolPaint} />
               )}
               {aeronauticalLayers.privateAirports && (
                 <Layer id="airports-private" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'private']} layout={airportSymbolLayout} paint={airportSymbolPaint} />
@@ -423,8 +439,22 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 <Layer id="airports-heliport" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'heliport']} layout={airportSymbolLayout} paint={airportSymbolPaint} />
               )}
               {aeronauticalLayers.otherAirports && (
-                <Layer id="airports-other" type="symbol" source="cifp" source-layer="airports" filter={['!', ['in', ['get', 'facility_type'], ['literal', ['public', 'private', 'heliport']]]]} layout={airportSymbolLayout} paint={airportSymbolPaint} />
+                <Layer id="airports-other" type="symbol" source="cifp" source-layer="airports" filter={['!', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military', 'private', 'heliport']]]]} layout={airportSymbolLayout} paint={airportSymbolPaint} />
               )}
+              {/* Fuel Ticks Overlay */}
+              <Layer
+                id="airports-fuel-ticks"
+                type="symbol"
+                source="cifp"
+                source-layer="airports"
+                filter={['==', ['get', 'has_fuel'], true]}
+                layout={{
+                  'icon-image': 'apt-fuel-ticks',
+                  'icon-size': 0.8,
+                  'icon-allow-overlap': true,
+                  'icon-ignore-placement': true,
+                }}
+              />
             </>
           )}
         {/* Navaids Points */}
@@ -491,6 +521,52 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               'text-color': '#000000',
               'text-halo-color': '#ffffff',
               'text-halo-width': 1
+            }}
+          />
+        )}
+        {/* Obstacles (DOF) */}
+        {aeronauticalLayers.obstacles && (
+          <Layer
+            id="obstacles-symbol"
+            type="symbol"
+            source="cifp"
+            source-layer="obstacles"
+            minzoom={7}
+            layout={{
+              'icon-image': [
+                'case',
+                ['==', ['get', 'type'], 'WINDMILL'], 'obs-wind-turbine',
+                ['==', ['get', 'lighting'], 'R'], 'obs-lighted-mod',
+                ['>=', ['to-number', ['get', 'agl'], 0], 1000], 'obs-major',
+                'obs-minor'
+              ] as unknown as maplibregl.ExpressionSpecification,
+              'icon-size': [
+                'interpolate', ['linear'], ['zoom'],
+                7, 0.35,
+                12, 0.6
+              ] as unknown as maplibregl.ExpressionSpecification,
+              'icon-allow-overlap': false,
+              'icon-ignore-placement': false,
+              'icon-padding': 2,
+              'text-field': [
+                'step', ['zoom'],
+                '', // no label below z10
+                10, ['concat', ['to-string', ['get', 'agl']], '\'']
+              ] as unknown as maplibregl.ExpressionSpecification,
+              'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+              'text-size': 9,
+              'text-offset': [0, 1.2],
+              'text-anchor': 'top',
+              'text-allow-overlap': false,
+              'text-optional': true,
+              'symbol-sort-key': [
+                '-', 0, ['to-number', ['get', 'agl'], 0]
+              ] as unknown as maplibregl.ExpressionSpecification,
+            }}
+            paint={{
+              'text-color': '#555555',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 1,
             }}
           />
         )}

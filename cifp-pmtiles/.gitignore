@@ -31,7 +31,19 @@ ENV/
 # Data
 FAACIFP18
 CIFP_*.zip
+class_airspace_shape_files.zip
+shapefiles/
 *.pdf
 *.txt
 *.xlsx
 data/
+
+# PMTiles
+**/*.pmtiles
+!output/cifp_data.pmtiles
+*.pmtiles-journal
+
+# Test files
+test.fgb
+test_fgb.py
+test_fgb.pmtiles

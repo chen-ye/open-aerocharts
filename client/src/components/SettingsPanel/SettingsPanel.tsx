@@ -37,14 +37,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       {!isOpen ? (
         <IconButton
           size="3"
-          variant="soft"
+          variant="surface"
+          color="gray"
           onClick={() => setIsOpen(true)}
           title="Open Settings"
+          style={{
+            backgroundColor: 'var(--glass-bg)',
+            backdropFilter: 'blur(var(--glass-blur))',
+            boxShadow: '0 0 0 1px var(--glass-border)'
+          }}
         >
           <Layers size={20} />
         </IconButton>
       ) : (
-        <Card size="2" style={{ width: 320, backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(12px)' }}>
+        <Card size="2" style={{ width: 320, backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))', boxShadow: '0 0 0 1px var(--glass-border)' }}>
           <Flex direction="column" gap="4">
             <Flex align="center" justify="between">
               <Heading size="3" as="h2">Map Settings</Heading>
@@ -59,6 +65,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </Flex>
 
             <Flex direction="column" gap="2">
+              <Text size="2" weight="bold">Basemap</Text>
               <Text size="2" weight="medium" color="gray">Basemap Style</Text>
               <Select.Root value={basemap} onValueChange={setBasemap}>
                 <Select.Trigger />

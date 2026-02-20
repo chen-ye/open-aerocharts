@@ -1,0 +1,2 @@
+*.pmtiles filter=lfs diff=lfs merge=lfs -text
+*.fgb filter=lfs diff=lfs merge=lfs -text

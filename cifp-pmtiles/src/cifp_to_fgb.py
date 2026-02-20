@@ -1,8 +1,15 @@
 import sys
 import geojson
+import geopandas as gpd
 import math
 from collections import defaultdict
 from cifparse import CIFP
+
+try:
+    from fetch_nasr import get_airport_fuel
+except ImportError:
+    def get_airport_fuel():
+        return {}
 
 def haversine(lon1, lat1, lon2, lat2):
     R = 3440.065 # Earth radius in NM
@@ -15,6 +22,7 @@ def haversine(lon1, lat1, lon2, lat2):
     return R * c
 
 
+
 def parse_altitude(alt_str):
     if not alt_str:
         return 0.0
@@ -25,10 +33,8 @@ def parse_altitude(alt_str):
         return 60000.0
     try:
         val = float(alt_str)
-        # Check if it looks like a flight level string e.g. "FL180", wait we already tried float
         return val
     except ValueError:
-        # e.g. "FL180"
         if alt_str.startswith('FL'):
             try:
                 return float(alt_str[2:]) * 100
@@ -51,7 +57,18 @@ def unwrap_coordinates(coords):
         unwrapped.append((curr_lon, lat, elev))
     return unwrapped
 
-def build_pmtiles_geojson(cifp_path):
+def save_fgb(features, output_path):
+    if not features:
+        print(f"  No features for {output_path}, skipping.")
+        return
+    gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
+    gdf.geometry = gdf.geometry.force_2d()
+    gdf.to_file(output_path, driver="FlatGeobuf", engine="pyogrio")
+
+def build_pmtiles_fgb(cifp_path):
+    print("Fetching NASR fuel data...", flush=True)
+    fuel_lookup = get_airport_fuel()
+
     print("Loading CIFP...", flush=True)
     c = CIFP(cifp_path)
 
@@ -61,8 +78,8 @@ def build_pmtiles_geojson(cifp_path):
     c.parse_ndb_navaids()
     c.parse_enroute_waypoints()
     c.parse_terminal_waypoints()
-    c.parse_controlled()
-    c.parse_restrictive()
+
+
     c.parse_procedures()
     c.parse_airway_points()
     c.parse_runways()
@@ -79,30 +96,41 @@ def build_pmtiles_geojson(cifp_path):
         if lat is not None and lon is not None:
             elev = float(p.get('elevation') or 0.0)
 
-            # Determine facility type for toggles
-            is_heliport = (p.get('airport_name') or '').upper().find('HELIPORT') != -1 or (p.get('airport_id') or '').startswith('H')
-            is_private = (p.get('public_military') or '') == 'P'
-            if is_heliport:
-                fac_type = 'heliport'
-            elif is_private:
+            surface = p.get('longest_surface')
+            usage = p.get('usage')
+
+            if surface == 'W':
+                fac_type = 'seaplane'
+            elif usage == 'M':
+                fac_type = 'military'
+            elif usage == 'P':
                 fac_type = 'private'
             else:
-                fac_type = 'public'
+                fac_type = 'civil_hard' if surface == 'H' else 'civil_soft'
+
+            ident = p.get('airport_id', '').strip()
+            has_fuel = fuel_lookup.get(ident, False)
+
+            properties = {
+                'id': ident,
+                'name': p.get('airport_name'),
+                'type': 'airport',
+                'facility_type': fac_type,
+                'surface': surface,
+                'is_military': usage == 'M',
+                'is_ifr': bool(p.get('is_ifr')),
+                'longest_runway': int(p.get('longest') or 0),
+                'has_fuel': has_fuel
+            }
 
             airport_features.append(geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
-                properties={
-                    'id': p.get('airport_id'),
-                    'name': p.get('airport_name'),
-                    'type': 'airport',
-                    'facility_type': fac_type
-                }
+                properties=properties
             ))
             if p.get('airport_id'):
                 fixes[p.get('airport_id').strip()] = (lon, lat, elev)
 
-    with open('data/airports.geojson', 'w') as f:
-        geojson.dump(geojson.FeatureCollection(airport_features), f)
+    save_fgb(airport_features, 'data/airports.fgb')
 
     print("Extracting Navaids...", flush=True)
     navaid_features = []
@@ -133,63 +161,12 @@ def build_pmtiles_geojson(cifp_path):
             if ident:
                 fixes[ident] = (lon, lat, elev)
 
-    # Add waypoints to lookup too
     for wp in c.get_enroute_waypoints() + c.get_terminal_waypoints():
         p = wp.to_dict()['primary']
         if p.get('lat') is not None and p.get('lon') is not None:
             fixes[(p.get('waypoint_id') or '').strip()] = (p.get('lon'), p.get('lat'), 0.0)
 
-    with open('data/navaids.geojson', 'w') as f:
-        geojson.dump(geojson.FeatureCollection(navaid_features), f)
-
-    print("Processing Airspaces...", flush=True)
-    airspace_groups = defaultdict(list)
-    for asp in c.get_controlled():
-        p = asp.to_dict()['primary']
-        key = (p.get('airspace_name'), p.get('airspace_type'), p.get('mult_code'))
-        airspace_groups[key].append(p)
-    for asp in c.get_restrictive():
-        p = asp.to_dict()['primary']
-        key = (p.get('restrictive_name'), p.get('restrictive_type'), p.get('mult_code'))
-        airspace_groups[key].append(p)
-
-    airspace_features = []
-    for key, pts in airspace_groups.items():
-        pts.sort(key=lambda x: x.get('seq_no') or 0)
-        coords = []
-        for p in pts:
-            lat, lon = p.get('lat'), p.get('lon')
-            if lat is not None and lon is not None:
-                elev = parse_altitude(p.get('upper_limit'))
-                coords.append((lon, lat, elev))
-
-        if len(coords) >= 3:
-            coords = unwrap_coordinates(coords)
-            if coords[0] != coords[-1]:
-                coords.append(coords[0])
-            airspace_features.append(geojson.Feature(
-                geometry=geojson.Polygon([coords]),
-                properties={
-                    'name': key[0],
-                    'type': key[1],
-                    'airspace_class': key[1],
-                    'is_sua': key[1] in ['P', 'R', 'W', 'A', 'MOA']
-                }
-            ))
-        elif len(coords) == 2:
-            coords = unwrap_coordinates(coords)
-            airspace_features.append(geojson.Feature(
-                geometry=geojson.LineString(coords),
-                properties={
-                    'name': key[0],
-                    'type': key[1],
-                    'airspace_class': key[1],
-                    'is_sua': key[1] in ['P', 'R', 'W', 'A', 'MOA']
-                }
-            ))
-
-    with open('data/airspaces.geojson', 'w') as f:
-        geojson.dump(geojson.FeatureCollection(airspace_features), f)
+    save_fgb(navaid_features, 'data/navaids.fgb')
 
     print("Processing Procedures...", flush=True)
     proc_groups = defaultdict(list)
@@ -209,7 +186,6 @@ def build_pmtiles_geojson(cifp_path):
                 proc_elev = parse_altitude(p.get('alt_1') or p.get('trans_alt'))
                 coords.append((lon, lat, max(elev, proc_elev)))
             elif p.get('lat') is not None and p.get('lon') is not None:
-                # Direct coordinates in the leg
                 proc_elev = parse_altitude(p.get('alt_1') or p.get('trans_alt'))
                 coords.append((p.get('lon'), p.get('lat'), proc_elev))
 
@@ -220,8 +196,7 @@ def build_pmtiles_geojson(cifp_path):
                 properties={'airport': key[0], 'procedure': key[1], 'transition': key[2]}
             ))
 
-    with open('data/procedures.geojson', 'w') as f:
-        geojson.dump(geojson.FeatureCollection(procedure_features), f)
+    save_fgb(procedure_features, 'data/procedures.fgb')
 
     print("Processing Airways...", flush=True)
     airway_groups = defaultdict(list)
@@ -251,7 +226,6 @@ def build_pmtiles_geojson(cifp_path):
                 ulon1, ulat1, _ = c_unwrapped[0]
                 ulon2, ulat2, _ = c_unwrapped[1]
 
-                # Filter out dupes
                 if ulon1 == ulon2 and ulat1 == ulat2:
                     continue
 
@@ -269,7 +243,7 @@ def build_pmtiles_geojson(cifp_path):
                 if not route_type:
                     if key.startswith('V'): route_type = 'Victor'
                     elif key.startswith('Q') or key.startswith('T'): route_type = 'GPS'
-                    elif key.startswith('J'): route_type = 'Victor' # High Victor
+                    elif key.startswith('J'): route_type = 'Victor'
                     else: route_type = 'Unknown'
 
                 coords = [
@@ -277,7 +251,6 @@ def build_pmtiles_geojson(cifp_path):
                     (ulon2, ulat2, max(elev2, parse_altitude(min_alt)))
                 ]
 
-                # Determine Low vs High airway structure
                 structure = 'High' if key.startswith('J') or key.startswith('Q') else 'Low'
 
                 airway_features.append(geojson.Feature(
@@ -291,8 +264,7 @@ def build_pmtiles_geojson(cifp_path):
                     }
                 ))
 
-    with open('data/airways.geojson', 'w') as f:
-        geojson.dump(geojson.FeatureCollection(airway_features), f)
+    save_fgb(airway_features, 'data/airways.fgb')
 
     print("Extracting Runways...", flush=True)
     runway_features = []
@@ -313,8 +285,7 @@ def build_pmtiles_geojson(cifp_path):
                 }
             ))
 
-    with open('data/runways.geojson', 'w') as f:
-        geojson.dump(geojson.FeatureCollection(runway_features), f)
+    save_fgb(runway_features, 'data/runways.fgb')
 
     print("Extracting Localizers...", flush=True)
     loc_features = []
@@ -335,16 +306,15 @@ def build_pmtiles_geojson(cifp_path):
                 }
             ))
 
-    with open('data/localizers.geojson', 'w') as f:
-        geojson.dump(geojson.FeatureCollection(loc_features), f)
+    save_fgb(loc_features, 'data/localizers.fgb')
 
-    print("GeoJSON generation complete.", flush=True)
+    print("FlatGeobuf generation complete.", flush=True)
 
 def main():
     if len(sys.argv) < 2:
         print("Usage: <command> <FAACIFP18_file>")
         sys.exit(1)
-    build_pmtiles_geojson(sys.argv[1])
+    build_pmtiles_fgb(sys.argv[1])
 
 if __name__ == "__main__":
     main()
