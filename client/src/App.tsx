@@ -61,31 +61,42 @@ function App() {
   const [aeronauticalLayers, setAeronauticalLayers] = useState<AeronauticalLayerState>(() => {
     const params = new URLSearchParams(window.location.search);
     const layersParam = params.get('layers');
-    if (!layersParam) return defaultAeronauticalState;
+    const densityParam = params.get('density');
+
+    const initialState = { ...defaultAeronauticalState };
+
+    if (densityParam) {
+      const density = parseInt(densityParam, 10);
+      if (!isNaN(density)) {
+        initialState.declutterLevel = density;
+      }
+    }
+
+    if (!layersParam) return initialState;
 
     if (layersParam === 'none') {
-      return Object.keys(defaultAeronauticalState).reduce((acc, key) => {
+      return Object.keys(initialState).reduce((acc, key) => {
         const k = key as keyof AeronauticalLayerState;
-        if (typeof defaultAeronauticalState[k] === 'number') {
+        if (typeof initialState[k] === 'number') {
           // @ts-expect-error - indexing is safe here
-          acc[k] = defaultAeronauticalState[k];
+          acc[k] = initialState[k];
         } else {
           // @ts-expect-error - indexing is safe here
           acc[k] = false;
         }
         return acc;
-      }, { ...defaultAeronauticalState });
+      }, { ...initialState });
     }
 
     const enabledLayers = new Set(layersParam.split(','));
-    return Object.keys(defaultAeronauticalState).reduce((acc, key) => {
+    return Object.keys(initialState).reduce((acc, key) => {
       const k = key as keyof AeronauticalLayerState;
-      if (typeof defaultAeronauticalState[k] === 'boolean') {
+      if (typeof initialState[k] === 'boolean') {
         // @ts-expect-error - indexing is safe here
         acc[k] = enabledLayers.has(key);
       }
       return acc;
-    }, { ...defaultAeronauticalState });
+    }, { ...initialState });
   });
 
   useEffect(() => {
@@ -123,12 +134,15 @@ function App() {
     }
 
     const isLayersDefault = Object.entries(aeronauticalLayers).every(
-      ([key, val]) => defaultAeronauticalState[key as keyof AeronauticalLayerState] === val
+      ([key, val]) => {
+        if (key === 'declutterLevel') return true; // Handled separately
+        return defaultAeronauticalState[key as keyof AeronauticalLayerState] === val;
+      }
     );
 
     if (!isLayersDefault) {
       const enabledLayers = Object.entries(aeronauticalLayers)
-        .filter(([, value]) => value === true)
+        .filter(([, value]) => typeof value === 'boolean' && value === true)
         .map(([key]) => key);
 
       const layersString = enabledLayers.length === 0 ? 'none' : enabledLayers.join(',');
@@ -138,6 +152,16 @@ function App() {
       }
     } else if (params.has('layers')) {
       params.delete('layers');
+      changed = true;
+    }
+
+    if (aeronauticalLayers.declutterLevel !== 0) {
+      if (params.get('density') !== aeronauticalLayers.declutterLevel.toString()) {
+        params.set('density', aeronauticalLayers.declutterLevel.toString());
+        changed = true;
+      }
+    } else if (params.has('density')) {
+      params.delete('density');
       changed = true;
     }
 
