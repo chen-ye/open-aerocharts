@@ -184,7 +184,12 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       'LFMF', '#8B4513',
       '#0ea5e9' // default light blue
     ] as unknown as maplibregl.ExpressionSpecification,
-    'line-width': 4,
+    'line-width': [
+      'interpolate', ['linear'], ['zoom'],
+      3, 1,
+      7, 2,
+      10, 4
+    ] as unknown as maplibregl.ExpressionSpecification,
     'line-opacity': 0.6
   }), []);
 
@@ -416,7 +421,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                       'fill-opacity': 0.7
                     }}
                   />
-                  <Layer
+                  {/* <Layer
                     id="am-taxiways-outline"
                     type="line"
                     source="src-diagrams"
@@ -426,7 +431,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                       'line-color': isDarkMap ? '#555566' : '#999999',
                       'line-width': 0.5
                     }}
-                  />
+                  /> */}
                   <Layer
                     id="am-runways-fill"
                     type="fill"
