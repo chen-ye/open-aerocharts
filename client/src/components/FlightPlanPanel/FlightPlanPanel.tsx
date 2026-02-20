@@ -1,48 +1,52 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Card, Flex, TextArea, Button, Heading, Text, IconButton, ScrollArea, Table, Badge } from '@radix-ui/themes';
 import { Plane, X } from 'lucide-react';
 import type { SearchIndex, FlightPlan } from '../../types/FlightPlan';
 import { parseRoute } from '../../utils/routeParser';
 import { grayColor } from '../../App.tsx';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../ui/Accordion';
 
 interface FlightPlanContentProps {
   onFlightPlanChange: (plan: FlightPlan | null) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  routeString: string;
+  onRouteStringChange: (route: string) => void;
+  index: SearchIndex | null;
+  loading: boolean;
   style?: React.CSSProperties;
 }
 
-export const FlightPlanContent: React.FC<FlightPlanContentProps> = ({ onFlightPlanChange, style }) => {
-  const [routeString, setRouteString] = useState('');
-  const [index, setIndex] = useState<SearchIndex | null>(null);
-  const [loading, setLoading] = useState(false);
+export const FlightPlanContent: React.FC<FlightPlanContentProps> = ({
+  onFlightPlanChange,
+  routeString,
+  onRouteStringChange,
+  index,
+  loading,
+  style
+}) => {
   const [activePlan, setActivePlan] = useState<FlightPlan | null>(null);
+  const initialPlotDone = React.useRef(false);
 
-  useEffect(() => {
-    if (!index && !loading) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoading(true);
-      fetch('search_index.json')
-        .then(res => res.json())
-        .then(data => {
-          setIndex(data);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error("Failed to load search index", err);
-          setLoading(false);
-        });
-    }
-  }, [index, loading]);
+  // No longer needed as we fetch in App.tsx
 
-  const handlePlot = () => {
+  const handlePlot = useCallback(() => {
     if (!index) return;
     const plan = parseRoute(routeString, index);
     setActivePlan(plan);
     onFlightPlanChange(plan);
-  };
+  }, [index, routeString, onFlightPlanChange]);
+
+  useEffect(() => {
+    if (index && routeString && !initialPlotDone.current) {
+      initialPlotDone.current = true;
+      // Use microtask to avoid synchronous setState warning
+      queueMicrotask(() => {
+        handlePlot();
+      });
+    }
+  }, [index, routeString, handlePlot]);
 
   const handleClear = () => {
-    setRouteString('');
+    onRouteStringChange('');
     setActivePlan(null);
     onFlightPlanChange(null);
   }
@@ -52,7 +56,7 @@ export const FlightPlanContent: React.FC<FlightPlanContentProps> = ({ onFlightPl
       <TextArea
         placeholder="KSJC TECKY4.VLREE EBAYE KLAX"
         value={routeString}
-        onChange={e => setRouteString(e.target.value)}
+        onChange={e => onRouteStringChange(e.target.value)}
         rows={3}
         style={{ fontFamily: 'monospace' }}
       />
@@ -67,32 +71,36 @@ export const FlightPlanContent: React.FC<FlightPlanContentProps> = ({ onFlightPl
       </Flex>
 
       {activePlan && (
-        <details>
-          <summary style={{ cursor: 'pointer', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
-            Waypoints ({activePlan.points.length})
-          </summary>
-          <ScrollArea type="auto" scrollbars="vertical" style={{ maxHeight: 200 }}>
-            <Table.Root style={{ backgroundColor: 'transparent' }}>
-              <Table.Body>
-                {activePlan.points.map((pt, i) => (
-                  <Table.Row key={i}>
-                    <Table.Cell py="2">
-                      <Flex direction="column">
-                        <Text weight="bold" size="2">{pt.id}</Text>
-                        {pt.name && <Text size="1" color="gray">{pt.name}</Text>}
-                      </Flex>
-                    </Table.Cell>
-                    <Table.Cell py="2" align="right">
-                      <Badge color={pt.type === 'airport' ? 'blue' : pt.type === 'navaid' ? 'plum' : 'gray'}>
-                        {pt.type}
-                      </Badge>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Root>
-          </ScrollArea>
-        </details>
+        <Accordion type="single" collapsible defaultValue="waypoints">
+          <AccordionItem value="waypoints">
+            <AccordionTrigger>
+              Waypoints ({activePlan.points.length})
+            </AccordionTrigger>
+            <AccordionContent>
+              <ScrollArea type="auto" scrollbars="vertical" style={{ maxHeight: 200 }}>
+                <Table.Root style={{ backgroundColor: 'transparent' }}>
+                  <Table.Body>
+                    {activePlan.points.map((pt, i) => (
+                      <Table.Row key={i}>
+                        <Table.Cell py="2">
+                          <Flex direction="column">
+                            <Text weight="bold" size="2">{pt.id}</Text>
+                            {pt.name && <Text size="1" color="gray">{pt.name}</Text>}
+                          </Flex>
+                        </Table.Cell>
+                        <Table.Cell py="2" align="right">
+                          <Badge color={pt.type === 'airport' ? 'blue' : pt.type === 'navaid' ? 'plum' : 'gray'}>
+                            {pt.type}
+                          </Badge>
+                        </Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Root>
+              </ScrollArea>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       )}
 
       {index && !activePlan && (
@@ -106,9 +114,19 @@ export const FlightPlanContent: React.FC<FlightPlanContentProps> = ({ onFlightPl
 
 interface FlightPlanPanelProps {
   onFlightPlanChange: (plan: FlightPlan | null) => void;
+  routeString: string;
+  onRouteStringChange: (route: string) => void;
+  index: SearchIndex | null;
+  loading: boolean;
 }
 
-export const FlightPlanPanel: React.FC<FlightPlanPanelProps> = ({ onFlightPlanChange }) => {
+export const FlightPlanPanel: React.FC<FlightPlanPanelProps> = ({
+  onFlightPlanChange,
+  routeString,
+  onRouteStringChange,
+  index,
+  loading
+}) => {
   const [isOpen, setIsOpen] = useState(false);
 
   if (!isOpen) {
@@ -141,7 +159,13 @@ export const FlightPlanPanel: React.FC<FlightPlanPanelProps> = ({ onFlightPlanCh
             <X size={18} />
           </IconButton>
         </Flex>
-        <FlightPlanContent onFlightPlanChange={onFlightPlanChange} />
+        <FlightPlanContent
+          onFlightPlanChange={onFlightPlanChange}
+          routeString={routeString}
+          onRouteStringChange={onRouteStringChange}
+          index={index}
+          loading={loading}
+        />
       </Card>
     </Box>
   );
