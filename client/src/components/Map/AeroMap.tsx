@@ -78,10 +78,34 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     return style;
   }, [basemapUrlOrId]);
 
+  // Derive light/dark mode from basemap identifier
+  const isDarkMap = useMemo(() => {
+    const id = basemapUrlOrId.toLowerCase();
+    return id.includes('dark') || id.includes('faa-');
+  }, [basemapUrlOrId]);
+
+  // Theme-dependent colors
+  const textColor = isDarkMap ? '#ffffff' : '#000000';
+  const haloColor = isDarkMap ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.95)';
+  const accentTextColor = isDarkMap ? '#90b4ff' : '#0040D9';
+  const waypointTextColor = isDarkMap ? '#bbbbbb' : '#444444';
+  const obstacleTextColor = isDarkMap ? '#aaaaaa' : '#555555';
+
+  const mapRef = React.useRef<maplibregl.Map | null>(null);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onMapLoad = useCallback((e: any) => {
-    addAeroIcons(e.target);
-  }, []);
+    mapRef.current = e.target;
+    const svgHaloColor = isDarkMap ? '#000000' : '#ffffff';
+    addAeroIcons(e.target, svgHaloColor, 0.95);
+  }, [isDarkMap]);
+
+  // Reload icons when dark/light mode changes
+  React.useEffect(() => {
+    if (!mapRef.current) return;
+    const svgHaloColor = isDarkMap ? '#000000' : '#ffffff';
+    addAeroIcons(mapRef.current, svgHaloColor, 0.95);
+  }, [isDarkMap]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [hoverInfo, setHoverInfo] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
@@ -181,10 +205,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   }), []);
 
   const airwaySymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
-    'text-color': '#000000',
-    'text-halo-color': '#ffffff',
+    'text-color': textColor,
+    'text-halo-color': haloColor,
     'text-halo-width': 2,
-  }), []);
+  }), [textColor, haloColor]);
 
   const airportSymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => ({
     'icon-image': [
@@ -222,23 +246,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   }), []);
 
   const airportSymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
-    'text-color': [
-      'case',
-      ['==', ['get', 'facility_type'], 'military'], '#e012a6',
-      ['==', ['get', 'is_ifr'], false], '#e012a6',
-      '#e012a6'
-    ] as unknown as maplibregl.ExpressionSpecification,
-    'text-halo-color': 'rgba(255, 255, 255, 0.95)',
-    'text-halo-width': 1.5,
-    'icon-color': [
-      'case',
-      ['==', ['get', 'facility_type'], 'military'], '#e012a6',
-      ['==', ['get', 'is_ifr'], false], '#e012a6',
-      '#e012a6'
-    ] as unknown as maplibregl.ExpressionSpecification,
-    // 'icon-halo-color': 'rgba(255, 255, 255, 0.95)',
-    // 'icon-halo-width': 1.5
-  }), []);
+    'text-color': '#e012a6',
+    'text-halo-color': haloColor,
+    'text-halo-width': 1.5
+  }), [haloColor]);
 
   const showRunways = aeronauticalLayers.showAirportsMaster &&
     (aeronauticalLayers.publicAirports || aeronauticalLayers.privateAirports || aeronauticalLayers.heliports);
@@ -558,12 +569,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 'symbol-sort-key': 10
               }}
               paint={{
-                'text-color': '#0040D9',
-                'text-halo-color': 'rgba(255, 255, 255, 0.95)',
-                'text-halo-width': 1.5,
-                'icon-color': '#0040D9',
-                'icon-halo-color': 'rgba(255, 255, 255, 0.95)',
-                'icon-halo-width': 1.5
+                'text-color': accentTextColor,
+                'text-halo-color': haloColor,
+                'text-halo-width': 1.5
               }}
             />
           )}
@@ -577,10 +585,16 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               source-layer="waypoints"
               minzoom={7}
               layout={{
-                'icon-image': 'wpt-rnav-open',
+                'icon-image': [
+                  'match',
+                  ['get', 'type'],
+                  'compulsory', 'fix-compulsory',
+                  'rnav', 'wpt-rnav-open',
+                  'fix-non-compulsory'
+                ] as unknown as maplibregl.ExpressionSpecification,
                 'icon-size': 0.7,
-                'icon-allow-overlap': true,
-                'icon-ignore-placement': true,
+                'icon-allow-overlap': false,
+                'icon-ignore-placement': false,
                 'text-field': ['get', 'id'],
                 'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
                 'text-size': 9,
@@ -588,15 +602,18 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 'text-anchor': 'top',
                 'text-allow-overlap': false,
                 'text-ignore-placement': false,
-                'symbol-sort-key': 15
+                'symbol-sort-key': [
+                  'match',
+                  ['get', 'type'],
+                  'compulsory', 10,
+                  'named', 15,
+                  20
+                ] as unknown as maplibregl.ExpressionSpecification
               }}
               paint={{
-                'text-color': '#444444',
-                'text-halo-color': 'rgba(255, 255, 255, 0.95)',
-                'text-halo-width': 1.5,
-                'icon-color': '#444444',
-                'icon-halo-color': 'rgba(255, 255, 255, 0.95)',
-                'icon-halo-width': 1.5
+                'text-color': waypointTextColor,
+                'text-halo-color': haloColor,
+                'text-halo-width': 1.5
               }}
             />
           )}
@@ -623,12 +640,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 'symbol-sort-key': 30
               }}
               paint={{
-                'text-color': '#000000',
-                'text-halo-color': '#ffffff',
-                'text-halo-width': 1,
-                'icon-color': '#000000',
-                'icon-halo-color': '#ffffff',
-                'icon-halo-width': 1
+                'text-color': textColor,
+                'text-halo-color': haloColor,
+                'text-halo-width': 1
               }}
             />
           )}
@@ -671,12 +685,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 'symbol-sort-key': ['+', 100, ['to-number', ['get', 'agl'], 0]] as unknown as maplibregl.ExpressionSpecification,
               }}
               paint={{
-                'text-color': '#555555',
-                'text-halo-color': '#ffffff',
+                'text-color': obstacleTextColor,
+                'text-halo-color': haloColor,
                 'text-halo-width': 1,
-                'icon-color': '#555555',
-                'icon-halo-color': '#ffffff',
-                'icon-halo-width': 1
               }}
             />
           )}

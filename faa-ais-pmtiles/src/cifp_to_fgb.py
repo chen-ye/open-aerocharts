@@ -195,9 +195,28 @@ def build_pmtiles_fgb(cifp_path):
         if p.get('lat') is not None and p.get('lon') is not None:
             ident = (p.get('waypoint_id') or '').strip()
             fixes[ident] = (p.get('lon'), p.get('lat'), 0.0)
+
+            # Classify waypoint type from ARINC 424
+            raw_type = (p.get('type') or '').strip()
+            if raw_type == 'C':
+                wpt_type = 'compulsory'
+            elif raw_type == 'R':
+                wpt_type = 'rnav'
+            else:
+                wpt_type = 'named'
+
+            # Usage: H = high altitude, L = low altitude, B = both, blank = terminal/other
+            usage = (p.get('usage') or '').strip()
+
             waypoint_features.append(geojson.Feature(
                 geometry=geojson.Point((p.get('lon'), p.get('lat'), 0.0)),
-                properties={'id': ident, 'type': 'waypoint', 'rank': 5}
+                properties={
+                    'id': ident,
+                    'type': wpt_type,
+                    'usage': usage,
+                    'name': (p.get('name_description') or '').strip(),
+                    'rank': 4 if wpt_type == 'compulsory' else 5
+                }
             ))
 
     save_fgb(waypoint_features, 'data/waypoints.fgb')

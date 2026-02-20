@@ -77,7 +77,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     <Select.Item value="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json">CartoCDN Positron (Light)</Select.Item>
                     <Select.Item value="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json">CartoCDN Dark Matter</Select.Item>
                     <Select.Item value="https://api.maptiler.com/maps/outdoor-v4-dark/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Outdoor Dark</Select.Item>
-                    <Select.Item value="https://api.maptiler.com/maps/outdoor-v4-light/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Outdoor Light</Select.Item>
+                    <Select.Item value="https://api.maptiler.com/maps/outdoor-v4/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Outdoor Light</Select.Item>
                     <Select.Item value="https://api.maptiler.com/maps/dataviz-v4-dark/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Dataviz Dark</Select.Item>
                     <Select.Item value="https://api.maptiler.com/maps/dataviz-v4-light/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Dataviz Light</Select.Item>
                   </Select.Group>
