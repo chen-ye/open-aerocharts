@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Flex, Switch, Text, Separator } from '@radix-ui/themes';
+import { Box, Flex, Switch, Text, Separator, Slider } from '@radix-ui/themes';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 import { grayColor } from '../../App.tsx';
 
@@ -9,7 +9,7 @@ interface AeronauticalSettingsProps {
 }
 
 export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ layers, setLayers }) => {
-  const updateLayer = (key: keyof AeronauticalLayerState, value: boolean) => {
+  const updateLayer = <K extends keyof AeronauticalLayerState>(key: K, value: AeronauticalLayerState[K]) => {
     setLayers((prev: AeronauticalLayerState) => ({ ...prev, [key]: value }));
   };
 
@@ -33,6 +33,30 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
 
       {layers.showAll && (
         <Flex direction="column" gap="4">
+
+          {/* Map Density */}
+          <Box>
+            <Flex align="center" justify="between" mb="2">
+              <Text size="2" weight="bold">Map Density</Text>
+              <Text size="1" color={grayColor}>
+                {layers.declutterLevel === -4 ? 'Low' :
+                 layers.declutterLevel === 0 ? 'Standard' :
+                 layers.declutterLevel === 2 ? 'High' : 'Max'}
+              </Text>
+            </Flex>
+            <Slider
+              min={1}
+              max={4}
+              step={1}
+              // Map slider [1, 2, 3, 4] -> offset [-2, 0, 2, 10]
+              value={[layers.declutterLevel === -2 ? 1 : layers.declutterLevel === 0 ? 2 : layers.declutterLevel === 2 ? 3 : 4]}
+              onValueChange={([val]) => {
+                const offset = val === 1 ? -2 : val === 2 ? 0 : val === 3 ? 2 : 10;
+                updateLayer('declutterLevel', offset);
+              }}
+            />
+          </Box>
+          <Separator size="4" />
 
           {/* Airports */}
           <Box>

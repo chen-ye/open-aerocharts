@@ -8,7 +8,7 @@ import { addAeroIcons } from '../../utils/aeroIcons.ts';
 import styles from '../../mapStyles';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 import { accentColor, grayColor } from '../../App.tsx';
-import { crimson, indigo, indigoDark, violet, blue, gray, grayDark, purple, purpleDark, slateDark } from '@radix-ui/colors';
+import { crimson, crimsonDark, indigo, indigoDark, violet, violetDark, blue, gray, grayDark, purple, purpleDark, slate, slateDark } from '@radix-ui/colors';
 
 const FeatureList = ({
   features,
@@ -259,8 +259,43 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'text-halo-width': 1.5
   }), [haloColor]);
 
+  const airspaceLabelLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => ({
+    'text-field': [
+      'concat',
+      ['case', ['==', ['get', 'is_sua'], true], ['get', 'name'], ['get', 'airspace_class']],
+      '/',
+      ['get', 'lower_limit'],
+      '-',
+      ['get', 'upper_limit']
+    ] as unknown as maplibregl.ExpressionSpecification,
+    'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+    'text-size': 10,
+    'text-anchor': 'center',
+    'text-allow-overlap': false,
+    'symbol-placement': 'point'
+  }), []);
+
+  const getZoomRankFilter = (baseZooms: Record<number, number>): maplibregl.ExpressionSpecification => {
+    const zooms = Object.keys(baseZooms).map(Number).sort((a, b) => a - b);
+    const initialRank = baseZooms[zooms[0]] + aeronauticalLayers.declutterLevel;
+
+    const stepExpr: unknown[] = ['step', ['zoom'], Math.min(6, Math.max(0, initialRank))];
+    for (let i = 1; i < zooms.length; i++) {
+        const z = zooms[i];
+        const maxRank = baseZooms[z] + aeronauticalLayers.declutterLevel;
+        stepExpr.push(z);
+        stepExpr.push(Math.min(6, Math.max(0, maxRank)));
+    }
+
+    return ['<=', ['to-number', ['get', 'rank'], 5], stepExpr] as unknown as maplibregl.ExpressionSpecification;
+  };
+
   const showRunways = aeronauticalLayers.showAirportsMaster &&
     (aeronauticalLayers.publicAirports || aeronauticalLayers.privateAirports || aeronauticalLayers.heliports);
+
+  const getZoom = (baseZoom: number) => {
+    return Math.max(0, baseZoom - aeronauticalLayers.declutterLevel);
+  };
 
   return (
     <Map
@@ -566,6 +601,48 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
                     paint={{ 'fill-opacity': 0 }}
                   />
+                  <Layer
+                    id="airspaces-class-b-label"
+                    type="symbol"
+                    source="src-airspaces"
+                    source-layer="airspaces"
+                    minzoom={8}
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
+                    layout={airspaceLabelLayout}
+                    paint={{
+                      'text-color': isDarkMap ? violetDark.violet11 : violet.violet11,
+                      'text-halo-color': haloColor,
+                      'text-halo-width': 1.5
+                    }}
+                  />
+                  <Layer
+                    id="airspaces-class-c-label"
+                    type="symbol"
+                    source="src-airspaces"
+                    source-layer="airspaces"
+                    minzoom={8}
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
+                    layout={airspaceLabelLayout}
+                    paint={{
+                      'text-color': isDarkMap ? crimsonDark.crimson11 : crimson.crimson11,
+                      'text-halo-color': haloColor,
+                      'text-halo-width': 1.5
+                    }}
+                  />
+                  <Layer
+                    id="airspaces-class-d-label"
+                    type="symbol"
+                    source="src-airspaces"
+                    source-layer="airspaces"
+                    minzoom={8}
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
+                    layout={airspaceLabelLayout}
+                    paint={{
+                      'text-color': isDarkMap ? indigoDark.indigo11 : indigo.indigo11,
+                      'text-halo-color': haloColor,
+                      'text-halo-width': 1.5
+                    }}
+                  />
                 </>
               )}
               {aeronauticalLayers.suaMoa && (
@@ -594,6 +671,20 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
                     paint={{ 'fill-opacity': 0 }}
                   />
+                  <Layer
+                    id="airspaces-sua-label"
+                    type="symbol"
+                    source="src-airspaces"
+                    source-layer="airspaces"
+                    minzoom={8}
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
+                    layout={airspaceLabelLayout}
+                    paint={{
+                      'text-color': isDarkMap ? slateDark.slate11 : slate.slate11,
+                      'text-halo-color': haloColor,
+                      'text-halo-width': 1.5
+                    }}
+                  />
                 </>
               )}
               {aeronauticalLayers.trsa && (
@@ -621,6 +712,20 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'TRSA']]}
                     paint={{ 'fill-opacity': 0 }}
+                  />
+                  <Layer
+                    id="airspaces-trsa-label"
+                    type="symbol"
+                    source="src-airspaces"
+                    source-layer="airspaces"
+                    minzoom={8}
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'TRSA']]}
+                    layout={airspaceLabelLayout}
+                    paint={{
+                      'text-color': isDarkMap ? slateDark.slate11 : slate.slate11,
+                      'text-halo-color': haloColor,
+                      'text-halo-width': 1.5
+                    }}
                   />
                 </>
               )}
@@ -671,122 +776,22 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               {aeronauticalLayers.enrouteLow && (
                 <>
                   <Layer id="airways-low-line" type="line" source="src-other" source-layer="airways" filter={['==', ['get', 'structure'], 'Low']} paint={airwayLinePaint} />
-                  <Layer id="airways-low-symbol" type="symbol" source="src-other" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
+                  <>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    <Layer id="airways-low-symbol" type="symbol" source="src-other" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
+                  </>
                 </>
               )}
               {aeronauticalLayers.enrouteHigh && (
                 <>
                   <Layer id="airways-high-line" type="line" source="src-other" source-layer="airways" filter={['==', ['get', 'structure'], 'High']} paint={airwayLinePaint} />
-                  <Layer id="airways-high-symbol" type="symbol" source="src-other" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
+                  <>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    <Layer id="airways-high-symbol" type="symbol" source="src-other" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
+                  </>
                 </>
               )}
             </>
-          )}
-
-          {/* Navaids Points */}
-          {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.navaids && (
-            <Layer
-              id="navaids-symbol"
-              type="symbol"
-              source="src-other"
-              source-layer="navaids"
-              layout={{
-                'icon-image': [
-                  'match',
-                  ['get', 'type'],
-                  'ndb', 'navaid-ndb',
-                  'navaid-vor'
-                ],
-                'icon-size': 0.8,
-                'icon-allow-overlap': true,
-                'icon-ignore-placement': true,
-                'text-field': ['get', 'id'],
-                'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
-                'text-size': 11,
-                'text-offset': [0, 1.2],
-                'text-anchor': 'top',
-                'text-allow-overlap': false,
-                'text-ignore-placement': false,
-                'text-padding': 2,
-                'symbol-sort-key': 10
-              }}
-              paint={{
-                'text-color': accentTextColor,
-                'text-halo-color': haloColor,
-                'text-halo-width': 1.5
-              }}
-            />
-          )}
-
-          {/* Waypoints */}
-          {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.waypoints && (
-            <Layer
-              id="waypoints-symbol"
-              type="symbol"
-              source="src-other"
-              source-layer="waypoints"
-              minzoom={7}
-              layout={{
-                'icon-image': [
-                  'match',
-                  ['get', 'type'],
-                  'compulsory', 'fix-compulsory',
-                  'rnav', 'wpt-rnav-open',
-                  'fix-non-compulsory'
-                ] as unknown as maplibregl.ExpressionSpecification,
-                'icon-size': 0.7,
-                'icon-allow-overlap': false,
-                'icon-ignore-placement': false,
-                'text-field': ['get', 'id'],
-                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-                'text-size': 9,
-                'text-offset': [0, 1.2],
-                'text-anchor': 'top',
-                'text-allow-overlap': false,
-                'text-ignore-placement': false,
-                'symbol-sort-key': [
-                  'match',
-                  ['get', 'type'],
-                  'compulsory', 10,
-                  'named', 15,
-                  20
-                ] as unknown as maplibregl.ExpressionSpecification
-              }}
-              paint={{
-                'text-color': waypointTextColor,
-                'text-halo-color': haloColor,
-                'text-halo-width': 1.5
-              }}
-            />
-          )}
-
-          {/* Localizers */}
-          {aeronauticalLayers.showAirportsMaster && aeronauticalLayers.publicAirports && (
-            <Layer
-              id="localizers-symbol"
-              type="symbol"
-              source="src-other"
-              source-layer="localizers"
-              layout={{
-                'icon-image': 'navaid-vor',
-                'icon-size': 0.5,
-                'icon-allow-overlap': true,
-                'icon-ignore-placement': true,
-                'text-field': ['get', 'ident'],
-                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-                'text-size': 9,
-                'text-offset': [1, 0],
-                'text-anchor': 'left',
-                'text-allow-overlap': false,
-                'text-ignore-placement': false,
-                'symbol-sort-key': 30
-              }}
-              paint={{
-                'text-color': textColor,
-                'text-halo-color': haloColor,
-                'text-halo-width': 1
-              }}
-            />
           )}
 
           {/* Obstacles (DOF) */}
@@ -796,7 +801,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               type="symbol"
               source="src-other"
               source-layer="obstacles"
-              minzoom={7}
+              minzoom={getZoom(5)}
+              filter={getZoomRankFilter({ 0: 0, 7: 2, 9: 3, 11: 6 })}
               layout={{
                 'icon-image': [
                   'case',
@@ -834,20 +840,140 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             />
           )}
 
+          {/* Localizers */}
+          {aeronauticalLayers.showAirportsMaster && aeronauticalLayers.publicAirports && (
+            <Layer
+              id="localizers-symbol"
+              type="symbol"
+              source="src-other"
+              source-layer="localizers"
+              layout={{
+                'icon-image': 'navaid-vor',
+                'icon-size': 0.5,
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true,
+                'text-field': ['get', 'ident'],
+                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                'text-size': 9,
+                'text-offset': [1, 0],
+                'text-anchor': 'left',
+                'text-allow-overlap': false,
+                'text-ignore-placement': false,
+                'symbol-sort-key': 30
+              }}
+              paint={{
+                'text-color': textColor,
+                'text-halo-color': haloColor,
+                'text-halo-width': 1
+              }}
+            />
+          )}
+
+          {/* Waypoints */}
+          {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.waypoints && (
+            <Layer
+              id="waypoints-symbol"
+              type="symbol"
+              source="src-other"
+              source-layer="waypoints"
+              minzoom={getZoom(4)}
+              filter={getZoomRankFilter({ 0: 2, 5: 3, 7: 4, 9: 6 })}
+              layout={{
+                'icon-image': [
+                  'match',
+                  ['get', 'type'],
+                  'compulsory', 'fix-compulsory',
+                  'rnav', 'wpt-rnav-open',
+                  'fix-non-compulsory'
+                ] as unknown as maplibregl.ExpressionSpecification,
+                'icon-size': 0.7,
+                'icon-allow-overlap': false,
+                'icon-ignore-placement': false,
+                'text-field': ['get', 'id'],
+                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                'text-size': 9,
+                'text-offset': [0, 1.2],
+                'text-anchor': 'top',
+                'text-allow-overlap': false,
+                'text-ignore-placement': false,
+                'symbol-sort-key': [
+                  'match',
+                  ['get', 'type'],
+                  'compulsory', 10,
+                  'named', 15,
+                  20
+                ] as unknown as maplibregl.ExpressionSpecification
+              }}
+              paint={{
+                'text-color': waypointTextColor,
+                'text-halo-color': haloColor,
+                'text-halo-width': 1.5
+              }}
+            />
+          )}
+
+          {/* Navaids Points */}
+          {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.navaids && (
+            <Layer
+              id="navaids-symbol"
+              type="symbol"
+              source="src-other"
+              source-layer="navaids"
+              filter={getZoomRankFilter({ 0: 1, 5: 2, 6: 3, 7: 4, 8: 6 })}
+              layout={{
+                'icon-image': [
+                  'match',
+                  ['get', 'type'],
+                  'ndb', 'navaid-ndb',
+                  'navaid-vor'
+                ],
+                'icon-size': 0.8,
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true,
+                'text-field': ['get', 'id'],
+                'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+                'text-size': 11,
+                'text-offset': [0, 1.2],
+                'text-anchor': 'top',
+                'text-allow-overlap': false,
+                'text-ignore-placement': false,
+                'text-padding': 2,
+                'symbol-sort-key': 10
+              }}
+              paint={{
+                'text-color': accentTextColor,
+                'text-halo-color': haloColor,
+                'text-halo-width': 1.5
+              }}
+            />
+          )}
+
           {/* Airports */}
           {aeronauticalLayers.showAirportsMaster && (
             <>
               {aeronauticalLayers.publicAirports && (
-                <Layer id="airports-public" type="symbol" source="src-other" source-layer="airports" filter={['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military']]]} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 1 } as any} paint={airportSymbolPaint} />
+                <>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  <Layer id="airports-public" type="symbol" source="src-other" source-layer="airports" filter={['all', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military']]], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 1 } as any} paint={airportSymbolPaint} />
+                </>
               )}
               {aeronauticalLayers.privateAirports && (
-                <Layer id="airports-private" type="symbol" source="src-other" source-layer="airports" filter={['==', ['get', 'facility_type'], 'private']} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 2 } as any} paint={airportSymbolPaint} />
+                <>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  <Layer id="airports-private" type="symbol" source="src-other" source-layer="airports" filter={['all', ['==', ['get', 'facility_type'], 'private'], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 2 } as any} paint={airportSymbolPaint} />
+                </>
               )}
               {aeronauticalLayers.heliports && (
-                <Layer id="airports-heliport" type="symbol" source="src-other" source-layer="airports" filter={['==', ['get', 'facility_type'], 'heliport']} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 3 } as any} paint={airportSymbolPaint} />
+                <>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  <Layer id="airports-heliport" type="symbol" source="src-other" source-layer="airports" filter={['all', ['==', ['get', 'facility_type'], 'heliport'], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 3 } as any} paint={airportSymbolPaint} />
+                </>
               )}
               {aeronauticalLayers.otherAirports && (
-                <Layer id="airports-other" type="symbol" source="src-other" source-layer="airports" filter={['!', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military', 'private', 'heliport']]]]} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 4 } as any} paint={airportSymbolPaint} />
+                <>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  <Layer id="airports-other" type="symbol" source="src-other" source-layer="airports" filter={['all', ['!', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military', 'private', 'heliport']]]], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 4 } as any} paint={airportSymbolPaint} />
+                </>
               )}
               {/* Fuel Ticks Overlay */}
               <Layer

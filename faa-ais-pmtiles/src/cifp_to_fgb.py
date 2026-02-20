@@ -168,9 +168,21 @@ def build_pmtiles_fgb(cifp_path):
         if lat is not None and lon is not None:
             elev = float(p.get('dme_elevation') or p.get('elevation') or 0.0)
             ident = (p.get('vhf_id') or p.get('dme_id') or '').strip()
+
+            nav_class = p.get('nav_class') or '     '
+            alt_class = nav_class[1:2] if len(nav_class) > 1 else ' '
+            if alt_class == 'H':
+                rank = 2
+            elif alt_class == 'L':
+                rank = 3
+            elif alt_class == 'T':
+                rank = 4
+            else:
+                rank = 5
+
             navaid_features.append(geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
-                properties={'id': ident, 'name': p.get('vhf_name'), 'frequency': p.get('frequency'), 'type': 'vhf', 'rank': 5}
+                properties={'id': ident, 'name': p.get('vhf_name'), 'frequency': p.get('frequency'), 'type': 'vhf', 'rank': rank}
             ))
             if ident:
                 fixes[ident] = (lon, lat, elev)
@@ -208,6 +220,21 @@ def build_pmtiles_fgb(cifp_path):
             # Usage: H = high altitude, L = low altitude, B = both, blank = terminal/other
             usage = (p.get('usage') or '').strip()
 
+            base_rank = 5
+            if wpt_type == 'compulsory':
+                base_rank = 3
+            elif wpt_type == 'rnav':
+                base_rank = 4
+
+            if usage in ('H', 'B'):
+                rank = base_rank
+            elif usage == 'L':
+                rank = base_rank + 1
+            else:
+                rank = base_rank + 2
+
+            rank = min(rank, 6)
+
             waypoint_features.append(geojson.Feature(
                 geometry=geojson.Point((p.get('lon'), p.get('lat'), 0.0)),
                 properties={
@@ -215,7 +242,7 @@ def build_pmtiles_fgb(cifp_path):
                     'type': wpt_type,
                     'usage': usage,
                     'name': (p.get('name_description') or '').strip(),
-                    'rank': 4 if wpt_type == 'compulsory' else 5
+                    'rank': rank
                 }
             ))
 

@@ -1,6 +1,8 @@
 export interface AeronauticalLayerState {
   // Master
   showAll: boolean;
+  declutterLevel: number;
+
 
   // Airports
   showAirportsMaster: boolean;
@@ -40,6 +42,8 @@ export interface AeronauticalLayerState {
 
 export const defaultAeronauticalState: AeronauticalLayerState = {
   showAll: true,
+  declutterLevel: 0,
+
 
   showAirportsMaster: true,
   publicAirports: true,
