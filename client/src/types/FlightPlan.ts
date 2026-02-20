@@ -5,9 +5,16 @@ export interface FixInfo {
   name?: string;
 }
 
+export interface ProcedurePoint {
+  coords: [number, number];
+  id: string;
+  type: string;
+  name: string;
+}
+
 export interface ProcedureSegment {
-  body: [number, number][]; // Array of [lon, lat]
-  transitions: Record<string, [number, number][]>;
+  body: ProcedurePoint[];
+  transitions: Record<string, ProcedurePoint[]>;
 }
 
 export interface SearchIndex {

@@ -1,12 +1,11 @@
-import type { SearchIndex, FlightPlan, RoutePoint } from '../types/FlightPlan';
+import type { SearchIndex, FlightPlan, RoutePoint, ProcedurePoint } from '../types/FlightPlan';
 import { featureCollection, point, lineString } from '@turf/helpers';
 
 export const parseRoute = (routeStr: string, index: SearchIndex): FlightPlan => {
   const parts = routeStr.trim().toUpperCase().split(/\s+/).filter(p => p.length > 0);
   const routePoints: RoutePoint[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const features: any[] = []; // GeoJSON features
-
+  const allCoords: [number, number][] = [];
+  
   let lastFixId: string | null = null;
 
   for (let i = 0; i < parts.length; i++) {
@@ -14,14 +13,11 @@ export const parseRoute = (routeStr: string, index: SearchIndex): FlightPlan => 
 
     // Check for Procedure (e.g., TECKY4.VLREE or just TECKY4)
     // Heuristic: Has a dot OR is found in procedures index for the PREVIOUS airport
-    // But efficiently, we usually know the airport context from the previous point?
-    // Actually, SIDs start at an airport. STARs end at an airport.
-    // Enroute procedures?
-
+    
     // Simplest first pass: "PROC.TRANS" or "TRANS.PROC"
     if (part.includes('.')) {
       const [left, right] = part.split('.');
-
+      
       let foundProc = null;
       let usedTransName = '';
 
@@ -57,29 +53,32 @@ export const parseRoute = (routeStr: string, index: SearchIndex): FlightPlan => 
       }
 
       if (foundProc) {
-        // Found it.
-        // Logic: Procedure path = body + transition OR transition + body depending on SID vs STAR?
-        // Our build script put points in 'body' and 'transitions'.
-        // SIDs: usually Airport -> Runway -> Body -> Transition.
-        // STARs: Transition -> Body -> Airport.
-
-        // For drawing, we just concatenate geometry.
-        let coords: [number, number][] = [];
-
+        // Found it. 
+        let procPoints: ProcedurePoint[] = [];
+        
         // If transition exists
         if (usedTransName && foundProc.transitions[usedTransName]) {
              // Heuristic: If parsing a SID, Body then Trans. If STAR, Trans then Body.
              // Usually SIDs have common body from airport to splitting transitions.
              // STARs have merging transitions to common body to airport.
-             // Let's assume order in file was preserved?
-             // Actually, simplest is just draw both segments.
-             coords = [...foundProc.body, ...foundProc.transitions[usedTransName]];
+             // We just merge them for visualization.
+             procPoints = [...foundProc.body, ...foundProc.transitions[usedTransName]];
         } else {
-            coords = foundProc.body;
+            procPoints = foundProc.body;
         }
 
-        if (coords.length > 1) {
-            features.push(lineString(coords, { type: 'procedure', name: part }));
+        // Add points to route
+        for (const pt of procPoints) {
+            routePoints.push({
+                id: pt.id,
+                lat: pt.coords[1],
+                lon: pt.coords[0],
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                type: pt.type as any, // Cast to match RoutePoint type union
+                name: pt.name
+            });
+            allCoords.push(pt.coords);
+            lastFixId = pt.id; // Update context
         }
         continue;
       }
@@ -96,27 +95,32 @@ export const parseRoute = (routeStr: string, index: SearchIndex): FlightPlan => 
         type: fix.type,
         name: fix.name
       });
-      features.push(point([fix.lon, fix.lat], { type: 'fix', id: part }));
+      allCoords.push([fix.lon, fix.lat]);
       continue;
     }
-
+    
     // Fallback: Unknown point
     console.warn(`Unknown fix or procedure: ${part}`);
   }
 
-  // Generate connecting lines between sequential fixes (gaps in procedures)
-  // This is tricky if mixed with procedures.
-  // Ideally, we trace the full path.
-  // For this v0, we just show what we found.
+  // Generate FeatureCollection
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const features: any[] = [];
 
-  // Basic point-to-point lines for non-procedure segments
-  // Iterate routePoints, if sequential in 'parts', draw line.
-  // But 'parts' includes procedures.
+  // 1. Single continuous line for the route
+  if (allCoords.length > 1) {
+      features.push(lineString(allCoords, { type: 'route-path' }));
+  }
 
-  // Better approach: Reconstruct geometry list.
-  // Items in list: { type: 'point', coords } OR { type: 'line', coords[] }
-  // Then connect the gaps.
-
+  // 2. Points for all fixes (including procedure intermediates)
+  for (const pt of routePoints) {
+      features.push(point([pt.lon, pt.lat], { 
+          id: pt.id, 
+          type: pt.type,
+          name: pt.name
+      }));
+  }
+  
   return {
     points: routePoints,
     geometry: featureCollection(features)

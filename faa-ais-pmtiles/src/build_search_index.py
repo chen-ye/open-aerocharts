@@ -96,14 +96,17 @@ def main():
         ident = (p.get('waypoint_id') or '').strip()
         lat, lon = p.get('lat'), p.get('lon')
         if ident and lat is not None and lon is not None:
-            # Overwrite if exists? Usually waypoints with same ID are far apart.
-            # For this basic implementation, we take the last one or need a list.
-            # But the user route string is just "EBAYE", implying uniqueness.
-            # We'll stick to simple overwrite for now.
+            # Classify waypoint type
+            raw_type = (p.get('type') or '').strip()
+            if raw_type == 'C':
+                wpt_type = 'compulsory'
+            else:
+                wpt_type = 'waypoint'
+
             fixes[ident] = {
                 'lat': float(lat), 
                 'lon': float(lon), 
-                'type': 'waypoint'
+                'type': wpt_type
             }
 
     print("Indexing procedures...", flush=True)
@@ -122,28 +125,37 @@ def main():
         if not airport or not proc_id: continue
         
         pts.sort(key=lambda x: x.get('seq_no') or 0)
-        coords = []
+        proc_points = []
         
         for p in pts:
             fix_id = (p.get('fix_id') or '').strip()
             lat, lon = None, None
+            fix_type = 'waypoint'
+            fix_name = ''
             
             if fix_id in fixes:
                 lat, lon = fixes[fix_id]['lat'], fixes[fix_id]['lon']
+                fix_type = fixes[fix_id].get('type', 'waypoint')
+                fix_name = fixes[fix_id].get('name', '')
             elif p.get('lat') is not None:
                 lat, lon = float(p.get('lat')), float(p.get('lon'))
             
             if lat is not None and lon is not None:
-                coords.append([lon, lat])
+                proc_points.append({
+                    'coords': [lon, lat],
+                    'id': fix_id,
+                    'type': fix_type,
+                    'name': fix_name
+                })
         
-        if not coords: continue
+        if not proc_points: continue
 
         proc_entry = procedures[airport][proc_id]
         
         if not trans_id or trans_id.strip() == '':
-            proc_entry['body'] = coords
+            proc_entry['body'] = proc_points
         else:
-            proc_entry['transitions'][trans_id] = coords
+            proc_entry['transitions'][trans_id] = proc_points
 
     # Convert defaultdict to regular dict
     final_procs = {}

@@ -18,7 +18,9 @@ interface AeroMapProps {
   aeronauticalLayers: AeronauticalLayerState;
   basemapBrightness: number;
   flightPlan: FlightPlan | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSelectFeatures?: (features: { lngLat: [number, number]; features: any[] } | null) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   selectedFeatures?: { lngLat: [number, number]; features: any[] } | null;
 }
 
@@ -578,13 +580,26 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           />
           <Layer
             id="flight-plan-point"
-            type="circle"
+            type="symbol"
             filter={['==', '$type', 'Point']}
+            layout={{
+              'icon-image': [
+                'match',
+                ['get', 'type'],
+                'compulsory', 'fix-compulsory',
+                'waypoint', 'fix-non-compulsory',
+                'navaid', 'navaid-vor',
+                'airport', 'apt-civil-paved-small',
+                'fix-non-compulsory' // default
+              ] as unknown as maplibregl.ExpressionSpecification,
+              'icon-size': 0.8,
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': true
+            }}
             paint={{
-              'circle-radius': 6,
-              'circle-color': mint.mint9,
-              'circle-stroke-width': 2,
-              'circle-stroke-color': '#ffffff'
+              'icon-color': mint.mint9,
+              'icon-halo-color': '#ffffff',
+              'icon-halo-width': 1
             }}
           />
           <Layer
