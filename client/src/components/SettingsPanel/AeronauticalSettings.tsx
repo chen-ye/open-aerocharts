@@ -39,7 +39,7 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
             <Flex align="center" justify="between" mb="2">
               <Text size="2" weight="bold">Map Density</Text>
               <Text size="1" color={grayColor}>
-                {layers.declutterLevel === -4 ? 'Low' :
+                {layers.declutterLevel === -2 ? 'Low' :
                  layers.declutterLevel === 0 ? 'Standard' :
                  layers.declutterLevel === 2 ? 'High' : 'Max'}
               </Text>

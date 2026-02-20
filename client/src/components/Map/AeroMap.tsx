@@ -8,7 +8,7 @@ import { addAeroIcons } from '../../utils/aeroIcons.ts';
 import styles from '../../mapStyles';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 import { accentColor, grayColor } from '../../App.tsx';
-import { crimson, crimsonDark, indigo, indigoDark, violet, violetDark, blue, gray, grayDark, purple, purpleDark, slate, slateDark } from '@radix-ui/colors';
+import { crimson, crimsonDark, indigo, indigoDark, violet, violetDark, blue, gray, grayDark, purple, purpleDark, slate, slateDark, brown, brownDark } from '@radix-ui/colors';
 
 const FeatureList = ({
   features,
@@ -95,23 +95,33 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   const mapRef = React.useRef<maplibregl.Map | null>(null);
 
   const addAirwayBgIcon = (map: maplibregl.Map, isDark: boolean) => {
-    const svgBgColor = isDark ? '#222222' : '#ffffff';
-    const svgBorderColor = isDark ? '#666666' : '#222222';
-    const svgStr = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="22" height="22" rx="4" fill="${svgBgColor}" stroke="${svgBorderColor}" stroke-width="2"/></svg>`;
-    const img = new Image(24, 24);
-    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      if (map.hasImage('airway-bg')) map.removeImage('airway-bg');
-      map.addImage('airway-bg', img, {
-        stretchX: [[8, 16]],
-        stretchY: [[8, 16]],
-        content: [4, 4, 20, 20],
-        pixelRatio: 1
-      });
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
+    const definitions = [
+      { id: 'airway-bg-gray', color: isDark ? grayDark.gray11 : gray.gray11 },
+      { id: 'airway-bg-blue', color: blue.blue9 },
+      { id: 'airway-bg-brown', color: isDark ? brownDark.brown9 : brown.brown9 }
+    ];
+
+    definitions.forEach(def => {
+      const svgStr = `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="22" height="22" rx="4" fill="${def.color}"/>
+        </svg>
+      `;
+      const img = new Image(24, 24);
+      const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        if (map.hasImage(def.id)) map.removeImage(def.id);
+        map.addImage(def.id, img, {
+          stretchX: [[8, 16]],
+          stretchY: [[8, 16]],
+          content: [4, 4, 20, 20],
+          pixelRatio: 1
+        });
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    });
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -204,7 +214,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       ['get', 'route_type'],
       'O', isDarkMap ? grayDark.gray11 : gray.gray11, // Official Designated (Victor/Jet)
       'R', blue.blue9, // RNAV/GPS
-      'H', '#8B4513', // Helicopter (no Radix brown)
+      'H', isDarkMap ? brownDark.brown9 : brown.brown9, // Helicopter
       isDarkMap ? grayDark.gray11 : gray.gray11 // fallback
     ] as unknown as maplibregl.ExpressionSpecification,
     'line-width': [
@@ -218,11 +228,18 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
   const airwaySymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => {
     return {
-      'symbol-placement': 'line',
+      'symbol-placement': 'line-center',
       'symbol-spacing': 500000,
-      'icon-image': 'airway-bg',
+      'icon-image': [
+        'match',
+        ['get', 'route_type'],
+        'O', 'airway-bg-gray',
+        'R', 'airway-bg-blue',
+        'H', 'airway-bg-brown',
+        'airway-bg-gray'
+      ] as unknown as maplibregl.ExpressionSpecification,
       'icon-text-fit': 'both',
-      'icon-text-fit-padding': [2, 4, 2, 4],
+      'icon-text-fit-padding': [-2, 4, -2, 4],
       'text-field': ['get', 'airway'],
       'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
       'text-size': 11,
@@ -233,23 +250,41 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     };
   }, []);
 
-  const airwayDetailLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => {
-    const minDetailZoom = Math.max(0, 8 - aeronauticalLayers.declutterLevel);
+  const airwayMeaLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => {
+    const minDetailZoom = Math.max(0, 10 - aeronauticalLayers.declutterLevel);
     return {
-      'symbol-placement': 'line',
+      'symbol-placement': 'line-center',
       'symbol-spacing': 500000,
       'text-field': [
         'step', ['zoom'],
-        '', // Hide completely at lower zooms
+        '',
         minDetailZoom,
-        ['format',
-          ['to-string', ['get', 'mea']], { 'font-scale': 0.85 },
-          '\n\n\n', {}, // spacing to jump over the main airway box
-          ['to-string', ['get', 'distance']], { 'font-scale': 0.85 }
-        ]
+        ['to-string', ['get', 'mea']]
       ] as unknown as maplibregl.ExpressionSpecification,
       'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-      'text-size': 11,
+      'text-size': 10,
+      'text-offset': [0, -1.5],
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
+      'text-rotation-alignment': 'map',
+      'text-pitch-alignment': 'map'
+    };
+  }, [aeronauticalLayers.declutterLevel]);
+
+  const airwayDistLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => {
+    const minDetailZoom = Math.max(0, 10 - aeronauticalLayers.declutterLevel);
+    return {
+      'symbol-placement': 'line-center',
+      'symbol-spacing': 500000,
+      'text-field': [
+        'step', ['zoom'],
+        '',
+        minDetailZoom,
+        ['to-string', ['get', 'distance']]
+      ] as unknown as maplibregl.ExpressionSpecification,
+      'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+      'text-size': 10,
+      'text-offset': [0, 1.5],
       'text-allow-overlap': true,
       'text-ignore-placement': true,
       'text-rotation-alignment': 'map',
@@ -258,8 +293,15 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   }, [aeronauticalLayers.declutterLevel]);
 
   const airwaySymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
-    'text-color': textColor
-  }), [textColor]);
+    'text-color': [
+      'match',
+      ['get', 'route_type'],
+      'O', isDarkMap ? '#000000' : '#ffffff', // Contests against gray11
+      'R', '#ffffff', // Contrasts against blue9
+      'H', '#ffffff', // Contrasts against brown9
+      isDarkMap ? '#000000' : '#ffffff'       // Default
+    ] as unknown as maplibregl.ExpressionSpecification
+  }), [isDarkMap]);
 
   const airwayDetailPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
     'text-color': textColor,
@@ -359,10 +401,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       properties: f.properties,
       id: f.id
     }));
-    
+
     return {
       type: 'FeatureCollection',
       features: features
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
   }, [selectedFeatures]);
 
@@ -872,7 +915,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     <Layer id="airways-low-symbol" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <Layer id="airways-low-detail" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwayDetailLayout, 'symbol-sort-key': 21 } as any} paint={airwayDetailPaint} />
+                    <Layer id="airways-low-mea" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwayMeaLayout, 'symbol-sort-key': 21 } as any} paint={airwayDetailPaint} />
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    <Layer id="airways-low-dist" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwayDistLayout, 'symbol-sort-key': 21 } as any} paint={airwayDetailPaint} />
                   </>
                 </>
               )}
@@ -883,7 +928,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     <Layer id="airways-high-symbol" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <Layer id="airways-high-detail" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwayDetailLayout, 'symbol-sort-key': 21 } as any} paint={airwayDetailPaint} />
+                    <Layer id="airways-high-mea" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwayMeaLayout, 'symbol-sort-key': 21 } as any} paint={airwayDetailPaint} />
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    <Layer id="airways-high-dist" type="symbol" source="src-enroute" source-layer="airways" minzoom={getZoom(6)} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwayDistLayout, 'symbol-sort-key': 21 } as any} paint={airwayDetailPaint} />
                   </>
                 </>
               )}

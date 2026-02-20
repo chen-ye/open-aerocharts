@@ -12,6 +12,7 @@ from src import cifp_to_fgb
 # This allows each file to use its own optimal zoom range.
 PMTILES_FILES = [
     "airspaces",
+    "enroute",
     "boundary",
     "other_layers",
     "airport_diagrams",
@@ -56,10 +57,11 @@ def main():
     print("Step 3: Compiling into PMTiles with tippecanoe concurrently...")
     os.makedirs("output", exist_ok=True)
 
-    cmd_airspaces = (
-        "uv run tippecanoe -Z0 -z10 -o output/airspaces.pmtiles "
+    cmd_enroute = (
+        "uv run tippecanoe -Z0 -z8 -o output/enroute.pmtiles "
         "--no-feature-limit --no-tile-size-limit -f "
-        "-l airspaces data/airspaces.fgb"
+        "-L airways:data/airways.fgb "
+        "-L airspaces:data/airspaces.fgb"
     )
     cmd_boundary = (
         "uv run tippecanoe -Z0 -z8 -o output/boundary.pmtiles "
@@ -73,7 +75,6 @@ def main():
         "-L navaids:data/navaids.fgb "
         "-L waypoints:data/waypoints.fgb "
         "-L procedures:data/procedures.fgb "
-        "-L airways:data/airways.fgb "
         "-L runways:data/runways.fgb "
         "-L localizers:data/localizers.fgb "
         "-L holding_patterns:data/holding_patterns.fgb "
@@ -88,7 +89,7 @@ def main():
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [
-            executor.submit(run_cmd, cmd_airspaces),
+            executor.submit(run_cmd, cmd_enroute),
             executor.submit(run_cmd, cmd_boundary),
             executor.submit(run_cmd, cmd_other),
             executor.submit(run_cmd, cmd_airport_diagrams),

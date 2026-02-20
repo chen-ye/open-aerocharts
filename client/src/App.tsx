@@ -11,7 +11,7 @@ export const grayColor = "gray" as const;
 function App() {
   const [basemapUrlOrId, setBasemapUrlOrId] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('basemap') || 'faa-sectional';
+    return params.get('basemap') || 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
   });
 
   const [showTerrain, setShowTerrain] = useState(() => {
