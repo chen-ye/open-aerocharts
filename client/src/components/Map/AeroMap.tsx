@@ -214,7 +214,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
         minDetailZoom,
         'line-center'
       ] as unknown as maplibregl.ExpressionSpecification,
-      'symbol-spacing': 500000,
+      'symbol-spacing': 500,
       'icon-image': [
         'step', ['zoom'],
         '',
@@ -244,7 +244,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     const minDetailZoom = Math.max(0, 10 - aeronauticalLayers.declutterLevel);
     return {
       'symbol-placement': 'line-center',
-      'symbol-spacing': 500000,
+      'symbol-spacing': 500,
       'text-field': [
         'step', ['zoom'],
         '',
@@ -265,7 +265,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     const minDetailZoom = Math.max(0, 10 - aeronauticalLayers.declutterLevel);
     return {
       'symbol-placement': 'line-center',
-      'symbol-spacing': 500000,
+      'symbol-spacing': 500,
       'text-field': [
         'step', ['zoom'],
         '',

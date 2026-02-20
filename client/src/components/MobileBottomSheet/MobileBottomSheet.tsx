@@ -13,10 +13,10 @@ interface MobileBottomSheetProps {
   onFlightPlanChange: (plan: FlightPlan | null) => void;
 }
 
-export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({ 
-  selectedFeatures, 
-  onCloseFeatures, 
-  onFlightPlanChange 
+export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
+  selectedFeatures,
+  onCloseFeatures,
+  onFlightPlanChange
 }) => {
   return (
     <Box className="map-feature-panel mobile-only">
@@ -31,7 +31,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
         }}
       >
         <Tabs.Root defaultValue="inspector">
-          <Box px="4" pt="3" pb="2" style={{ backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))', borderBottom: '1px solid var(--glass-border)', borderRadius: 'var(--radius-4) var(--radius-4) 0 0' }}>
+          <Box pt="1" style={{ backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))'}}>
             <Tabs.List>
               <Tabs.Trigger value="inspector">Inspector</Tabs.Trigger>
               <Tabs.Trigger value="flightplan">Flight Plan</Tabs.Trigger>
