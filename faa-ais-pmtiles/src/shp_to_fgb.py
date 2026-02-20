@@ -240,6 +240,7 @@ def convert_holding_patterns(
                 "turn_dir": (raw.get("DIRTURN") or "").strip(),
                 "structures": (raw.get("STRUCTURES") or "").strip(),
                 "speed_limit": raw.get("SPEEDLIMIT"),
+                "rank": 3,
             },
         ))
 
@@ -288,6 +289,7 @@ def convert_obstacles(
                 "lighting": (raw.get("Lighting") or "").strip(),
                 # "city": (raw.get("City") or "").strip(),
                 # "state": (raw.get("State") or "").strip(),
+                "rank": 4,
             },
         ))
 

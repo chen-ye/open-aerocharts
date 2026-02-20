@@ -1,5 +1,5 @@
 [project]
-name = "cifp-pmtiles"
+name = "faa-ais-pmtiles"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -20,6 +20,7 @@ fetch-cifp = "src.fetch_cifp:main"
 cifp-to-fgb = "src.cifp_to_fgb:main"
 fetch-airspace-shp = "src.fetch_airspace_shp:main"
 shp-to-fgb = "src.shp_to_fgb:main"
+build-pmtiles = "src.build_pmtiles:main"
 
 [build-system]
 requires = ["hatchling"]

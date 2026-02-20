@@ -254,7 +254,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
         <Source
           id="cifp"
           type="vector"
-          url="pmtiles:///open-aerocharts/cifp_data.pmtiles"
+          url="pmtiles:///open-aerocharts/faa_ais.pmtiles"
         />
       )}
       {aeronauticalLayers.showAll && (

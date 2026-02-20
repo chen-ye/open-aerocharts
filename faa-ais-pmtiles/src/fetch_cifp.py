@@ -25,9 +25,13 @@ def fetch_latest_cifp():
     latest_zip = zip_links[0]
 
     download_url = url + latest_zip
-    print(f"Downloading {download_url}...")
-
     zip_path = latest_zip
+
+    if os.path.exists(zip_path) and os.path.exists("FAACIFP18"):
+        print(f"Latest CIFP ({zip_path}) and FAACIFP18 already exist. Skipping download.")
+        return
+
+    print(f"Downloading {download_url}...")
     with requests.get(download_url, stream=True) as r:
         r.raise_for_status()
         with open(zip_path, 'wb') as f:

@@ -38,8 +38,8 @@ ADDS_DATASETS: dict[str, dict[str, str]] = {
 }
 
 
-def find_latest_cycle_url() -> str:
-    """Scrape the NFDC 28-day subscription page to find the latest cycle date."""
+def find_latest_cycle() -> tuple[str, str]:
+    """Scrape the NFDC 28-day subscription page to find the latest cycle date and url."""
     try:
         resp = requests.get(NFDC_BASE, timeout=30)
         resp.raise_for_status()
@@ -54,17 +54,23 @@ def find_latest_cycle_url() -> str:
 
         if dates:
             dates.sort(reverse=True)
-            return f"{NFDC_BASE}{dates[0]}/{SHAPEFILE_FILENAME}"
+            return dates[0], f"{NFDC_BASE}{dates[0]}/{SHAPEFILE_FILENAME}"
     except requests.RequestException:
         pass
 
     print("Could not scrape NFDC index; using known current cycle URL.")
-    return f"{NFDC_BASE}2026-03-19/{SHAPEFILE_FILENAME}"
+    return "2026-03-19", f"{NFDC_BASE}2026-03-19/{SHAPEFILE_FILENAME}"
 
 
-def fetch_class_airspace_shapefiles() -> None:
+def fetch_class_airspace_shapefiles(cycle_date: str, url: str) -> None:
     """Download and extract FAA Class Airspace shapefiles."""
-    url = find_latest_cycle_url()
+    cycle_file = os.path.join(SHAPEFILE_EXTRACT_DIR, ".cycle")
+    if os.path.exists(cycle_file):
+        with open(cycle_file, "r") as f:
+            if f.read().strip() == cycle_date:
+                print(f"Shapefiles for cycle {cycle_date} already exist. Skipping download.")
+                return
+
     print(f"Downloading Class Airspace shapefiles from {url}...")
 
     zip_path = SHAPEFILE_FILENAME
@@ -80,17 +86,29 @@ def fetch_class_airspace_shapefiles() -> None:
         zf.extractall(SHAPEFILE_EXTRACT_DIR)
 
     os.remove(zip_path)
+
+    with open(cycle_file, "w") as f:
+        f.write(cycle_date)
+
     print("  Done.")
 
 
-def fetch_adds_dataset(key: str, info: dict[str, str]) -> None:
+def fetch_adds_dataset(key: str, info: dict[str, str], cycle_date: str) -> None:
     """Download a GeoJSON dataset from the ADDS ArcGIS Hub."""
+    output = info["output"]
+    label = info["label"]
+    cycle_file = f"{output}.cycle"
+
+    if os.path.exists(output) and os.path.exists(cycle_file):
+        with open(cycle_file, "r") as f:
+            if f.read().strip() == cycle_date:
+                print(f"{label} for cycle {cycle_date} already exists. Skipping download.")
+                return
+
     url = (
         f"{ADDS_BASE}/{info['item_id']}_0/downloads/data"
         f"?format=geojson&spatialRefId=4326"
     )
-    output = info["output"]
-    label = info["label"]
 
     print(f"Downloading {label}...")
     os.makedirs(os.path.dirname(output), exist_ok=True)
@@ -105,15 +123,26 @@ def fetch_adds_dataset(key: str, info: dict[str, str]) -> None:
                 f.write(chunk)
 
     size_mb = os.path.getsize(output) / (1024 * 1024)
+    with open(cycle_file, "w") as f:
+        f.write(cycle_date)
     print(f"  Saved to {output} ({size_mb:.1f} MB)")
 
 
-def main() -> None:
-    fetch_class_airspace_shapefiles()
-    for key, info in ADDS_DATASETS.items():
-        fetch_adds_dataset(key, info)
-    print("All datasets fetched.")
+def fetch_all_adds(cycle_date: str) -> None:
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = []
+        for key, info in ADDS_DATASETS.items():
+            futures.append(executor.submit(fetch_adds_dataset, key, info, cycle_date))
+        concurrent.futures.wait(futures)
+        for f in futures:
+            f.result()
 
+def main() -> None:
+    cycle_date, url = find_latest_cycle()
+    fetch_class_airspace_shapefiles(cycle_date, url)
+    fetch_all_adds(cycle_date)
+    print("All datasets fetched.")
 
 if __name__ == "__main__":
     main()

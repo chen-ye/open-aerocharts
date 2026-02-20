@@ -15,9 +15,9 @@ webmaps.
     files for each functional aeronautical layer.
   - All GeoJSON features are emitted with `Z` (elevation/altitude) coordinate
     mapping for 3D engine capabilities.
-- `build_pmtiles.sh`
+- `build_pmtiles.py`
   - Orchestrates the fetching, parsing, and finally the execution of
-    `tippecanoe` to produce `output/cifp_data.pmtiles`.
+    `tippecanoe` to produce `output/faa_ais.pmtiles`.
 
 ## Extracted Features & PMTile Structure
 
@@ -233,12 +233,11 @@ emitters.
 
 1. Install system prerequisites: `tippecanoe`
 2. Install Python manager: `uv`
-3. Enter `cifp-pmtiles` directory.
+3. Enter `faa-ais-pmtiles` directory.
 4. Run orchestrator script:
 
 ```bash
-./build_pmtiles.sh
+uv run build-pmtiles
 ```
 
-5. Once completed, find the MapLibre-ready database at
-   `output/cifp_data.pmtiles`.
+5. Once completed, find the MapLibre-ready database at `output/faa_ais.pmtiles`.

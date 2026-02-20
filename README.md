@@ -6,8 +6,8 @@ equivalent to the official raster FAA charts for the US.
 
 The project is split into two packages:
 
-- `cifp-pmtiles`: A Python package to fetch and convert CIFP data to PMTiles
-  format.
+- `faa-ais-pmtiles`: A Python package to fetch and convert FAA AIS (CIFP, NASR,
+  ADDS) data to PMTiles format.
 - `client`: A reference MapLibre webapp to display the data, with aero chart
   styling.
 

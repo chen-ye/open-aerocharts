@@ -5,11 +5,14 @@ import math
 from collections import defaultdict
 from cifparse import CIFP
 
-try:
-    from fetch_nasr import get_airport_fuel
-except ImportError:
-    def get_airport_fuel():
-        return {}
+def get_airport_fuel():
+    import json
+    import os
+    if os.path.exists("data/nasr_fuel.json"):
+        with open("data/nasr_fuel.json", "r") as f:
+            return json.load(f)
+    print("WARNING: data/nasr_fuel.json not found, falling back to empty lookup.")
+    return {}
 
 def haversine(lon1, lat1, lon2, lat2):
     R = 3440.065 # Earth radius in NM
@@ -38,12 +41,13 @@ def parse_altitude(alt_str):
         if alt_str.startswith('FL'):
             try:
                 return float(alt_str[2:]) * 100
-            except:
+            except Exception:
                 pass
         return 0.0
 
 def unwrap_coordinates(coords):
-    if not coords: return coords
+    if not coords:
+        return coords
     unwrapped = [coords[0]]
     for i in range(1, len(coords)):
         prev_lon = unwrapped[-1][0]
@@ -108,8 +112,13 @@ def build_pmtiles_fgb(cifp_path):
             else:
                 fac_type = 'civil_hard' if surface == 'H' else 'civil_soft'
 
-            ident = p.get('airport_id', '').strip()
-            has_fuel = fuel_lookup.get(ident, False)
+            # Determine facility rank for decluttering (lower is more important)
+            # Major airports: ICAO (K...) or long runways (> 8000ft)
+            rank = 2
+            if ident.startswith('K') and len(ident) == 4:
+                rank = 1
+            elif int(p.get('longest') or 0) > 8000:
+                rank = 1
 
             properties = {
                 'id': ident,
@@ -120,7 +129,8 @@ def build_pmtiles_fgb(cifp_path):
                 'is_military': usage == 'M',
                 'is_ifr': bool(p.get('is_ifr')),
                 'longest_runway': int(p.get('longest') or 0),
-                'has_fuel': has_fuel
+                'has_fuel': has_fuel,
+                'rank': rank
             }
 
             airport_features.append(geojson.Feature(
@@ -143,7 +153,7 @@ def build_pmtiles_fgb(cifp_path):
             ident = (p.get('vhf_id') or p.get('dme_id') or '').strip()
             navaid_features.append(geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
-                properties={'id': ident, 'name': p.get('vhf_name'), 'frequency': p.get('frequency'), 'type': 'vhf'}
+                properties={'id': ident, 'name': p.get('vhf_name'), 'frequency': p.get('frequency'), 'type': 'vhf', 'rank': 3}
             ))
             if ident:
                 fixes[ident] = (lon, lat, elev)
@@ -156,7 +166,7 @@ def build_pmtiles_fgb(cifp_path):
             ident = (p.get('ndb_id') or '').strip()
             navaid_features.append(geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
-                properties={'id': ident, 'name': p.get('ndb_name'), 'frequency': p.get('frequency'), 'type': 'ndb'}
+                properties={'id': ident, 'name': p.get('ndb_name'), 'frequency': p.get('frequency'), 'type': 'ndb', 'rank': 3}
             ))
             if ident:
                 fixes[ident] = (lon, lat, elev)
@@ -193,7 +203,7 @@ def build_pmtiles_fgb(cifp_path):
             coords = unwrap_coordinates(coords)
             procedure_features.append(geojson.Feature(
                 geometry=geojson.LineString(coords),
-                properties={'airport': key[0], 'procedure': key[1], 'transition': key[2]}
+                properties={'airport': key[0], 'procedure': key[1], 'transition': key[2], 'rank': 3}
             ))
 
     save_fgb(procedure_features, 'data/procedures.fgb')
@@ -241,10 +251,14 @@ def build_pmtiles_fgb(cifp_path):
 
                 route_type = p1.get('route_type') or p1.get('airway_type')
                 if not route_type:
-                    if key.startswith('V'): route_type = 'Victor'
-                    elif key.startswith('Q') or key.startswith('T'): route_type = 'GPS'
-                    elif key.startswith('J'): route_type = 'Victor'
-                    else: route_type = 'Unknown'
+                    if key.startswith('V'):
+                        route_type = 'Victor'
+                    elif key.startswith('Q') or key.startswith('T'):
+                        route_type = 'GPS'
+                    elif key.startswith('J'):
+                        route_type = 'Victor'
+                    else:
+                        route_type = 'Unknown'
 
                 coords = [
                     (ulon1, ulat1, max(elev1, parse_altitude(min_alt))),
@@ -260,7 +274,8 @@ def build_pmtiles_fgb(cifp_path):
                         'mea': mea_val,
                         'distance': dist_nm,
                         'route_type': route_type,
-                        'structure': structure
+                        'structure': structure,
+                        'rank': 3
                     }
                 ))
 
@@ -281,7 +296,8 @@ def build_pmtiles_fgb(cifp_path):
                     'length': p.get('length'),
                     'bearing': p.get('bearing'),
                     'width': p.get('width'),
-                    'type': 'runway'
+                    'type': 'runway',
+                    'rank': 3
                 }
             ))
 
@@ -302,7 +318,8 @@ def build_pmtiles_fgb(cifp_path):
                     'ident': p.get('loc_id'),
                     'frequency': p.get('frequency'),
                     'bearing': p.get('loc_bearing'),
-                    'type': 'localizer'
+                    'type': 'localizer',
+                    'rank': 3
                 }
             ))
 
