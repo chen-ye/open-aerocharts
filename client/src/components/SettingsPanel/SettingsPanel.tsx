@@ -46,9 +46,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <Layers size={20} />
         </IconButton>
       ) : (
-        <Card className="settings-card" size="2" style={{ backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))', boxShadow: '0 0 0 1px var(--glass-border)' }}>
-          <Flex direction="column" gap="4">
-            <Flex align="center" justify="between">
+        <Card className="settings-card" size="2" style={{
+            backgroundColor: 'var(--glass-bg)',
+            backdropFilter: 'blur(var(--glass-blur))',
+            boxShadow: '0 0 0 1px var(--glass-border)'
+          }}>
+          <Flex direction="column" gap="4" style={{ height: '100%' }}>
+            <Flex align="center" justify="between" px="4" pt="4">
               <Heading size="3" as="h2">Map Settings</Heading>
               <IconButton
                 size="2"
@@ -60,56 +64,60 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </IconButton>
             </Flex>
 
-            <Flex direction="column" gap="2">
-              <Text size="2" weight="bold" color={grayColor} style={{ textTransform: 'uppercase' }}>Basemap</Text>
-              <Text size="2">Basemap Style</Text>
-              <Select.Root value={basemap} onValueChange={setBasemap}>
-                <Select.Trigger />
-                <Select.Content>
-                  <Select.Group>
-                    <Select.Label>Vector Basemaps</Select.Label>
-                    <Select.Item value="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json">CartoCDN Voyager</Select.Item>
-                    <Select.Item value="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json">CartoCDN Positron (Light)</Select.Item>
-                    <Select.Item value="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json">CartoCDN Dark Matter</Select.Item>
-                    <Select.Item value="https://api.maptiler.com/maps/outdoor-v4-dark/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Outdoor Dark</Select.Item>
-                    <Select.Item value="https://api.maptiler.com/maps/outdoor-v4/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Outdoor Light</Select.Item>
-                    <Select.Item value="https://api.maptiler.com/maps/dataviz-v4-dark/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Dataviz Dark</Select.Item>
-                    <Select.Item value="https://api.maptiler.com/maps/dataviz-v4-light/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Dataviz Light</Select.Item>
-                  </Select.Group>
-                  <Select.Separator />
-                  <Select.Group>
-                    <Select.Label>FAA Raster Maps</Select.Label>
-                    <Select.Item value="faa-sectional">VFR Sectional</Select.Item>
-                    <Select.Item value="faa-enroute">IFR High Enroute</Select.Item>
-                    <Select.Item value="faa-ifrlo">IFR Low Enroute</Select.Item>
-                  </Select.Group>
-                </Select.Content>
-              </Select.Root>
-            </Flex>
+            <Box className="settings-card-body">
+              <Flex direction="column" gap="4" px="4">
+                <Flex direction="column" gap="2">
+                  <Text size="2" weight="bold" color={grayColor} style={{ textTransform: 'uppercase' }}>Basemap</Text>
+                  <Text size="2">Basemap Style</Text>
+                  <Select.Root value={basemap} onValueChange={setBasemap}>
+                    <Select.Trigger />
+                    <Select.Content>
+                      <Select.Group>
+                        <Select.Label>Vector Basemaps</Select.Label>
+                        <Select.Item value="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json">CartoCDN Voyager</Select.Item>
+                        <Select.Item value="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json">CartoCDN Positron (Light)</Select.Item>
+                        <Select.Item value="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json">CartoCDN Dark Matter</Select.Item>
+                        <Select.Item value="https://api.maptiler.com/maps/outdoor-v4-dark/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Outdoor Dark</Select.Item>
+                        <Select.Item value="https://api.maptiler.com/maps/outdoor-v4/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Outdoor Light</Select.Item>
+                        <Select.Item value="https://api.maptiler.com/maps/dataviz-v4-dark/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Dataviz Dark</Select.Item>
+                        <Select.Item value="https://api.maptiler.com/maps/dataviz-v4-light/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Dataviz Light</Select.Item>
+                      </Select.Group>
+                      <Select.Separator />
+                      <Select.Group>
+                        <Select.Label>FAA Raster Maps</Select.Label>
+                        <Select.Item value="faa-sectional">VFR Sectional</Select.Item>
+                        <Select.Item value="faa-enroute">IFR High Enroute</Select.Item>
+                        <Select.Item value="faa-ifrlo">IFR Low Enroute</Select.Item>
+                      </Select.Group>
+                    </Select.Content>
+                  </Select.Root>
+                </Flex>
 
-            <Flex direction="column" gap="2">
-              <Text as="label" size="2">Basemap Brightness</Text>
-              <Slider
-                value={[basemapBrightness]}
-                onValueChange={(val: number[]) => setBasemapBrightness(val[0])}
-                max={100}
-                step={1}
-              />
-            </Flex>
+                <Flex direction="column" gap="2">
+                  <Text as="label" size="2">Basemap Brightness</Text>
+                  <Slider
+                    value={[basemapBrightness]}
+                    onValueChange={(val: number[]) => setBasemapBrightness(val[0])}
+                    max={100}
+                    step={1}
+                  />
+                </Flex>
 
-            <Flex align="center" justify="between">
-              <Text as="label" size="2" weight="bold" color={grayColor} style={{ textTransform: 'uppercase' }}>Terrain/Hillshade</Text>
-              <Switch
-                id="terrain-toggle"
-                checked={showTerrain}
-                onCheckedChange={(c: boolean) => setShowTerrain(c)}
-              />
-            </Flex>
+                <Flex align="center" justify="between">
+                  <Text as="label" size="2" weight="bold" color={grayColor} style={{ textTransform: 'uppercase' }}>Terrain/Hillshade</Text>
+                  <Switch
+                    id="terrain-toggle"
+                    checked={showTerrain}
+                    onCheckedChange={(c: boolean) => setShowTerrain(c)}
+                  />
+                </Flex>
 
-            <AeronauticalSettings
-              layers={aeronauticalLayers}
-              setLayers={setAeronauticalLayers}
-            />
+                <AeronauticalSettings
+                  layers={aeronauticalLayers}
+                  setLayers={setAeronauticalLayers}
+                />
+              </Flex>
+            </Box>
           </Flex>
         </Card>
       )}

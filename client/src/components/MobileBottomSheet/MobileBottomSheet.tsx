@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Card, Flex, Tabs, Text, Separator, Heading, IconButton } from '@radix-ui/themes';
-import { X } from 'lucide-react';
+import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { grayColor } from '../../App.tsx';
 import { FeatureList } from '../Map/FeatureList';
 import { FlightPlanContent } from '../FlightPlanPanel/FlightPlanPanel';
@@ -26,8 +26,10 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
   index,
   loading
 }) => {
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
+
   return (
-    <Box className="map-feature-panel mobile-only">
+    <Box className={`map-feature-panel mobile-only ${isCollapsed ? 'is-collapsed' : ''}`}>
       <Card
         size="2"
         style={{
@@ -38,12 +40,22 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
           padding: 0
         }}
       >
-        <Tabs.Root defaultValue="inspector">
+        <Tabs.Root defaultValue="inspector" onValueChange={() => setIsCollapsed(false)}>
           <Box pt="1" style={{ backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))'}}>
-            <Tabs.List>
-              <Tabs.Trigger value="inspector">Inspector</Tabs.Trigger>
-              <Tabs.Trigger value="flightplan">Flight Plan</Tabs.Trigger>
-            </Tabs.List>
+            <Flex align="center" justify="between" pr="2">
+              <Tabs.List style={{ flex: 1 }}>
+                <Tabs.Trigger value="inspector">Inspector</Tabs.Trigger>
+                <Tabs.Trigger value="flightplan">Flight Plan</Tabs.Trigger>
+              </Tabs.List>
+              <IconButton
+                size="2"
+                variant="ghost"
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                title={isCollapsed ? "Expand" : "Minimize"}
+              >
+                {isCollapsed ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </IconButton>
+            </Flex>
           </Box>
 
           <Box px="4" py="4" style={{ height: 'calc(50vh - 50px)', overflowY: 'auto' }}>

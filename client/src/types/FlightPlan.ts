@@ -19,7 +19,7 @@ export interface RoutePoint {
   id: string;
   lat: number;
   lon: number;
-  type: 'fix' | 'procedure';
+  type: 'airport' | 'navaid' | 'waypoint' | 'procedure';
   name?: string; // e.g. "TECKY4"
 }
 

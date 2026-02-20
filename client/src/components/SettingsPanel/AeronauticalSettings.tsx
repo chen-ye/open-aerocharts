@@ -150,8 +150,8 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
 };
 
 const ToggleRow = ({ label, checked, disabled, onChange }: { label: string, checked: boolean, disabled?: boolean, onChange: (c: boolean) => void }) => (
-  <Flex align="center" justify="between">
-    <Text size="2" color={disabled ? grayColor : undefined} style={{ opacity: disabled ? 0.5 : 1 }}>{label}</Text>
+  <Flex align="center" justify="between" gap="2">
+    <Text size="2" color={disabled ? grayColor : undefined} style={{ opacity: disabled ? 0.5 : 1, minWidth: 0, flexShrink: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Text>
     <Switch size="1" checked={checked} disabled={disabled} onCheckedChange={onChange} />
   </Flex>
 );

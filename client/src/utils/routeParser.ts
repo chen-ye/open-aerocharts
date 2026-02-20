@@ -17,13 +17,12 @@ export const parseRoute = (routeStr: string, index: SearchIndex): FlightPlan => 
     // But efficiently, we usually know the airport context from the previous point?
     // Actually, SIDs start at an airport. STARs end at an airport.
     // Enroute procedures?
-    
+
     // Simplest first pass: "PROC.TRANS" or "TRANS.PROC"
     if (part.includes('.')) {
       const [left, right] = part.split('.');
-      
+
       let foundProc = null;
-      let usedProcName = '';
       let usedTransName = '';
 
       // Helper to find a procedure by name across all airports or within context
@@ -45,7 +44,6 @@ export const parseRoute = (routeStr: string, index: SearchIndex): FlightPlan => 
       const proc1 = findProcedure(left);
       if (proc1 && proc1.proc.transitions[right]) {
         foundProc = proc1.proc;
-        usedProcName = left;
         usedTransName = right;
       }
 
@@ -54,7 +52,6 @@ export const parseRoute = (routeStr: string, index: SearchIndex): FlightPlan => 
         const proc2 = findProcedure(right);
         if (proc2 && proc2.proc.transitions[left]) {
           foundProc = proc2.proc;
-          usedProcName = right;
           usedTransName = left;
         }
       }
@@ -96,7 +93,7 @@ export const parseRoute = (routeStr: string, index: SearchIndex): FlightPlan => 
         id: part,
         lat: fix.lat,
         lon: fix.lon,
-        type: 'fix',
+        type: fix.type,
         name: fix.name
       });
       features.push(point([fix.lon, fix.lat], { type: 'fix', id: part }));

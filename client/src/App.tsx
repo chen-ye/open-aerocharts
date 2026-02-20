@@ -65,16 +65,27 @@ function App() {
 
     if (layersParam === 'none') {
       return Object.keys(defaultAeronauticalState).reduce((acc, key) => {
-        acc[key as keyof AeronauticalLayerState] = false;
+        const k = key as keyof AeronauticalLayerState;
+        if (typeof defaultAeronauticalState[k] === 'number') {
+          // @ts-expect-error - indexing is safe here
+          acc[k] = defaultAeronauticalState[k];
+        } else {
+          // @ts-expect-error - indexing is safe here
+          acc[k] = false;
+        }
         return acc;
-      }, {} as Record<keyof AeronauticalLayerState, boolean>) as AeronauticalLayerState;
+      }, { ...defaultAeronauticalState });
     }
 
     const enabledLayers = new Set(layersParam.split(','));
     return Object.keys(defaultAeronauticalState).reduce((acc, key) => {
-      acc[key as keyof AeronauticalLayerState] = enabledLayers.has(key);
+      const k = key as keyof AeronauticalLayerState;
+      if (typeof defaultAeronauticalState[k] === 'boolean') {
+        // @ts-expect-error - indexing is safe here
+        acc[k] = enabledLayers.has(key);
+      }
       return acc;
-    }, {} as Record<keyof AeronauticalLayerState, boolean>) as AeronauticalLayerState;
+    }, { ...defaultAeronauticalState });
   });
 
   useEffect(() => {
