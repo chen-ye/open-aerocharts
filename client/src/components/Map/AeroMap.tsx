@@ -8,6 +8,7 @@ import { addAeroIcons } from '../../utils/aeroIcons.ts';
 import styles from '../../mapStyles';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 import { accentColor, grayColor } from '../../App.tsx';
+import { crimson, indigo, indigoDark, violet, blue, gray, grayDark, purple, purpleDark, slateDark } from '@radix-ui/colors';
 
 const FeatureList = ({
   features,
@@ -87,9 +88,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   // Theme-dependent colors
   const textColor = isDarkMap ? '#ffffff' : '#000000';
   const haloColor = isDarkMap ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.95)';
-  const accentTextColor = isDarkMap ? '#849dff' : '#3a5bc7'; // indigo-11
-  const waypointTextColor = isDarkMap ? '#b5b5b5' : '#646464'; // gray-11
-  const obstacleTextColor = isDarkMap ? '#d19dff' : '#8145b5'; // purple-11
+  const accentTextColor = isDarkMap ? indigoDark.indigo11 : indigo.indigo11;
+  const waypointTextColor = isDarkMap ? grayDark.gray11 : gray.gray11;
+  const obstacleTextColor = isDarkMap ? purpleDark.purple11 : purple.purple11;
 
   const mapRef = React.useRef<maplibregl.Map | null>(null);
 
@@ -179,10 +180,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'line-color': [
       'match',
       ['get', 'route_type'],
-      'O', isDarkMap ? '#b5b5b5' : '#646464', // Official Designated (Victor/Jet) → gray-11
-      'R', '#0090FF', // RNAV/GPS → blue-9
-      'H', '#8B4513', // Helicopter → brown
-      isDarkMap ? '#b5b5b5' : '#646464' // fallback → gray-11
+      'O', isDarkMap ? grayDark.gray11 : gray.gray11, // Official Designated (Victor/Jet)
+      'R', blue.blue9, // RNAV/GPS
+      'H', '#8B4513', // Helicopter (no Radix brown)
+      isDarkMap ? grayDark.gray11 : gray.gray11 // fallback
     ] as unknown as maplibregl.ExpressionSpecification,
     'line-width': [
       'interpolate', ['linear'], ['zoom'],
@@ -253,7 +254,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   }), []);
 
   const airportSymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
-    'text-color': '#e93d82', // crimson-9
+    'text-color': crimson.crimson9,
     'text-halo-color': haloColor,
     'text-halo-width': 1.5
   }), [haloColor]);
@@ -499,7 +500,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
-                    paint={{ 'line-color': '#6E56CF', 'line-width': 1 }} // violet-9
+                    paint={{ 'line-color': violet.violet9, 'line-width': 1 }}
                   />
                   <Layer
                     id="airspaces-class-b"
@@ -507,7 +508,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
-                    paint={{ 'line-color': '#6E56CF', 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }} // violet-9
+                    paint={{ 'line-color': violet.violet9, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }}
                   />
                   <Layer
                     id="airspaces-class-b-fill"
@@ -523,7 +524,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
-                    paint={{ 'line-color': '#e93d82', 'line-width': 1 }} // crimson-9
+                    paint={{ 'line-color': crimson.crimson9, 'line-width': 1 }} // crimson-9
                   />
                   <Layer
                     id="airspaces-class-c"
@@ -531,7 +532,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
-                    paint={{ 'line-color': '#e93d82', 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }} // crimson-9
+                    paint={{ 'line-color': crimson.crimson9, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }} // crimson-9
                   />
                   <Layer
                     id="airspaces-class-c-fill"
@@ -547,7 +548,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
-                    paint={{ 'line-color': '#3e63dd', 'line-width': 1, 'line-dasharray': [4, 4] }} // indigo-9
+                    paint={{ 'line-color': indigo.indigo9, 'line-width': 1, 'line-dasharray': [4, 4] }} // indigo-9
                   />
                   {/* <Layer
                     id="airspaces-class-d"
@@ -555,7 +556,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
-                    paint={{ 'line-color': '#3e63dd', 'line-width': 8, 'line-dasharray': [4/8, 4/8], 'line-opacity': 0.2, "line-offset": 5 }} // indigo-9
+                    paint={{ 'line-color': indigo.indigo9, 'line-width': 8, 'line-dasharray': [4/8, 4/8], 'line-opacity': 0.2, "line-offset": 5 }} // indigo-9
                   /> */}
                   <Layer
                     id="airspaces-class-d-fill"
@@ -575,7 +576,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
-                    paint={{ 'line-color': '#5A6169', 'line-width': 1 }}
+                    paint={{ 'line-color': slateDark.slate8, 'line-width': 1 }}
                   />
                   <Layer
                     id="airspaces-sua"
@@ -583,7 +584,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
-                    paint={{ 'line-color': '#5A6169', 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }}
+                    paint={{ 'line-color': slateDark.slate8, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }}
                   />
                   <Layer
                     id="airspaces-sua-fill"
@@ -603,7 +604,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'TRSA']]}
-                    paint={{ 'line-color': '#5A6169', 'line-width': 1 }}
+                    paint={{ 'line-color': slateDark.slate8, 'line-width': 1 }}
                   />
                   <Layer
                     id="airspaces-trsa"
@@ -611,7 +612,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'TRSA']]}
-                    paint={{ 'line-color': '#5A6169', 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }}
+                    paint={{ 'line-color': slateDark.slate8, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 8] as unknown as maplibregl.ExpressionSpecification, 'line-opacity': 0.2, 'line-offset': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 4] as unknown as maplibregl.ExpressionSpecification }}
                   />
                   <Layer
                     id="airspaces-trsa-fill"
@@ -633,7 +634,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source-layer="airspaces"
                     filter={['==', ['get', 'type'], 'E']}
                     paint={{
-                      'line-color': '#e93d82', // crimson-9
+                      'line-color': crimson.crimson9, // crimson-9
                       'line-width': ['interpolate', ['linear'], ['zoom'], 4, 6, 10, 12] as unknown as maplibregl.ExpressionSpecification,
                       'line-opacity': 0.1
                     }}
@@ -645,7 +646,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source-layer="airspaces"
                     filter={['all', ['==', ['get', 'type'], 'E'], ['any', ['==', ['get', 'lower_limit'], '0'], ['==', ['get', 'lower_limit'], 'SFC']]]}
                     paint={{
-                      'line-color': '#e93d82', // crimson-9
+                      'line-color': crimson.crimson9, // crimson-9
                       'line-width': 1,
                       'line-offset': 1,
                       'line-dasharray': [12, 12]
