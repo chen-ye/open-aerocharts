@@ -106,5 +106,10 @@ body {
     max-height: 70vh;
     overflow-y: auto;
   }
+
+  /* Hide Tooltip on Mobile (redundant with bottom sheet) */
+  .maplibregl-popup {
+    display: none !important;
+  }
 }
 
