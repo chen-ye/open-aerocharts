@@ -1,0 +1,7 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <rect x="14" y="0" width="4" height="4" fill="#2563eb"/>
+  <rect x="26" y="24" width="4" height="4" fill="#2563eb" transform="rotate(30 28 26)"/>
+  <rect x="2" y="24" width="4" height="4" fill="#2563eb" transform="rotate(-30 4 26)"/>
+  <circle cx="16" cy="16" r="3" fill="#2563eb"/>
+</svg>

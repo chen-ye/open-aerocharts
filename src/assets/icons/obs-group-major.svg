@@ -1,0 +1,13 @@
+<svg width="32" height="24" viewBox="0 0 32 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- First major obs -->
+  <polygon points="12,2 16,10 12,18 8,10" fill="none" stroke="#0000ff" stroke-width="2"/>
+  <path d="M8 10L12 2M16 10L12 2" stroke="#0000ff" stroke-width="2"/>
+  <path d="M10 14L14 14" stroke="#0000ff" stroke-width="2"/>
+  <circle cx="12" cy="18" r="1.5" fill="#0000ff"/>
+
+  <!-- Second major obs -->
+  <polygon points="20,6 24,14 20,22 16,14" fill="none" stroke="#0000ff" stroke-width="2"/>
+  <path d="M16 14L20 6M24 14L20 6" stroke="#0000ff" stroke-width="2"/>
+  <path d="M18 18L22 18" stroke="#0000ff" stroke-width="2"/>
+  <circle cx="20" cy="22" r="1.5" fill="#0000ff"/>
+</svg>
