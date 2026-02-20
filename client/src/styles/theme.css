@@ -1,6 +1,5 @@
 @import "open-props/style";
 @import "open-props/normalize";
-@import "open-props/buttons";
 @import "maplibre-gl/dist/maplibre-gl.css";
 
 /* Base Theme Configuration */
@@ -24,17 +23,6 @@ body {
   color: var(--text-1);
 }
 
-/* Glassmorphism Utilities */
-.glass-panel {
-  background-color: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-3);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  color: var(--map-ui-text);
-}
-
 /* Override MapLibre Popup defaults for Glassmorphism Tooltips */
 .maplibregl-popup-content {
   background: transparent !important;
@@ -54,84 +42,4 @@ body {
   width: 100vw;
   height: 100vh;
   position: relative;
-}
-
-/* Map Settings UI */
-.settings-panel {
-  position: absolute;
-  top: var(--size-4);
-  right: var(--size-4);
-  width: 320px;
-  padding: var(--size-4);
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-3);
-  transform: translateX(0);
-  transition: transform 0.3s var(--ease-spring-3);
-}
-
-.settings-panel.hidden {
-  transform: translateX(120%);
-}
-
-.settings-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--size-2);
-}
-
-.settings-header h2 {
-  font-size: var(--font-size-3);
-  font-weight: var(--font-weight-6);
-  margin: 0;
-}
-
-.icon-btn {
-  background: transparent;
-  border: none;
-  color: var(--map-ui-text);
-  cursor: pointer;
-  padding: var(--size-2);
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius-round);
-  transition: background-color 0.2s var(--ease-2);
-}
-
-.icon-btn:hover {
-  background-color: var(--surface-3);
-}
-
-.toggle-btn {
-  position: absolute;
-  top: var(--size-4);
-  right: var(--size-4);
-  z-index: 9;
-}
-
-/* Form controls */
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-1);
-}
-
-.form-group label {
-  font-size: var(--font-size-1);
-  font-weight: var(--font-weight-5);
-  color: var(--gray-4);
-  text-transform: uppercase;
-  letter-spacing: var(--font-letterspacing-2);
-}
-
-.settings-select {
-  background-color: var(--surface-2);
-  color: var(--text-1);
-  border: 1px solid var(--surface-3);
-  border-radius: var(--radius-2);
-  padding: var(--size-2);
-  font-family: inherit;
-  font-size: var(--font-size-2);
 }

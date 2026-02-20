@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Layers } from 'lucide-react';
+import { Layers, X } from 'lucide-react';
+import { Card, Flex, Heading, IconButton, Select, Switch, Text, Box } from '@radix-ui/themes';
 
 interface SettingsPanelProps {
   basemap: string;
@@ -21,70 +22,82 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <>
-      {!isOpen && (
-        <button
-          className="icon-btn glass-panel toggle-btn"
+    <Box
+      position="absolute"
+      top="4"
+      right="4"
+      style={{ zIndex: 10, width: isOpen ? 'max-content' : 'auto' }}
+    >
+      {!isOpen ? (
+        <IconButton
+          size="3"
+          variant="soft"
           onClick={() => setIsOpen(true)}
           title="Open Settings"
         >
           <Layers size={20} />
-        </button>
+        </IconButton>
+      ) : (
+        <Card size="2" style={{ width: 320, backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(12px)' }}>
+          <Flex direction="column" gap="4">
+            <Flex align="center" justify="between">
+              <Heading size="3" as="h2">Map Settings</Heading>
+              <IconButton
+                size="2"
+                variant="ghost"
+                onClick={() => setIsOpen(false)}
+                title="Close Settings"
+              >
+                <X size={18} />
+              </IconButton>
+            </Flex>
+
+            <Flex direction="column" gap="2">
+              <Text size="2" weight="medium" color="gray">Basemap Style</Text>
+              <Select.Root value={basemap} onValueChange={setBasemap}>
+                <Select.Trigger />
+                <Select.Content>
+                  <Select.Group>
+                    <Select.Label>Vector Basemaps</Select.Label>
+                    <Select.Item value="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json">CartoCDN Voyager</Select.Item>
+                    <Select.Item value="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json">CartoCDN Positron (Light)</Select.Item>
+                    <Select.Item value="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json">CartoCDN Dark Matter</Select.Item>
+                  </Select.Group>
+                  <Select.Separator />
+                  <Select.Group>
+                    <Select.Label>FAA Raster Maps</Select.Label>
+                    <Select.Item value="faa-sectional">VFR Sectional</Select.Item>
+                    <Select.Item value="faa-enroute">IFR High Enroute</Select.Item>
+                    <Select.Item value="faa-ifrlo">IFR Low Enroute</Select.Item>
+                  </Select.Group>
+                </Select.Content>
+              </Select.Root>
+            </Flex>
+
+            <Flex align="center" gap="2">
+              <Switch
+                id="terrain-toggle"
+                checked={showTerrain}
+                onCheckedChange={setShowTerrain}
+              />
+              <Text as="label" htmlFor="terrain-toggle" size="2" style={{ cursor: 'pointer' }}>
+                Show 3D Terrain
+              </Text>
+            </Flex>
+
+            <Flex align="center" gap="2">
+              <Switch
+                id="aero-toggle"
+                checked={showAeronautical}
+                onCheckedChange={setShowAeronautical}
+              />
+              <Text as="label" htmlFor="aero-toggle" size="2" style={{ cursor: 'pointer' }}>
+                Show CIFP Data
+              </Text>
+            </Flex>
+          </Flex>
+        </Card>
       )}
-
-      <div className={`settings-panel glass-panel ${isOpen ? '' : 'hidden'}`}>
-        <div className="settings-header">
-          <h2>Map Settings</h2>
-          <button
-            className="icon-btn"
-            onClick={() => setIsOpen(false)}
-            title="Close Settings"
-          >
-            &times;
-          </button>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="basemap-select">Basemap Style</label>
-          <select
-            id="basemap-select"
-            className="settings-select"
-            value={basemap}
-            onChange={(e) => setBasemap(e.target.value)}
-          >
-            <optgroup label="Vector Basemaps">
-              <option value="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json">CartoCDN Voyager</option>
-              <option value="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json">CartoCDN Positron (Light)</option>
-              <option value="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json">CartoCDN Dark Matter</option>
-            </optgroup>
-            <optgroup label="FAA Raster Maps">
-              <option value="faa-sectional">VFR Sectional</option>
-              <option value="faa-enroute">IFR High Enroute</option>
-              <option value="faa-ifrlo">IFR Low Enroute</option>
-            </optgroup>
-          </select>
-        </div>
-
-        <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 'var(--size-2)' }}>
-          <input
-            type="checkbox"
-            id="terrain-toggle"
-            checked={showTerrain}
-            onChange={(e) => setShowTerrain(e.target.checked)}
-          />
-          <label htmlFor="terrain-toggle" style={{ margin: 0, cursor: 'pointer' }}>Show 3D Terrain</label>
-        </div>
-
-        <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 'var(--size-2)' }}>
-          <input
-            type="checkbox"
-            id="aero-toggle"
-            checked={showAeronautical}
-            onChange={(e) => setShowAeronautical(e.target.checked)}
-          />
-          <label htmlFor="aero-toggle" style={{ margin: 0, cursor: 'pointer' }}>Show OpenAIP Data</label>
-        </div>
-      </div>
-    </>
+    </Box>
   );
 };

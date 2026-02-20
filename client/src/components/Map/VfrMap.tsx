@@ -2,6 +2,7 @@ import React, { useMemo, useCallback, useState } from 'react';
 import Map, { Source, Layer, NavigationControl, Popup } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
+import { Card, Box, Text, Flex } from '@radix-ui/themes';
 import { addVfrIcons } from '../../utils/vfrIcons';
 import styles from '../../mapStyles';
 
@@ -124,50 +125,63 @@ export const VfrMap: React.FC<VfrMapProps> = ({
         <>
           {/* Airspaces */}
           <Layer
-            id="airspaces-fill"
-            type="fill"
-            source="cifp"
-            source-layer="airspaces"
-            paint={{
-              'fill-color': [
-                'match',
-                ['get', 'type'],
-                'B', 'rgba(0, 0, 255, 0.1)', // Class B (Solid Blue)
-                'C', 'rgba(255, 0, 255, 0.1)', // Class C (Solid Magenta)
-                'D', 'rgba(0, 0, 255, 0.1)', // Class D (Dashed Blue)
-                'rgba(150, 150, 150, 0.1)'
-              ],
-              'fill-outline-color': [
-                'match',
-                ['get', 'type'],
-                'B', '#0000FF',
-                'C', '#FF00FF',
-                'D', '#0000FF',
-                '#969696'
-              ]
-            }}
-          />
-          <Layer
             id="airspaces-line"
             type="line"
             source="cifp"
             source-layer="airspaces"
+            filter={['!=', ['get', 'type'], 'E']}
             paint={{
               'line-color': [
                 'match',
                 ['get', 'type'],
-                'B', '#0000FF',
-                'C', '#FF00FF',
-                'D', '#0000FF',
+                'B', '#0040D9', // Class B Solid Blue
+                'C', '#A8007F', // Class C Solid Magenta
+                'D', '#0040D9', // Class D Dashed Blue
                 '#969696'
               ],
-              'line-width': 2,
+              'line-width': [
+                'match',
+                ['get', 'type'],
+                'B', 3,
+                'C', 3,
+                'D', 1.5,
+                1
+              ],
               'line-dasharray': [
                  'match',
                  ['get', 'type'],
-                 'D', ['literal', [2, 2]],
+                 'D', ['literal', [4, 4]], // Class D dashes
                  ['literal', [1]] // default solid
               ]
+            }}
+          />
+          {/* Class E Vignette: Blur layer (Bottom) */}
+          <Layer
+            id="airspaces-vignette-blur"
+            type="line"
+            source="cifp"
+            source-layer="airspaces"
+            filter={['==', ['get', 'type'], 'E']}
+            paint={{
+              // Magenta is typical for floors at 700 AGL; Blue is typical for 1200+ AGL
+              // But without exact data, we use a nice magenta here
+              'line-color': '#A8007F',
+              'line-width': 12,
+              'line-blur': 8,
+              'line-opacity': 0.5
+            }}
+          />
+          {/* Class E Vignette: Crisp layer (Top) */}
+          <Layer
+            id="airspaces-vignette-edge"
+            type="line"
+            source="cifp"
+            source-layer="airspaces"
+            filter={['==', ['get', 'type'], 'E']}
+            paint={{
+              'line-color': '#A8007F',
+              'line-width': 1,
+              'line-offset': 1
             }}
           />
           <Layer
@@ -176,9 +190,20 @@ export const VfrMap: React.FC<VfrMapProps> = ({
             source="cifp"
             source-layer="airways"
             paint={{
-              'line-color': '#0ea5e9', // Light blue
-              'line-width': 2,
-              'line-opacity': 0.6
+              'line-color': [
+                'match',
+                ['get', 'route_type'],
+                'Victor', '#000000',
+                'GPS', '#0040D9',
+                'LFMF', '#8B4513',
+                '#0ea5e9' // default light blue
+              ],
+              'line-width': [
+                'case',
+                ['>', ['get', 'width'], 5], 4,
+                1.5 // default thin line
+              ],
+              'line-opacity': 0.7
             }}
           />
           {/* Runway footprints */}
@@ -206,12 +231,14 @@ export const VfrMap: React.FC<VfrMapProps> = ({
               'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
               'text-size': 12,
               'text-offset': [0, 1.2],
-              'text-anchor': 'top'
+              'text-anchor': 'top',
+              'text-allow-overlap': true,
+              'text-ignore-placement': true, // Critical info always renders
             }}
             paint={{
-              'text-color': '#e012a6',
-              'text-halo-color': '#ffffff',
-              'text-halo-width': 2
+              'text-color': '#A8007F',
+              'text-halo-color': 'rgba(255, 255, 255, 0.95)',
+              'text-halo-width': 1.5
             }}
           />
           {/* Navaids Points */}
@@ -229,16 +256,19 @@ export const VfrMap: React.FC<VfrMapProps> = ({
               ],
               'icon-size': 0.8,
               'icon-allow-overlap': true,
+              'icon-ignore-placement': true,
               'text-field': ['get', 'id'],
               'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
               'text-size': 11,
               'text-offset': [0, 1.2],
-              'text-anchor': 'top'
+              'text-anchor': 'top',
+              'text-allow-overlap': true,
+              'text-ignore-placement': true,
             }}
             paint={{
-              'text-color': '#2563eb',
-              'text-halo-color': '#ffffff',
-              'text-halo-width': 1
+              'text-color': '#0040D9',
+              'text-halo-color': 'rgba(255, 255, 255, 0.95)',
+              'text-halo-width': 1.5
             }}
           />
           {/* Localizers */}
@@ -277,28 +307,48 @@ export const VfrMap: React.FC<VfrMapProps> = ({
           maxWidth="320px"
           style={{ zIndex: 100 }}
         >
-          <div className="glass-panel" style={{ padding: 'var(--size-2)', maxHeight: '300px', overflowY: 'auto' }}>
+          <Card
+            size="2"
+            style={{
+              maxHeight: '300px',
+              overflowY: 'auto',
+              backgroundColor: 'var(--glass-bg)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
             {hoverInfo.features.map((f, i) => (
-              <div key={i} style={{
-                paddingBottom: i < hoverInfo.features.length - 1 ? 'var(--size-2)' : '0',
-                borderBottom: i < hoverInfo.features.length - 1 ? '1px solid var(--surface-3)' : 'none',
-                marginBottom: i < hoverInfo.features.length - 1 ? 'var(--size-2)' : '0'
-              }}>
-                <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: 'var(--font-size-0)', color: 'var(--text-1)', marginBottom: 'var(--size-1)' }}>
+              <Box
+                key={i}
+                pb={i < hoverInfo.features.length - 1 ? '2' : '0'}
+                mb={i < hoverInfo.features.length - 1 ? '2' : '0'}
+                style={{
+                  borderBottom: i < hoverInfo.features.length - 1 ? '1px solid var(--surface-3)' : 'none',
+                }}
+              >
+                <Text
+                  as="div"
+                  weight="bold"
+                  size="1"
+                  color="gray"
+                  mb="1"
+                  style={{ textTransform: 'uppercase' }}
+                >
                   {f.sourceLayer || f.layer?.id}
-                </div>
+                </Text>
                 {Object.entries(f.properties || {}).map(([key, value]) => {
                   if (key === 'source_id' || key === 'geometry') return null;
                   return (
-                    <div key={key} style={{ fontSize: 'var(--font-size-00)', display: 'flex', justifyContent: 'space-between', gap: 'var(--size-3)', lineHeight: '1.2', paddingBottom: '2px' }}>
-                      <span style={{ color: 'var(--text-2)' }}>{key}:</span>
-                      <span style={{ color: 'var(--text-1)', textAlign: 'right', wordBreak: 'break-word', fontWeight: 500 }}>{String(value)}</span>
-                    </div>
+                    <Flex key={key} justify="between" gap="3" style={{ lineHeight: '1.2', paddingBottom: '2px' }}>
+                      <Text size="1" color="gray">{key}:</Text>
+                      <Text size="1" weight="medium" style={{ textAlign: 'right', wordBreak: 'break-word' }}>
+                        {String(value)}
+                      </Text>
+                    </Flex>
                   );
                 })}
-              </div>
+              </Box>
             ))}
-          </div>
+          </Card>
         </Popup>
       )}
     </Map>

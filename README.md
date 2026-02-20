@@ -1,34 +1,32 @@
-# OpenVFR Flight Map
+# open-aerocharts
 
-OpenVFR is an interactive, open-source VFR Flight Planner map modeled after the
-MSFS 2024 interface. It utilizes 100% open data sources to deliver a premium
-flight planning experience using top-tier web technologies.
+open-aerocharts is vector-data driven reference aeronautical chart
+implementation in MapLibre. The aim is to build high quality vector charts
+equivalent to the official raster FAA charts for the US.
 
-## Features
+The project is split into two packages:
 
-- **MapLibre GL JS**: High-performance WebGL vector maps.
+- `cifp-pmtiles`: A Python package to fetch and convert CIFP data to PMTiles
+  format.
+- `client`: A reference MapLibre webapp to display the data, with aero chart
+  styling.
+
+## Datasources
+
 - **3D Terrain**: Global AWS Open Data Registry Terrarium Tiles integrated
   natively with MapLibre mountain hillshading.
-- **Aeronautical Data**: Complete US OpenAIP vector tiles providing airspaces,
-  airways, navaids, and airports.
-- **Configurable Basemaps**: Easily switch between CartoCDN Voyager, Positron,
-  and Dark Matter.
-- **Premium Aesthetics**: Built with OpenProps to deliver modern glassmorphism
-  UI components.
+- **Aeronautical Data**: Complete US CIFP-derived vector tiles providing
+  airspaces, airways, navaids, and airports.
+- **Basemap**: CartoCDN-derived basemaps.
 
 ## Getting Started
 
 1. Clone the repository.
-2. Ensure you have an OpenAIP API Key. Create a `.env` file in the root
-   directory:
-   ```env
-   VITE_OPENAIP_API_KEY=your_key_here
-   ```
-3. Install dependencies:
+2. Install dependencies:
    ```bash
    npm install
    ```
-4. Start the development server:
+3. Start the development server:
    ```bash
    npm run dev
    ```
@@ -37,5 +35,5 @@ flight planning experience using top-tier web technologies.
 
 - React + TypeScript + Vite
 - MapLibre GL JS + `react-map-gl`
-- Vanilla CSS + OpenProps for styling
+- Radix Themes
 - Lucide React Icons
