@@ -61,7 +61,7 @@ body {
   overflow-y: auto;
   flex: 1;
   min-height: 0; /* Important for flex child scrolling */
-  padding-bottom: var(--space-2);
+  padding-bottom: var(--space-4);
 }
 
 /* Responsive Visibility Utilities */
