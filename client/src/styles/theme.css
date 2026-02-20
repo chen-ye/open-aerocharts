@@ -4,30 +4,20 @@
 :root {
   color-scheme: light dark;
 
-  /* Local replacements for Open Props */
-  --font-sans: system-ui, -apple-system, sans-serif;
-  --gray-9: #111113;
-  --gray-1: #ffffff;
-  --text-1: #eeeeee;
-  --size-4: 16px;
-  --size-2: 8px;
-  --radius-3: 8px;
-  --radius-4: 16px;
-
   --crimson-vfr: #e93d82; /* Radix crimson-9 — airports, Class C/E */
   --glass-bg: rgba(25, 25, 30, 0.55);
   --glass-border: rgba(255, 255, 255, 0.15);
   --glass-blur: 24px;
-  --map-ui-text: var(--gray-1);
+  --map-ui-text: var(--gray-12);
 }
 
 body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font-family: var(--font-sans);
-  background-color: var(--gray-9);
-  color: var(--text-1);
+  font-family: var(--default-font-family, system-ui, -apple-system, sans-serif);
+  background-color: var(--color-page-background, #111113);
+  color: var(--gray-12, #eeeeee);
 }
 
 /* Override MapLibre Popup defaults for Glassmorphism Tooltips */
@@ -49,6 +39,7 @@ body {
   width: 100vw;
   height: 100vh;
   position: relative;
+  background-color: var(--color-page-background);
 }
 
 /* Responsive Map Feature Panel */
@@ -69,16 +60,16 @@ body {
 /* Desktop Styles */
 @media (min-width: 769px) {
   .map-feature-panel {
-    bottom: var(--size-4);
-    left: var(--size-4);
+    bottom: var(--space-4);
+    left: var(--space-4);
     width: 320px;
     max-height: calc(100vh - 48px);
     border-radius: var(--radius-3);
   }
 
   .settings-panel-container {
-    top: var(--size-4);
-    right: var(--size-4);
+    top: var(--space-4);
+    right: var(--space-4);
     width: auto;
   }
 
@@ -102,9 +93,9 @@ body {
   }
 
   .settings-panel-container {
-    top: var(--size-2);
-    right: var(--size-2);
-    left: var(--size-2); /* Center horizontally or stretch */
+    top: var(--space-2);
+    right: var(--space-2);
+    left: var(--space-2); /* Center horizontally or stretch */
     display: flex;
     justify-content: flex-end; /* Align icon to right, but card can be full width */
   }
