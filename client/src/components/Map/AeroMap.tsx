@@ -398,6 +398,91 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       )}
       {aeronauticalLayers.showAll && (
         <>
+
+          {/* Airports Base */}
+          {aeronauticalLayers.showAirportsMaster && (
+            <>
+              {/* Airport Diagram Polygons (high zoom) */}
+              {showRunways && (
+                <>
+                  <Layer
+                    id="am-taxiways-fill"
+                    type="fill"
+                    source="src-diagrams"
+                    source-layer="am_taxiways"
+                    minzoom={9}
+                    paint={{
+                      'fill-color': isDarkMap ? '#3a3a4a' : '#bbbbbb',
+                      'fill-opacity': 0.7
+                    }}
+                  />
+                  <Layer
+                    id="am-taxiways-outline"
+                    type="line"
+                    source="src-diagrams"
+                    source-layer="am_taxiways"
+                    minzoom={9}
+                    paint={{
+                      'line-color': isDarkMap ? '#555566' : '#999999',
+                      'line-width': 0.5
+                    }}
+                  />
+                  <Layer
+                    id="am-runways-fill"
+                    type="fill"
+                    source="src-diagrams"
+                    source-layer="am_runways"
+                    minzoom={9}
+                    paint={{
+                      'fill-color': isDarkMap ? '#555566' : '#666666',
+                      'fill-opacity': 0.85
+                    }}
+                  />
+                  <Layer
+                    id="am-runways-outline"
+                    type="line"
+                    source="src-diagrams"
+                    source-layer="am_runways"
+                    minzoom={9}
+                    paint={{
+                      'line-color': isDarkMap ? '#777788' : '#444444',
+                      'line-width': 1
+                    }}
+                  />
+                  <Layer
+                    id="am-runways-label"
+                    type="symbol"
+                    source="src-diagrams"
+                    source-layer="am_runways"
+                    minzoom={13}
+                    layout={{
+                      'text-field': ['get', 'rwy_id'],
+                      'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+                      'text-size': 10,
+                      'text-allow-overlap': false,
+                      'symbol-placement': 'point'
+                    }}
+                    paint={{
+                      'text-color': isDarkMap ? '#cccccc' : '#333333',
+                      'text-halo-color': haloColor,
+                      'text-halo-width': 1
+                    }}
+                  />
+                  <Layer
+                    id="runways-line"
+                    type="line"
+                    source="src-other"
+                    source-layer="runways"
+                    maxzoom={9}
+                    paint={{
+                      'line-color': '#444444',
+                      'line-width': 4
+                    }}
+                  />
+                </>
+              )}
+            </>
+          )}
           {/* Airspaces */}
           {aeronauticalLayers.showAirspaceMaster && (
             <>
@@ -706,87 +791,6 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           {/* Airports */}
           {aeronauticalLayers.showAirportsMaster && (
             <>
-              {/* Airport Diagram Polygons (high zoom) */}
-              {showRunways && (
-                <>
-                  <Layer
-                    id="am-taxiways-fill"
-                    type="fill"
-                    source="src-diagrams"
-                    source-layer="am_taxiways"
-                    minzoom={12}
-                    paint={{
-                      'fill-color': isDarkMap ? '#3a3a4a' : '#bbbbbb',
-                      'fill-opacity': 0.7
-                    }}
-                  />
-                  <Layer
-                    id="am-taxiways-outline"
-                    type="line"
-                    source="src-diagrams"
-                    source-layer="am_taxiways"
-                    minzoom={12}
-                    paint={{
-                      'line-color': isDarkMap ? '#555566' : '#999999',
-                      'line-width': 0.5
-                    }}
-                  />
-                  <Layer
-                    id="am-runways-fill"
-                    type="fill"
-                    source="src-diagrams"
-                    source-layer="am_runways"
-                    minzoom={12}
-                    paint={{
-                      'fill-color': isDarkMap ? '#555566' : '#666666',
-                      'fill-opacity': 0.85
-                    }}
-                  />
-                  <Layer
-                    id="am-runways-outline"
-                    type="line"
-                    source="src-diagrams"
-                    source-layer="am_runways"
-                    minzoom={12}
-                    paint={{
-                      'line-color': isDarkMap ? '#777788' : '#444444',
-                      'line-width': 1
-                    }}
-                  />
-                  <Layer
-                    id="am-runways-label"
-                    type="symbol"
-                    source="src-diagrams"
-                    source-layer="am_runways"
-                    minzoom={13}
-                    layout={{
-                      'text-field': ['get', 'rwy_id'],
-                      'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
-                      'text-size': 10,
-                      'text-allow-overlap': false,
-                      'symbol-placement': 'point'
-                    }}
-                    paint={{
-                      'text-color': isDarkMap ? '#cccccc' : '#333333',
-                      'text-halo-color': haloColor,
-                      'text-halo-width': 1
-                    }}
-                  />
-                </>
-              )}
-              {showRunways && (
-                <Layer
-                  id="runways-line"
-                  type="line"
-                  source="src-other"
-                  source-layer="runways"
-                  maxzoom={12}
-                  paint={{
-                    'line-color': '#444444',
-                    'line-width': 4
-                  }}
-                />
-              )}
               {aeronauticalLayers.publicAirports && (
                 <Layer id="airports-public" type="symbol" source="src-other" source-layer="airports" filter={['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military']]]} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 1 } as any} paint={airportSymbolPaint} />
               )}

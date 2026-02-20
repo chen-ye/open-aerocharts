@@ -80,7 +80,7 @@ def main():
         "-L obstacles:data/obstacles.fgb"
     )
     cmd_airport_diagrams = (
-        "uv run tippecanoe -Z10 -z14 -o output/airport_diagrams.pmtiles "
+        "uv run tippecanoe -Z9 -z14 -o output/airport_diagrams.pmtiles "
         "--no-feature-limit --no-tile-size-limit -f "
         "-L am_runways:data/am_runways.fgb "
         "-L am_taxiways:data/am_taxiways.fgb"
