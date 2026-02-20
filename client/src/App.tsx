@@ -5,7 +5,7 @@ import { FlightPlanPanel } from './components/FlightPlanPanel/FlightPlanPanel';
 import { MobileBottomSheet } from './components/MobileBottomSheet/MobileBottomSheet';
 import { defaultAeronauticalState } from './types/AeronauticalLayerState';
 import type { AeronauticalLayerState } from './types/AeronauticalLayerState';
-import type { FlightPlan } from './types/FlightPlan';
+import type { FlightPlan, SearchIndex } from './types/FlightPlan';
 import { Theme } from '@radix-ui/themes';
 
 export const accentColor = "purple" as const;
@@ -28,9 +28,35 @@ function App() {
     return brightness ? parseInt(brightness, 10) : 100;
   });
 
+  const [routeString, setRouteString] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('route') || '';
+  });
+
   const [flightPlan, setFlightPlan] = useState<FlightPlan | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedFeatures, setSelectedFeatures] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
+  const [index, setIndex] = useState<SearchIndex | null>(null);
+  const [indexLoading, setIndexLoading] = useState(false);
+
+  useEffect(() => {
+    if (index || indexLoading) return;
+
+    const loadIndex = async () => {
+      setIndexLoading(true);
+      try {
+        const res = await fetch('search_index.json');
+        const data = await res.json();
+        setIndex(data);
+      } catch (err) {
+        console.error("Failed to load search index", err);
+      } finally {
+        setIndexLoading(false);
+      }
+    };
+
+    loadIndex();
+  }, [index, indexLoading]);
 
   const [aeronauticalLayers, setAeronauticalLayers] = useState<AeronauticalLayerState>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -104,12 +130,22 @@ function App() {
       changed = true;
     }
 
+    if (routeString) {
+      if (params.get('route') !== routeString) {
+        params.set('route', routeString);
+        changed = true;
+      }
+    } else if (params.has('route')) {
+      params.delete('route');
+      changed = true;
+    }
+
     if (changed) {
       const newSearch = params.toString();
       const newUrl = newSearch ? `?${newSearch}${window.location.hash}` : window.location.pathname + window.location.hash;
       window.history.replaceState(null, '', newUrl);
     }
-  }, [basemapUrlOrId, showTerrain, aeronauticalLayers, basemapBrightness]);
+  }, [basemapUrlOrId, showTerrain, aeronauticalLayers, basemapBrightness, routeString]);
 
   return (
     <Theme accentColor={accentColor} grayColor={grayColor} radius="medium">
@@ -133,11 +169,21 @@ function App() {
           selectedFeatures={selectedFeatures}
           onSelectFeatures={setSelectedFeatures}
         />
-        <FlightPlanPanel onFlightPlanChange={setFlightPlan} />
-        <MobileBottomSheet 
-          selectedFeatures={selectedFeatures} 
+        <FlightPlanPanel
+          onFlightPlanChange={setFlightPlan}
+          routeString={routeString}
+          onRouteStringChange={setRouteString}
+          index={index}
+          loading={indexLoading}
+        />
+        <MobileBottomSheet
+          selectedFeatures={selectedFeatures}
           onCloseFeatures={() => setSelectedFeatures(null)}
           onFlightPlanChange={setFlightPlan}
+          routeString={routeString}
+          onRouteStringChange={setRouteString}
+          index={index}
+          loading={indexLoading}
         />
       </div>
     </Theme>

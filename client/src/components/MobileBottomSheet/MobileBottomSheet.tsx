@@ -4,19 +4,27 @@ import { X } from 'lucide-react';
 import { grayColor } from '../../App.tsx';
 import { FeatureList } from '../Map/FeatureList';
 import { FlightPlanContent } from '../FlightPlanPanel/FlightPlanPanel';
-import type { FlightPlan } from '../../types/FlightPlan';
+import type { FlightPlan, SearchIndex } from '../../types/FlightPlan';
 
 interface MobileBottomSheetProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   selectedFeatures: { lngLat: [number, number]; features: any[] } | null;
   onCloseFeatures: () => void;
   onFlightPlanChange: (plan: FlightPlan | null) => void;
+  routeString: string;
+  onRouteStringChange: (route: string) => void;
+  index: SearchIndex | null;
+  loading: boolean;
 }
 
 export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
   selectedFeatures,
   onCloseFeatures,
-  onFlightPlanChange
+  onFlightPlanChange,
+  routeString,
+  onRouteStringChange,
+  index,
+  loading
 }) => {
   return (
     <Box className="map-feature-panel mobile-only">
@@ -70,7 +78,14 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
             </Tabs.Content>
 
             <Tabs.Content value="flightplan" style={{ height: '100%' }}>
-              <FlightPlanContent onFlightPlanChange={onFlightPlanChange} style={{ height: 'auto' }} />
+              <FlightPlanContent
+                onFlightPlanChange={onFlightPlanChange}
+                routeString={routeString}
+                onRouteStringChange={onRouteStringChange}
+                index={index}
+                loading={loading}
+                style={{ height: 'auto' }}
+              />
             </Tabs.Content>
           </Box>
         </Tabs.Root>
