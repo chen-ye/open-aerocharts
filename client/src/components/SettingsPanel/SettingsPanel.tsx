@@ -46,7 +46,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <Layers size={20} />
         </IconButton>
       ) : (
-        <Card className="settings-card" size="2" style={{
+        <Card className="settings-card" size="2" variant="surface"style={{
             backgroundColor: 'var(--glass-bg)',
             backdropFilter: 'blur(var(--glass-blur))',
             boxShadow: '0 0 0 1px var(--glass-border)'

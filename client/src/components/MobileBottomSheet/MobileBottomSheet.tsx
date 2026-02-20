@@ -41,7 +41,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
         }}
       >
         <Tabs.Root defaultValue="inspector" onValueChange={() => setIsCollapsed(false)}>
-          <Box pt="1" style={{ backgroundColor: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))'}}>
+          <Box pt="1">
             <Flex align="center" justify="between" pr="2">
               <Tabs.List style={{ flex: 1 }}>
                 <Tabs.Trigger value="inspector">Inspector</Tabs.Trigger>
