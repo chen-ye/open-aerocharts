@@ -5,6 +5,9 @@ import { defaultAeronauticalState } from './types/AeronauticalLayerState';
 import type { AeronauticalLayerState } from './types/AeronauticalLayerState';
 import { Theme } from '@radix-ui/themes';
 
+export const accentColor = "purple" as const;
+export const grayColor = "gray" as const;
+
 function App() {
   const [basemapUrlOrId, setBasemapUrlOrId] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -102,7 +105,7 @@ function App() {
   }, [basemapUrlOrId, showTerrain, aeronauticalLayers, basemapBrightness]);
 
   return (
-    <Theme accentColor="purple" grayColor="gray" radius="medium">
+    <Theme accentColor={accentColor} grayColor={grayColor} radius="medium">
       <div className="app-container">
         <SettingsPanel
           basemap={basemapUrlOrId}

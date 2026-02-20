@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Flex, Switch, Text, Separator } from '@radix-ui/themes';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
+import { grayColor } from '../../App.tsx';
 
 interface AeronauticalSettingsProps {
   layers: AeronauticalLayerState;
@@ -23,7 +24,7 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
     <Flex direction="column" gap="4">
       {/* Master Toggle */}
       <Flex align="center" justify="between">
-        <Text size="2" weight="bold">Aeronautical Data</Text>
+        <Text size="2" weight="bold" color={grayColor} style={{ textTransform: 'uppercase' }}>Aeronautical Data</Text>
         <Switch
           checked={layers.showAll}
           onCheckedChange={(c: boolean) => updateLayer('showAll', c)}
@@ -126,7 +127,7 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
 
 const ToggleRow = ({ label, checked, disabled, onChange }: { label: string, checked: boolean, disabled?: boolean, onChange: (c: boolean) => void }) => (
   <Flex align="center" justify="between">
-    <Text size="2" color={disabled ? "gray" : undefined} style={{ opacity: disabled ? 0.5 : 1 }}>{label}</Text>
+    <Text size="2" color={disabled ? grayColor : undefined} style={{ opacity: disabled ? 0.5 : 1 }}>{label}</Text>
     <Switch size="1" checked={checked} disabled={disabled} onCheckedChange={onChange} />
   </Flex>
 );

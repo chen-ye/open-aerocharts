@@ -4,9 +4,57 @@ import maplibregl from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
 import { Card, Box, Text, Flex, Heading, IconButton, Separator } from '@radix-ui/themes';
 import { X } from 'lucide-react';
-import { addVfrIcons } from '../../utils/vfrIcons';
+import { addAeroIcons } from '../../utils/aeroIcons.ts';
 import styles from '../../mapStyles';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
+import { accentColor, grayColor } from '../../App.tsx';
+
+const FeatureList = ({
+  features,
+  limit,
+  separatorMargin,
+  titleBottomMargin = '2'
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  features: any[],
+  limit?: number,
+  separatorMargin?: string,
+  titleBottomMargin?: string
+}) => {
+  const displayFeatures = limit ? features.slice(0, limit) : features;
+  return (
+    <>
+      {displayFeatures.map((f, i) => (
+        <React.Fragment key={i}>
+          <Box>
+            <Text
+              as="div"
+              weight="bold"
+              size="1"
+              color={grayColor}
+              mb={titleBottomMargin}
+              style={{ textTransform: 'uppercase' }}
+            >
+              {f.sourceLayer || f.layer?.id}
+            </Text>
+            {Object.entries(f.properties || {}).map(([key, value]) => {
+              if (key === 'source_id' || key === 'geometry') return null;
+              return (
+                <Flex key={key} justify="between" gap="3" style={{ lineHeight: '1.2', paddingBottom: '2px' }}>
+                  <Text size="1" color={grayColor}>{key}:</Text>
+                  <Text size="1" weight="medium" style={{ textAlign: 'right', wordBreak: 'break-word' }}>
+                    {String(value)}
+                  </Text>
+                </Flex>
+              );
+            })}
+          </Box>
+          {i < displayFeatures.length - 1 && <Separator size="4" my={separatorMargin} />}
+        </React.Fragment>
+      ))}
+    </>
+  );
+};
 
 interface AeroMapProps {
   basemapUrlOrId: string;
@@ -32,7 +80,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onMapLoad = useCallback((e: any) => {
-    addVfrIcons(e.target);
+    addAeroIcons(e.target);
   }, []);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -87,6 +135,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'airports-heliport',
     'airports-other',
     'navaids-symbol',
+    'waypoints-symbol',
     'localizers-symbol',
     'obstacles-symbol',
   ], []);
@@ -180,7 +229,15 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       '#e012a6'
     ] as unknown as maplibregl.ExpressionSpecification,
     'text-halo-color': 'rgba(255, 255, 255, 0.95)',
-    'text-halo-width': 1.5
+    'text-halo-width': 1.5,
+    'icon-color': [
+      'case',
+      ['==', ['get', 'facility_type'], 'military'], '#e012a6',
+      ['==', ['get', 'is_ifr'], false], '#e012a6',
+      '#e012a6'
+    ] as unknown as maplibregl.ExpressionSpecification,
+    // 'icon-halo-color': 'rgba(255, 255, 255, 0.95)',
+    // 'icon-halo-width': 1.5
   }), []);
 
   const showRunways = aeronauticalLayers.showAirportsMaster &&
@@ -238,40 +295,13 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 </IconButton>
               </Flex>
 
-              <Text size="1" color="gray">
+              <Text size="1" color={grayColor}>
                 {selectedFeatures.lngLat[1].toFixed(5)}, {selectedFeatures.lngLat[0].toFixed(5)}
               </Text>
 
               <Separator size="4" />
 
-              {selectedFeatures.features.map((f, i) => (
-                <React.Fragment key={i}>
-                  <Box>
-                    <Text
-                      as="div"
-                      weight="bold"
-                      size="1"
-                      color="gray"
-                      mb="2"
-                      style={{ textTransform: 'uppercase' }}
-                    >
-                      {f.sourceLayer || f.layer?.id}
-                    </Text>
-                    {Object.entries(f.properties || {}).map(([key, value]) => {
-                      if (key === 'source_id' || key === 'geometry') return null;
-                      return (
-                        <Flex key={key} justify="between" gap="3" style={{ lineHeight: '1.2', paddingBottom: '2px' }}>
-                          <Text size="1" color="gray">{key}:</Text>
-                          <Text size="1" weight="medium" style={{ textAlign: 'right', wordBreak: 'break-word' }}>
-                            {String(value)}
-                          </Text>
-                        </Flex>
-                      );
-                    })}
-                  </Box>
-                  {i < selectedFeatures.features.length - 1 && <Separator size="4" />}
-                </React.Fragment>
-              ))}
+              <FeatureList features={selectedFeatures.features} />
             </Flex>
           </Card>
         </Box>
@@ -530,7 +560,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               paint={{
                 'text-color': '#0040D9',
                 'text-halo-color': 'rgba(255, 255, 255, 0.95)',
-                'text-halo-width': 1.5
+                'text-halo-width': 1.5,
+                'icon-color': '#0040D9',
+                'icon-halo-color': 'rgba(255, 255, 255, 0.95)',
+                'icon-halo-width': 1.5
               }}
             />
           )}
@@ -560,7 +593,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               paint={{
                 'text-color': '#444444',
                 'text-halo-color': 'rgba(255, 255, 255, 0.95)',
-                'text-halo-width': 1.5
+                'text-halo-width': 1.5,
+                'icon-color': '#444444',
+                'icon-halo-color': 'rgba(255, 255, 255, 0.95)',
+                'icon-halo-width': 1.5
               }}
             />
           )}
@@ -589,7 +625,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               paint={{
                 'text-color': '#000000',
                 'text-halo-color': '#ffffff',
-                'text-halo-width': 1
+                'text-halo-width': 1,
+                'icon-color': '#000000',
+                'icon-halo-color': '#ffffff',
+                'icon-halo-width': 1
               }}
             />
           )}
@@ -635,6 +674,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 'text-color': '#555555',
                 'text-halo-color': '#ffffff',
                 'text-halo-width': 1,
+                'icon-color': '#555555',
+                'icon-halo-color': '#ffffff',
+                'icon-halo-width': 1
               }}
             />
           )}
@@ -705,41 +747,19 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               backdropFilter: 'blur(12px)',
             }}
           >
-            {hoverInfo.features.slice(0, 2).map((f, i) => (
-              <React.Fragment key={i}>
-                <Box>
-                  <Text
-                    as="div"
-                    weight="bold"
-                    size="1"
-                    color="gray"
-                    mb="1"
-                    style={{ textTransform: 'uppercase' }}
-                  >
-                    {f.sourceLayer || f.layer?.id}
-                  </Text>
-                  {Object.entries(f.properties || {}).map(([key, value]) => {
-                    if (key === 'source_id' || key === 'geometry') return null;
-                    return (
-                      <Flex key={key} justify="between" gap="3" style={{ lineHeight: '1.2', paddingBottom: '2px' }}>
-                        <Text size="1" color="gray">{key}:</Text>
-                        <Text size="1" weight="medium" style={{ textAlign: 'right', wordBreak: 'break-word' }}>
-                          {String(value)}
-                        </Text>
-                      </Flex>
-                    );
-                  })}
-                </Box>
-                {i < Math.min(hoverInfo.features.length, 2) - 1 && <Separator size="4" my="2" />}
-              </React.Fragment>
-            ))}
+            <FeatureList
+              features={hoverInfo.features}
+              limit={2}
+              separatorMargin="2"
+              titleBottomMargin="1"
+            />
             {hoverInfo.features.length > 2 && (
               <Box pt="2">
                 <Separator size="4" mb="2" />
-                <Text size="1" color="gray" weight="medium" style={{ fontStyle: 'italic' }}>
+                <Text size="1" color={grayColor} weight="medium" style={{ fontStyle: 'italic' }}>
                   + {hoverInfo.features.length - 2} more features...
                 </Text>
-                <Text size="1" color="blue" weight="bold" as="div" mt="1">
+                <Text size="1" color={accentColor} weight="bold" as="div" mt="1">
                   Click to see all
                 </Text>
               </Box>

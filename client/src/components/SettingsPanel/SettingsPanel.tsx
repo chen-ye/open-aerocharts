@@ -3,6 +3,7 @@ import { Layers, X } from 'lucide-react';
 import { Card, Flex, Heading, IconButton, Select, Switch, Text, Box, Slider } from '@radix-ui/themes';
 import { AeronauticalSettings } from './AeronauticalSettings';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
+import { grayColor } from '../../App.tsx';
 
 interface SettingsPanelProps {
   basemap: string;
@@ -38,7 +39,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         <IconButton
           size="3"
           variant="surface"
-          color="gray"
+          color={grayColor}
           onClick={() => setIsOpen(true)}
           title="Open Settings"
           style={{
@@ -65,8 +66,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </Flex>
 
             <Flex direction="column" gap="2">
-              <Text size="2" weight="bold">Basemap</Text>
-              <Text size="2" weight="medium" color="gray">Basemap Style</Text>
+              <Text size="2" weight="bold" color={grayColor} style={{ textTransform: 'uppercase' }}>Basemap</Text>
+              <Text size="2">Basemap Style</Text>
               <Select.Root value={basemap} onValueChange={setBasemap}>
                 <Select.Trigger />
                 <Select.Content>
@@ -75,6 +76,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     <Select.Item value="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json">CartoCDN Voyager</Select.Item>
                     <Select.Item value="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json">CartoCDN Positron (Light)</Select.Item>
                     <Select.Item value="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json">CartoCDN Dark Matter</Select.Item>
+                    <Select.Item value="https://api.maptiler.com/maps/outdoor-v4-dark/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Outdoor Dark</Select.Item>
+                    <Select.Item value="https://api.maptiler.com/maps/outdoor-v4-light/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Outdoor Light</Select.Item>
+                    <Select.Item value="https://api.maptiler.com/maps/dataviz-v4-dark/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Dataviz Dark</Select.Item>
+                    <Select.Item value="https://api.maptiler.com/maps/dataviz-v4-light/style.json?key=e5LIPC3PNWM1DYcxpSLL">MapTiler Dataviz Light</Select.Item>
                   </Select.Group>
                   <Select.Separator />
                   <Select.Group>
@@ -88,7 +93,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </Flex>
 
             <Flex direction="column" gap="2">
-              <Text as="label" size="2" weight="medium" color="gray">Basemap Brightness</Text>
+              <Text as="label" size="2">Basemap Brightness</Text>
               <Slider
                 value={[basemapBrightness]}
                 onValueChange={(val: number[]) => setBasemapBrightness(val[0])}
@@ -98,7 +103,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </Flex>
 
             <Flex align="center" justify="between">
-              <Text as="label" size="2" weight="bold" htmlFor="terrain-toggle">Terrain/Hillshade</Text>
+              <Text as="label" size="2" weight="bold" color={grayColor} style={{ textTransform: 'uppercase' }}>Terrain/Hillshade</Text>
               <Switch
                 id="terrain-toggle"
                 checked={showTerrain}

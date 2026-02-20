@@ -2,7 +2,7 @@ import { Map } from 'maplibre-gl';
 
 const iconGlob = import.meta.glob('../assets/icons/*.svg', { as: 'raw', eager: true });
 
-export const addVfrIcons = (map: Map) => {
+export const addAeroIcons = (map: Map) => {
   const loadIcon = (id: string, svgContent: string) => {
     if (map.hasImage(id)) return;
     const img = new Image(24, 24);
