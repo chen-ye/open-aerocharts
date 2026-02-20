@@ -89,13 +89,13 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'line-color': [
       'match',
       ['get', 'route_type'],
-      'Victor', '#000000',
+      'Victor', '#444444',
       'GPS', '#0040D9',
       'LFMF', '#8B4513',
       '#0ea5e9' // default light blue
     ] as unknown as maplibregl.ExpressionSpecification,
     'line-width': 4,
-    'line-opacity': 0.1
+    'line-opacity': 0.6
   }), []);
 
   const airwaySymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => ({
@@ -136,7 +136,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'icon-size': 0.8,
     'icon-allow-overlap': true,
     'icon-ignore-placement': true,
-    'text-field': ['get', 'name'],
+    'text-field': ['get', 'id'],
     'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
     'text-size': 12,
     'text-offset': [0, 1.2],
@@ -190,6 +190,31 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     >
       <NavigationControl position="bottom-right" visualizePitch={true} />
 
+      {/* 3D Terrain */}
+      {showTerrain && (
+        <Source
+          id="aws-terrain"
+          type="raster-dem"
+          tiles={["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"]}
+          tileSize={256}
+          encoding="terrarium"
+          maxzoom={14}
+        />
+      )}
+      {showTerrain && (
+        <Layer
+          id="hillshade-layer"
+          type="hillshade"
+          source="aws-terrain"
+          paint={{
+            'hillshade-exaggeration': 1,
+            'hillshade-shadow-color': '#000000',
+            'hillshade-highlight-color': '#FFFFFF',
+            'hillshade-accent-color': '#000000',
+          }}
+        />
+      )}
+
       {/* Basemap Dimmer */}
       <Source
         id="basemap-dimmer-source"
@@ -223,31 +248,6 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           }}
         />
       </Source>
-
-      {/* 3D Terrain */}
-      {showTerrain && (
-        <Source
-          id="aws-terrain"
-          type="raster-dem"
-          tiles={["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"]}
-          tileSize={256}
-          encoding="terrarium"
-          maxzoom={14}
-        />
-      )}
-      {showTerrain && (
-        <Layer
-          id="hillshade-layer"
-          type="hillshade"
-          source="aws-terrain"
-          paint={{
-            'hillshade-exaggeration': 1,
-            'hillshade-shadow-color': '#000000',
-            'hillshade-highlight-color': '#FFFFFF',
-            'hillshade-accent-color': '#000000',
-          }}
-        />
-      )}
 
       {/* Aeronautical Data from PMTiles */}
       {aeronauticalLayers.showAll && (
@@ -424,7 +424,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   source="cifp"
                   source-layer="runways"
                   paint={{
-                    'line-color': '#000000',
+                    'line-color': '#444444',
                     'line-width': 4
                   }}
                 />

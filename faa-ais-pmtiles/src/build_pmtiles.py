@@ -62,6 +62,7 @@ def main():
         "--order-by=rank --order-smallest-first "
         "-L airports:data/airports.fgb "
         "-L navaids:data/navaids.fgb "
+        "-L waypoints:data/waypoints.fgb "
         "-L procedures:data/procedures.fgb "
         "-L airways:data/airways.fgb "
         "-L runways:data/runways.fgb "

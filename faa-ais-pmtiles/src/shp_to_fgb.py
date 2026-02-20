@@ -141,7 +141,7 @@ def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]
 # ---------------------------------------------------------------------------
 
 def convert_airspaces(output: str = "data/airspaces.fgb") -> None:
-    """Merge controlled airspace + SUA into a single FlatGeobuf file."""
+    """Merge controlled airspace + SUA into a single FlatGeobuf file, dissolving overlaps."""
     print("Processing controlled airspace (shapefiles)...")
     controlled = convert_class_airspace()
 
@@ -154,9 +154,27 @@ def convert_airspaces(output: str = "data/airspaces.fgb") -> None:
     gdf = gpd.GeoDataFrame.from_features(all_features, crs="EPSG:4326")
     # Force 2D
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio")
 
-    print(f"Wrote {len(all_features)} total airspace features to {output}")
+    # Clean topological errors (like self-intersections) that cause shapely union_all to crash
+    gdf.geometry = gdf.geometry.buffer(0)
+
+    # Class E5, E6, E7 airspaces don't need distinct names and should merge perfectly
+    e_non_surface = gdf["local_type"].isin(["CLASS_E5", "CLASS_E6", "CLASS_E7"])
+    gdf.loc[e_non_surface, "name"] = ""
+
+    # Dissolve overlapping geometries that share the exact same properties
+    # E.g. merging adjacent or overlapping Class E5 segments with the same name
+    dissolution_cols = ["name", "type", "airspace_class", "is_sua", "upper_limit", "lower_limit", "local_type"]
+
+    print(f"Dissolving {len(gdf)} airspace geometries by {dissolution_cols}...")
+    # fillna because dissolve groups by exact value, and NaNs break it
+    gdf[dissolution_cols] = gdf[dissolution_cols].fillna("")
+    gdf = gdf.dissolve(by=dissolution_cols, as_index=False)
+
+    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
+    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+
+    print(f"Wrote {len(gdf)} dissolved airspace features to {output}")
 
 
 # ---------------------------------------------------------------------------
@@ -201,7 +219,8 @@ def convert_boundary_airspace(
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio")
+    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
+    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
 
     print(f"  Wrote {len(features)} boundary airspace features to {output}")
 
@@ -240,14 +259,15 @@ def convert_holding_patterns(
                 "turn_dir": (raw.get("DIRTURN") or "").strip(),
                 "structures": (raw.get("STRUCTURES") or "").strip(),
                 "speed_limit": raw.get("SPEEDLIMIT"),
-                "rank": 3,
+                "rank": 5,
             },
         ))
 
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio")
+    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
+    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
 
     print(f"  Wrote {len(features)} holding pattern features to {output}")
 
@@ -289,14 +309,15 @@ def convert_obstacles(
                 "lighting": (raw.get("Lighting") or "").strip(),
                 # "city": (raw.get("City") or "").strip(),
                 # "state": (raw.get("State") or "").strip(),
-                "rank": 4,
+                "rank": 6,
             },
         ))
 
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio")
+    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
+    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
 
     print(f"  Wrote {len(features)} obstacle features to {output}")
 

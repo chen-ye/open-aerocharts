@@ -66,8 +66,10 @@ def save_fgb(features, output_path):
         print(f"  No features for {output_path}, skipping.")
         return
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
+    gdf.sort_values(by='rank', ascending=True, inplace=True)
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.to_file(output_path, driver="FlatGeobuf", engine="pyogrio")
+    # Disable spatial index to ensure linear reading order by tippecanoe
+    gdf.to_file(output_path, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
 
 def build_pmtiles_fgb(cifp_path):
     print("Fetching NASR fuel data...", flush=True)
@@ -114,14 +116,26 @@ def build_pmtiles_fgb(cifp_path):
 
             ident = p.get('airport_id', '').strip()
             has_fuel = fuel_lookup.get(ident, False)
+            longest_runway = int(p.get('longest') or 0)
 
             # Determine facility rank for decluttering (lower is more important)
-            # Major airports: ICAO (K...) or long runways (> 8000ft)
-            rank = 2
-            if ident.startswith('K') and len(ident) == 4:
+            # Tier 1: International hubs / Very long runways (> 10,000ft)
+            # Tier 2: Large regional airports (> 7,000ft)
+            # Tier 3: Medium airports (> 4,000ft)
+            # Tier 4: Small airports / Private / others
+
+            if longest_runway >= 10000:
                 rank = 1
-            elif int(p.get('longest') or 0) > 8000:
-                rank = 1
+            elif longest_runway >= 7000:
+                rank = 2
+            elif longest_runway >= 4000:
+                rank = 3
+            else:
+                rank = 4
+
+            # Bonus for ICAO IDs (usually more significant)
+            if ident.startswith('K') and len(ident) == 4 and rank > 1:
+                rank -= 1
 
             properties = {
                 'id': ident,
@@ -131,7 +145,7 @@ def build_pmtiles_fgb(cifp_path):
                 'surface': surface,
                 'is_military': usage == 'M',
                 'is_ifr': bool(p.get('is_ifr')),
-                'longest_runway': int(p.get('longest') or 0),
+                'longest_runway': longest_runway,
                 'has_fuel': has_fuel,
                 'rank': rank
             }
@@ -156,7 +170,7 @@ def build_pmtiles_fgb(cifp_path):
             ident = (p.get('vhf_id') or p.get('dme_id') or '').strip()
             navaid_features.append(geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
-                properties={'id': ident, 'name': p.get('vhf_name'), 'frequency': p.get('frequency'), 'type': 'vhf', 'rank': 3}
+                properties={'id': ident, 'name': p.get('vhf_name'), 'frequency': p.get('frequency'), 'type': 'vhf', 'rank': 5}
             ))
             if ident:
                 fixes[ident] = (lon, lat, elev)
@@ -169,15 +183,24 @@ def build_pmtiles_fgb(cifp_path):
             ident = (p.get('ndb_id') or '').strip()
             navaid_features.append(geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
-                properties={'id': ident, 'name': p.get('ndb_name'), 'frequency': p.get('frequency'), 'type': 'ndb', 'rank': 3}
+                properties={'id': ident, 'name': p.get('ndb_name'), 'frequency': p.get('frequency'), 'type': 'ndb', 'rank': 5}
             ))
             if ident:
                 fixes[ident] = (lon, lat, elev)
 
+    print("Extracting Waypoints...", flush=True)
+    waypoint_features = []
     for wp in c.get_enroute_waypoints() + c.get_terminal_waypoints():
         p = wp.to_dict()['primary']
         if p.get('lat') is not None and p.get('lon') is not None:
-            fixes[(p.get('waypoint_id') or '').strip()] = (p.get('lon'), p.get('lat'), 0.0)
+            ident = (p.get('waypoint_id') or '').strip()
+            fixes[ident] = (p.get('lon'), p.get('lat'), 0.0)
+            waypoint_features.append(geojson.Feature(
+                geometry=geojson.Point((p.get('lon'), p.get('lat'), 0.0)),
+                properties={'id': ident, 'type': 'waypoint', 'rank': 5}
+            ))
+
+    save_fgb(waypoint_features, 'data/waypoints.fgb')
 
     save_fgb(navaid_features, 'data/navaids.fgb')
 
@@ -206,7 +229,7 @@ def build_pmtiles_fgb(cifp_path):
             coords = unwrap_coordinates(coords)
             procedure_features.append(geojson.Feature(
                 geometry=geojson.LineString(coords),
-                properties={'airport': key[0], 'procedure': key[1], 'transition': key[2], 'rank': 3}
+                properties={'airport': key[0], 'procedure': key[1], 'transition': key[2], 'rank': 5}
             ))
 
     save_fgb(procedure_features, 'data/procedures.fgb')
@@ -278,7 +301,7 @@ def build_pmtiles_fgb(cifp_path):
                         'distance': dist_nm,
                         'route_type': route_type,
                         'structure': structure,
-                        'rank': 3
+                        'rank': 5
                     }
                 ))
 
@@ -300,7 +323,7 @@ def build_pmtiles_fgb(cifp_path):
                     'bearing': p.get('bearing'),
                     'width': p.get('width'),
                     'type': 'runway',
-                    'rank': 3
+                    'rank': 5
                 }
             ))
 
@@ -322,7 +345,7 @@ def build_pmtiles_fgb(cifp_path):
                     'frequency': p.get('frequency'),
                     'bearing': p.get('loc_bearing'),
                     'type': 'localizer',
-                    'rank': 3
+                    'rank': 5
                 }
             ))
 
