@@ -112,6 +112,9 @@ def build_pmtiles_fgb(cifp_path):
             else:
                 fac_type = 'civil_hard' if surface == 'H' else 'civil_soft'
 
+            ident = p.get('airport_id', '').strip()
+            has_fuel = fuel_lookup.get(ident, False)
+
             # Determine facility rank for decluttering (lower is more important)
             # Major airports: ICAO (K...) or long runways (> 8000ft)
             rank = 2

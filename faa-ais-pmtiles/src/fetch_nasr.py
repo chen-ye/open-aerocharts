@@ -8,17 +8,7 @@ from bs4 import BeautifulSoup
 
 NFDC_BASE = "https://nfdc.faa.gov/webContent/28DaySub/"
 
-def get_session():
-    import requests
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1"
-    })
-    return session
+
 
 def get_cycle_dates() -> list[tuple[str, str]]:
     """Return a list of (folder_date, file_date) for recent and upcoming cycles.
@@ -45,7 +35,7 @@ def get_cycle_dates() -> list[tuple[str, str]]:
     dates.sort(reverse=True)
     return dates
 
-def find_latest_csv_zip_url(session) -> tuple[str, str, str]:
+def find_latest_csv_zip_url() -> tuple[str, str, str]:
     """Find the latest CSV zip by trying generated cycle dates. Returns (url, cycle_date)."""
     print("Finding latest FAA 28-day NASR CSV bundle...")
     dates = get_cycle_dates()
@@ -61,7 +51,7 @@ def find_latest_csv_zip_url(session) -> tuple[str, str, str]:
             try:
                 print(f"Checking {url}...")
                 # Use GET with stream=True to avoid Akamai 503s on HEAD requests
-                resp = session.get(url, stream=True, timeout=10)
+                resp = requests.get(url, stream=True, timeout=10)
                 if resp.status_code == 200:
                     resp.close()
                     return url, folder_date
@@ -78,8 +68,7 @@ def get_airport_fuel() -> dict[str, bool]:
     """Download NASR CSV zip and return a dict of {airport_id: has_fuel}."""
     import os
     import json
-    session = get_session()
-    url, cycle_date = find_latest_csv_zip_url(session)
+    url, cycle_date = find_latest_csv_zip_url()
 
     cache_path = "data/nasr_fuel.json"
     cycle_path = "data/nasr_fuel.cycle"
@@ -93,14 +82,14 @@ def get_airport_fuel() -> dict[str, bool]:
     print(f"Downloading NASR CSV bundle from {url}...")
 
     try:
-        r = session.get(url, timeout=120)
+        r = requests.get(url, timeout=120)
         r.raise_for_status()
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 503:
             # Akamai blocking or unavailable? Try the extra folder or just return empty
             extra_url = "https://nfdc.faa.gov/webContent/28DaySub/extra/19_Mar_2026_CSV.zip"
             print(f"HTTP 503 Error. Retrying with fallback URL: {extra_url}")
-            r = session.get(extra_url, timeout=120)
+            r = requests.get(extra_url, timeout=120)
             r.raise_for_status()
         else:
             raise
