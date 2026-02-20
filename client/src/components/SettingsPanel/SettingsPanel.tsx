@@ -51,7 +51,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             backdropFilter: 'blur(var(--glass-blur))',
             boxShadow: '0 0 0 1px var(--glass-border)'
           }}>
-          <Flex direction="column" gap="4" style={{ height: '100%' }}>
+          <Flex direction="column" gap="4" style={{ height: '100%', minHeight: 0 }}>
             <Flex align="center" justify="between" px="4" pt="4">
               <Heading size="3" as="h2">Map Settings</Heading>
               <IconButton

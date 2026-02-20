@@ -57,6 +57,13 @@ body {
   z-index: 10;
 }
 
+.settings-card-body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0; /* Important for flex child scrolling */
+  padding-bottom: var(--space-2);
+}
+
 /* Responsive Visibility Utilities */
 .desktop-only {
   display: block;
@@ -84,10 +91,10 @@ body {
 
   .settings-card {
     width: 320px !important;
-    max-height: 80vh;
+    max-height: calc(100vh - 48px); /* Match feature panel height constraint */
     display: flex;
     flex-direction: column;
-    padding: 0 !important; /* Move padding to internal containers */
+    padding: 0 !important;
   }
 }
 
@@ -129,13 +136,7 @@ body {
     max-height: 70vh;
     display: flex;
     flex-direction: column;
-    padding: 0 !important; /* Move padding to internal containers */
-  }
-
-  .settings-card-body {
-    overflow-y: auto;
-    flex: 1;
-    padding-bottom: var(--space-2);
+    padding: 0 !important;
   }
 
   /* Hide Tooltip on Mobile (redundant with bottom sheet) */
