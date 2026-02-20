@@ -226,8 +226,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       'text-field': ['get', 'airway'],
       'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
       'text-size': 11,
-      'text-allow-overlap': false,
-      'text-ignore-placement': false,
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
       'text-rotation-alignment': 'map',
       'text-pitch-alignment': 'map'
     };
@@ -250,8 +250,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       ] as unknown as maplibregl.ExpressionSpecification,
       'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
       'text-size': 11,
-      'text-allow-overlap': false,
-      'text-ignore-placement': false,
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
       'text-rotation-alignment': 'map',
       'text-pitch-alignment': 'map'
     };
@@ -351,11 +351,19 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   };
 
   const highlightData = useMemo(() => {
+    const rawFeatures = selectedFeatures?.features || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const features = rawFeatures.map((f: any) => ({
+      type: 'Feature',
+      geometry: f.geometry,
+      properties: f.properties,
+      id: f.id
+    }));
+    
     return {
       type: 'FeatureCollection',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      features: selectedFeatures?.features || []
-    } as any; // Cast to any to avoid strict GeoJSON type issues with MapLibre features
+      features: features
+    } as any;
   }, [selectedFeatures]);
 
   return (
