@@ -129,13 +129,23 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'icon-image': 'airport-magenta',
     'icon-size': 0.8,
     'icon-allow-overlap': true,
+    'icon-ignore-placement': true,
     'text-field': ['get', 'name'],
     'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
     'text-size': 12,
     'text-offset': [0, 1.2],
     'text-anchor': 'top',
-    'text-allow-overlap': true,
-    'text-ignore-placement': true, // Critical info always renders
+    'text-allow-overlap': false,
+    'text-ignore-placement': false,
+    'text-padding': 2,
+    'symbol-sort-key': [
+      'match',
+      ['get', 'facility_type'],
+      'public', 1,
+      'private', 2,
+      'heliport', 3,
+      4 // other
+    ] as unknown as maplibregl.ExpressionSpecification
   }), []);
 
   const airportSymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
@@ -439,8 +449,15 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               'text-size': 11,
               'text-offset': [0, 1.2],
               'text-anchor': 'top',
-              'text-allow-overlap': true,
-              'text-ignore-placement': true,
+              'text-allow-overlap': false,
+              'text-ignore-placement': false,
+              'text-padding': 2,
+              'symbol-sort-key': [
+                'match',
+                ['get', 'type'],
+                'vhf', 1,
+                2 // ndb or other
+              ] as unknown as maplibregl.ExpressionSpecification
             }}
             paint={{
               'text-color': '#0040D9',
@@ -459,11 +476,16 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             layout={{
               'icon-image': 'navaid-vor', // TODO: create a localizer icon
               'icon-size': 0.5,
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': true,
               'text-field': ['get', 'ident'],
               'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
               'text-size': 9,
               'text-offset': [1, 0],
-              'text-anchor': 'left'
+              'text-anchor': 'left',
+              'text-allow-overlap': false,
+              'text-ignore-placement': false,
+              'symbol-sort-key': 10
             }}
             paint={{
               'text-color': '#000000',
