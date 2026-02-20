@@ -18,36 +18,47 @@ export const parseRoute = (routeStr: string, index: SearchIndex): FlightPlan => 
     // Actually, SIDs start at an airport. STARs end at an airport.
     // Enroute procedures?
     
-    // Simplest first pass: "PROC.TRANS"
+    // Simplest first pass: "PROC.TRANS" or "TRANS.PROC"
     if (part.includes('.')) {
-      const [procName, transName] = part.split('.');
-      
-      // We need to know which airport this procedure belongs to.
-      // SIDs: Previous point should be the airport.
-      // STARs: Next point should be the airport? Or previous point is enroute transition?
-      
-      // Search strategy:
-      // 1. Check if previous point is an airport (SID context)
-      // 2. Check if any airport has this procedure (expensive without optimized index)
-      
-      // Let's rely on index lookups.
-      // Since our index is nested by Airport, we have to iterate airports to find the proc if we don't know it.
-      // Optimization: We could build a reverse index map { "TECKY4": "KSJC" } but for now let's scan.
+      const [left, right] = part.split('.');
       
       let foundProc = null;
+      let usedProcName = '';
+      let usedTransName = '';
 
-      // Try context first
-      if (lastFixId && index.procedures[lastFixId] && index.procedures[lastFixId][procName]) {
-        foundProc = index.procedures[lastFixId][procName];
-      } else {
-        // Scan all
-        for (const [, procs] of Object.entries(index.procedures)) {
-          if (procs[procName]) {
-            foundProc = procs[procName];
-            break; 
+      // Helper to find a procedure by name across all airports or within context
+      const findProcedure = (name: string) => {
+        // Try context first (if previous point was an airport)
+        if (lastFixId && index.procedures[lastFixId] && index.procedures[lastFixId][name]) {
+          return { airport: lastFixId, proc: index.procedures[lastFixId][name] };
+        }
+        // Scan all airports
+        for (const [apt, procs] of Object.entries(index.procedures)) {
+          if (procs[name]) {
+            return { airport: apt, proc: procs[name] };
           }
         }
+        return null;
+      };
+
+      // Strategy 1: Treat as PROC.TRANS (SID style: TECKY4.VLREE)
+      const proc1 = findProcedure(left);
+      if (proc1 && proc1.proc.transitions[right]) {
+        foundProc = proc1.proc;
+        usedProcName = left;
+        usedTransName = right;
       }
+
+      // Strategy 2: Treat as TRANS.PROC (STAR style: BURGL.IRNMN2)
+      if (!foundProc) {
+        const proc2 = findProcedure(right);
+        if (proc2 && proc2.proc.transitions[left]) {
+          foundProc = proc2.proc;
+          usedProcName = right;
+          usedTransName = left;
+        }
+      }
+
       if (foundProc) {
         // Found it.
         // Logic: Procedure path = body + transition OR transition + body depending on SID vs STAR?
@@ -59,28 +70,19 @@ export const parseRoute = (routeStr: string, index: SearchIndex): FlightPlan => 
         let coords: [number, number][] = [];
 
         // If transition exists
-        if (transName && foundProc.transitions[transName]) {
+        if (usedTransName && foundProc.transitions[usedTransName]) {
              // Heuristic: If parsing a SID, Body then Trans. If STAR, Trans then Body.
              // Usually SIDs have common body from airport to splitting transitions.
              // STARs have merging transitions to common body to airport.
              // Let's assume order in file was preserved?
              // Actually, simplest is just draw both segments.
-             coords = [...foundProc.body, ...foundProc.transitions[transName]];
-
-             // Deduplicate if join point is repeated?
-             // Not worrying about perfect topology for now.
+             coords = [...foundProc.body, ...foundProc.transitions[usedTransName]];
         } else {
             coords = foundProc.body;
         }
 
         if (coords.length > 1) {
             features.push(lineString(coords, { type: 'procedure', name: part }));
-
-            // Add end point as a route point for continuity if needed?
-            // Actually, let's just add the procedure visual.
-            // And update lastFixId to the END of the procedure?
-            // We don't easily know the ID of the last point from geometry alone without reverse lookup.
-            // So we might lose "context" for the next segment if it relies on connectivity.
         }
         continue;
       }
