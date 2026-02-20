@@ -350,6 +350,14 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     return Math.max(0, baseZoom - aeronauticalLayers.declutterLevel);
   };
 
+  const highlightData = useMemo(() => {
+    return {
+      type: 'FeatureCollection',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      features: selectedFeatures?.features || []
+    } as any; // Cast to any to avoid strict GeoJSON type issues with MapLibre features
+  }, [selectedFeatures]);
+
   return (
     <Map
       onLoad={onMapLoad}
@@ -463,6 +471,32 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           paint={{
             'fill-color': '#000000',
             'fill-opacity': 1 - (basemapBrightness / 100)
+          }}
+        />
+      </Source>
+
+      {/* Selected Feature Highlight */}
+      <Source id="highlight-source" type="geojson" data={highlightData}>
+        <Layer
+          id="highlight-point"
+          type="circle"
+          filter={['==', '$type', 'Point']}
+          paint={{
+            'circle-radius': 18,
+            'circle-color': '#ffffff',
+            'circle-opacity': 0.3,
+            'circle-blur': 0.2
+          }}
+        />
+        <Layer
+          id="highlight-line"
+          type="line"
+          filter={['in', '$type', 'LineString', 'Polygon']}
+          paint={{
+            'line-color': '#ffffff',
+            'line-width': 6,
+            'line-opacity': 0.4,
+            'line-blur': 1
           }}
         />
       </Source>
