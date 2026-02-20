@@ -2,7 +2,7 @@
   <defs>
     <filter id="icon-halo" x="-50%" y="-50%" width="200%" height="200%">
       <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="dilated"/>
-      <feFlood flood-color="#e6e6e6" flood-opacity="0.95" result="haloColor"/>
+      <feFlood flood-color="#161616ff" flood-opacity="0.95" result="haloColor"/>
       <feComposite in="haloColor" in2="dilated" operator="in" result="halo"/>
       <feMerge>
         <feMergeNode in="halo"/>
