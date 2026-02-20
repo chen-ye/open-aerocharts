@@ -2,7 +2,8 @@ import React, { useMemo, useCallback, useState } from 'react';
 import Map, { Source, Layer, NavigationControl, Popup } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
-import { Card, Box, Text, Flex } from '@radix-ui/themes';
+import { Card, Box, Text, Flex, Heading, IconButton, Separator } from '@radix-ui/themes';
+import { X } from 'lucide-react';
 import { addVfrIcons } from '../../utils/vfrIcons';
 import styles from '../../mapStyles';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
@@ -36,6 +37,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [hoverInfo, setHoverInfo] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedFeatures, setSelectedFeatures] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onMouseMove = useCallback((e: any) => {
@@ -51,6 +54,18 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
   const onMouseLeave = useCallback(() => {
     setHoverInfo(null);
+  }, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onMapClick = useCallback((e: any) => {
+    if (e.features && e.features.length > 0) {
+      setSelectedFeatures({
+        lngLat: [e.lngLat.lng, e.lngLat.lat],
+        features: e.features,
+      });
+    } else {
+      setSelectedFeatures(null);
+    }
   }, []);
 
   const interactiveLayerIds = useMemo(() => [
@@ -176,6 +191,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       onLoad={onMapLoad}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
+      onClick={onMapClick}
       interactiveLayerIds={aeronauticalLayers.showAll ? interactiveLayerIds : []}
       initialViewState={{
         longitude:  -121.596667, // San Martin Airport
@@ -189,6 +205,77 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       mapLib={maplibregl}
     >
       <NavigationControl position="bottom-right" visualizePitch={true} />
+
+      {/* Feature Sidebar (Left) */}
+      {selectedFeatures && (
+        <Box
+          position="absolute"
+          top="4"
+          left="4"
+          style={{ zIndex: 20 }}
+        >
+          <Card
+            size="2"
+            style={{
+              width: 320,
+              maxHeight: 'calc(100vh - 48px)',
+              overflowY: 'auto',
+              backgroundColor: 'var(--glass-bg)',
+              backdropFilter: 'blur(var(--glass-blur))',
+              boxShadow: '0 0 0 1px var(--glass-border)'
+            }}
+          >
+            <Flex direction="column" gap="4">
+              <Flex align="center" justify="between">
+                <Heading size="3">Map Features</Heading>
+                <IconButton
+                  size="2"
+                  variant="ghost"
+                  onClick={() => setSelectedFeatures(null)}
+                  title="Close Information"
+                >
+                  <X size={18} />
+                </IconButton>
+              </Flex>
+
+              <Text size="1" color="gray">
+                {selectedFeatures.lngLat[1].toFixed(5)}, {selectedFeatures.lngLat[0].toFixed(5)}
+              </Text>
+
+              <Separator size="4" />
+
+              {selectedFeatures.features.map((f, i) => (
+                <React.Fragment key={i}>
+                  <Box>
+                    <Text
+                      as="div"
+                      weight="bold"
+                      size="1"
+                      color="gray"
+                      mb="2"
+                      style={{ textTransform: 'uppercase' }}
+                    >
+                      {f.sourceLayer || f.layer?.id}
+                    </Text>
+                    {Object.entries(f.properties || {}).map(([key, value]) => {
+                      if (key === 'source_id' || key === 'geometry') return null;
+                      return (
+                        <Flex key={key} justify="between" gap="3" style={{ lineHeight: '1.2', paddingBottom: '2px' }}>
+                          <Text size="1" color="gray">{key}:</Text>
+                          <Text size="1" weight="medium" style={{ textAlign: 'right', wordBreak: 'break-word' }}>
+                            {String(value)}
+                          </Text>
+                        </Flex>
+                      );
+                    })}
+                  </Box>
+                  {i < selectedFeatures.features.length - 1 && <Separator size="4" />}
+                </React.Fragment>
+              ))}
+            </Flex>
+          </Card>
+        </Box>
+      )}
 
       {/* 3D Terrain */}
       {showTerrain && (
@@ -401,19 +488,157 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               {aeronauticalLayers.enrouteLow && (
                 <>
                   <Layer id="airways-low-line" type="line" source="cifp" source-layer="airways" filter={['==', ['get', 'structure'], 'Low']} paint={airwayLinePaint} />
-                  <Layer id="airways-low-symbol" type="symbol" source="cifp" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'Low']} layout={airwaySymbolLayout} paint={airwaySymbolPaint} />
+                  <Layer id="airways-low-symbol" type="symbol" source="cifp" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
                 </>
               )}
               {aeronauticalLayers.enrouteHigh && (
                 <>
                   <Layer id="airways-high-line" type="line" source="cifp" source-layer="airways" filter={['==', ['get', 'structure'], 'High']} paint={airwayLinePaint} />
-                  <Layer id="airways-high-symbol" type="symbol" source="cifp" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'High']} layout={airwaySymbolLayout} paint={airwaySymbolPaint} />
+                  <Layer id="airways-high-symbol" type="symbol" source="cifp" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
                 </>
               )}
-              {/* Note: 'airways' sublayer toggle currently has no specific extra layers beyond low/high,
-                  but we check it here for future-proofing or if it should control the lines specifically */}
             </>
           )}
+
+          {/* Navaids Points */}
+          {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.navaids && (
+            <Layer
+              id="navaids-symbol"
+              type="symbol"
+              source="cifp"
+              source-layer="navaids"
+              layout={{
+                'icon-image': [
+                  'match',
+                  ['get', 'type'],
+                  'ndb', 'navaid-ndb',
+                  'navaid-vor'
+                ],
+                'icon-size': 0.8,
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true,
+                'text-field': ['get', 'id'],
+                'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+                'text-size': 11,
+                'text-offset': [0, 1.2],
+                'text-anchor': 'top',
+                'text-allow-overlap': false,
+                'text-ignore-placement': false,
+                'text-padding': 2,
+                'symbol-sort-key': 10
+              }}
+              paint={{
+                'text-color': '#0040D9',
+                'text-halo-color': 'rgba(255, 255, 255, 0.95)',
+                'text-halo-width': 1.5
+              }}
+            />
+          )}
+
+          {/* Waypoints */}
+          {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.waypoints && (
+            <Layer
+              id="waypoints-symbol"
+              type="symbol"
+              source="cifp"
+              source-layer="waypoints"
+              minzoom={7}
+              layout={{
+                'icon-image': 'wpt-rnav-open',
+                'icon-size': 0.7,
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true,
+                'text-field': ['get', 'id'],
+                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                'text-size': 9,
+                'text-offset': [0, 1.2],
+                'text-anchor': 'top',
+                'text-allow-overlap': false,
+                'text-ignore-placement': false,
+                'symbol-sort-key': 15
+              }}
+              paint={{
+                'text-color': '#444444',
+                'text-halo-color': 'rgba(255, 255, 255, 0.95)',
+                'text-halo-width': 1.5
+              }}
+            />
+          )}
+
+          {/* Localizers */}
+          {aeronauticalLayers.showAirportsMaster && aeronauticalLayers.publicAirports && (
+            <Layer
+              id="localizers-symbol"
+              type="symbol"
+              source="cifp"
+              source-layer="localizers"
+              layout={{
+                'icon-image': 'navaid-vor',
+                'icon-size': 0.5,
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true,
+                'text-field': ['get', 'ident'],
+                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                'text-size': 9,
+                'text-offset': [1, 0],
+                'text-anchor': 'left',
+                'text-allow-overlap': false,
+                'text-ignore-placement': false,
+                'symbol-sort-key': 30
+              }}
+              paint={{
+                'text-color': '#000000',
+                'text-halo-color': '#ffffff',
+                'text-halo-width': 1
+              }}
+            />
+          )}
+
+          {/* Obstacles (DOF) */}
+          {aeronauticalLayers.obstacles && (
+            <Layer
+              id="obstacles-symbol"
+              type="symbol"
+              source="cifp"
+              source-layer="obstacles"
+              minzoom={7}
+              layout={{
+                'icon-image': [
+                  'case',
+                  ['==', ['get', 'type'], 'WINDMILL'], 'obs-wind-turbine',
+                  ['==', ['get', 'lighting'], 'R'], 'obs-lighted-mod',
+                  ['>=', ['to-number', ['get', 'agl'], 0], 1000], 'obs-major',
+                  'obs-minor'
+                ] as unknown as maplibregl.ExpressionSpecification,
+                'icon-size': [
+                  'interpolate', ['linear'], ['zoom'],
+                  7, 0.35,
+                  12, 0.6
+                ] as unknown as maplibregl.ExpressionSpecification,
+                'icon-allow-overlap': false,
+                'icon-ignore-placement': false,
+                'icon-padding': 2,
+                'text-field': [
+                  'step', ['zoom'],
+                  '', // no label below z10
+                  10, ['concat', ['to-string', ['get', 'agl']], '\'']
+                ] as unknown as maplibregl.ExpressionSpecification,
+                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                'text-size': 9,
+                'text-offset': [0, 1.2],
+                'text-anchor': 'top',
+                'text-allow-overlap': false,
+                'text-optional': true,
+                'symbol-sort-key': ['+', 100, ['to-number', ['get', 'agl'], 0]] as unknown as maplibregl.ExpressionSpecification,
+              }}
+              paint={{
+                'text-color': '#555555',
+                'text-halo-color': '#ffffff',
+                'text-halo-width': 1,
+              }}
+            />
+          )}
+
           {/* Airports */}
           {aeronauticalLayers.showAirportsMaster && (
             <>
@@ -430,16 +655,16 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 />
               )}
               {aeronauticalLayers.publicAirports && (
-                <Layer id="airports-public" type="symbol" source="cifp" source-layer="airports" filter={['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military']]]} layout={airportSymbolLayout} paint={airportSymbolPaint} />
+                <Layer id="airports-public" type="symbol" source="cifp" source-layer="airports" filter={['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military']]]} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 1 } as any} paint={airportSymbolPaint} />
               )}
               {aeronauticalLayers.privateAirports && (
-                <Layer id="airports-private" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'private']} layout={airportSymbolLayout} paint={airportSymbolPaint} />
+                <Layer id="airports-private" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'private']} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 2 } as any} paint={airportSymbolPaint} />
               )}
               {aeronauticalLayers.heliports && (
-                <Layer id="airports-heliport" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'heliport']} layout={airportSymbolLayout} paint={airportSymbolPaint} />
+                <Layer id="airports-heliport" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'heliport']} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 3 } as any} paint={airportSymbolPaint} />
               )}
               {aeronauticalLayers.otherAirports && (
-                <Layer id="airports-other" type="symbol" source="cifp" source-layer="airports" filter={['!', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military', 'private', 'heliport']]]]} layout={airportSymbolLayout} paint={airportSymbolPaint} />
+                <Layer id="airports-other" type="symbol" source="cifp" source-layer="airports" filter={['!', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military', 'private', 'heliport']]]]} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 4 } as any} paint={airportSymbolPaint} />
               )}
               {/* Fuel Ticks Overlay */}
               <Layer
@@ -453,123 +678,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   'icon-size': 0.8,
                   'icon-allow-overlap': true,
                   'icon-ignore-placement': true,
+                  'symbol-sort-key': 1
                 }}
               />
             </>
           )}
-        {/* Navaids Points */}
-        {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.navaids && (
-          <Layer
-            id="navaids-symbol"
-            type="symbol"
-            source="cifp"
-            source-layer="navaids"
-            layout={{
-              'icon-image': [
-                'match',
-                ['get', 'type'],
-                'ndb', 'navaid-ndb',
-                'navaid-vor'
-              ],
-              'icon-size': 0.8,
-              'icon-allow-overlap': true,
-              'icon-ignore-placement': true,
-              'text-field': ['get', 'id'],
-              'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
-              'text-size': 11,
-              'text-offset': [0, 1.2],
-              'text-anchor': 'top',
-              'text-allow-overlap': false,
-              'text-ignore-placement': false,
-              'text-padding': 2,
-              'symbol-sort-key': [
-                'match',
-                ['get', 'type'],
-                'vhf', 1,
-                2 // ndb or other
-              ] as unknown as maplibregl.ExpressionSpecification
-            }}
-            paint={{
-              'text-color': '#0040D9',
-              'text-halo-color': 'rgba(255, 255, 255, 0.95)',
-              'text-halo-width': 1.5
-            }}
-          />
-        )}
-        {/* Localizers */}
-        {aeronauticalLayers.showAirportsMaster && aeronauticalLayers.publicAirports && (
-          <Layer
-            id="localizers-symbol"
-            type="symbol"
-            source="cifp"
-            source-layer="localizers"
-            layout={{
-              'icon-image': 'navaid-vor', // TODO: create a localizer icon
-              'icon-size': 0.5,
-              'icon-allow-overlap': true,
-              'icon-ignore-placement': true,
-              'text-field': ['get', 'ident'],
-              'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-              'text-size': 9,
-              'text-offset': [1, 0],
-              'text-anchor': 'left',
-              'text-allow-overlap': false,
-              'text-ignore-placement': false,
-              'symbol-sort-key': 10
-            }}
-            paint={{
-              'text-color': '#000000',
-              'text-halo-color': '#ffffff',
-              'text-halo-width': 1
-            }}
-          />
-        )}
-        {/* Obstacles (DOF) */}
-        {aeronauticalLayers.obstacles && (
-          <Layer
-            id="obstacles-symbol"
-            type="symbol"
-            source="cifp"
-            source-layer="obstacles"
-            minzoom={7}
-            layout={{
-              'icon-image': [
-                'case',
-                ['==', ['get', 'type'], 'WINDMILL'], 'obs-wind-turbine',
-                ['==', ['get', 'lighting'], 'R'], 'obs-lighted-mod',
-                ['>=', ['to-number', ['get', 'agl'], 0], 1000], 'obs-major',
-                'obs-minor'
-              ] as unknown as maplibregl.ExpressionSpecification,
-              'icon-size': [
-                'interpolate', ['linear'], ['zoom'],
-                7, 0.35,
-                12, 0.6
-              ] as unknown as maplibregl.ExpressionSpecification,
-              'icon-allow-overlap': false,
-              'icon-ignore-placement': false,
-              'icon-padding': 2,
-              'text-field': [
-                'step', ['zoom'],
-                '', // no label below z10
-                10, ['concat', ['to-string', ['get', 'agl']], '\'']
-              ] as unknown as maplibregl.ExpressionSpecification,
-              'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-              'text-size': 9,
-              'text-offset': [0, 1.2],
-              'text-anchor': 'top',
-              'text-allow-overlap': false,
-              'text-optional': true,
-              'symbol-sort-key': [
-                '-', 0, ['to-number', ['get', 'agl'], 0]
-              ] as unknown as maplibregl.ExpressionSpecification,
-            }}
-            paint={{
-              'text-color': '#555555',
-              'text-halo-color': '#ffffff',
-              'text-halo-width': 1,
-            }}
-          />
-        )}
         </>
       )}
 
@@ -588,44 +701,49 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           <Card
             size="2"
             style={{
-              maxHeight: '300px',
-              overflowY: 'auto',
               backgroundColor: 'var(--glass-bg)',
               backdropFilter: 'blur(12px)',
             }}
           >
-            {hoverInfo.features.map((f, i) => (
-              <Box
-                key={i}
-                pb={i < hoverInfo.features.length - 1 ? '2' : '0'}
-                mb={i < hoverInfo.features.length - 1 ? '2' : '0'}
-                style={{
-                  borderBottom: i < hoverInfo.features.length - 1 ? '1px solid var(--surface-3)' : 'none',
-                }}
-              >
-                <Text
-                  as="div"
-                  weight="bold"
-                  size="1"
-                  color="gray"
-                  mb="1"
-                  style={{ textTransform: 'uppercase' }}
-                >
-                  {f.sourceLayer || f.layer?.id}
-                </Text>
-                {Object.entries(f.properties || {}).map(([key, value]) => {
-                  if (key === 'source_id' || key === 'geometry') return null;
-                  return (
-                    <Flex key={key} justify="between" gap="3" style={{ lineHeight: '1.2', paddingBottom: '2px' }}>
-                      <Text size="1" color="gray">{key}:</Text>
-                      <Text size="1" weight="medium" style={{ textAlign: 'right', wordBreak: 'break-word' }}>
-                        {String(value)}
-                      </Text>
-                    </Flex>
-                  );
-                })}
-              </Box>
+            {hoverInfo.features.slice(0, 2).map((f, i) => (
+              <React.Fragment key={i}>
+                <Box>
+                  <Text
+                    as="div"
+                    weight="bold"
+                    size="1"
+                    color="gray"
+                    mb="1"
+                    style={{ textTransform: 'uppercase' }}
+                  >
+                    {f.sourceLayer || f.layer?.id}
+                  </Text>
+                  {Object.entries(f.properties || {}).map(([key, value]) => {
+                    if (key === 'source_id' || key === 'geometry') return null;
+                    return (
+                      <Flex key={key} justify="between" gap="3" style={{ lineHeight: '1.2', paddingBottom: '2px' }}>
+                        <Text size="1" color="gray">{key}:</Text>
+                        <Text size="1" weight="medium" style={{ textAlign: 'right', wordBreak: 'break-word' }}>
+                          {String(value)}
+                        </Text>
+                      </Flex>
+                    );
+                  })}
+                </Box>
+                {i < Math.min(hoverInfo.features.length, 2) - 1 && <Separator size="4" my="2" />}
+              </React.Fragment>
             ))}
+            {hoverInfo.features.length > 2 && (
+              <Box pt="2">
+                <Separator size="4" mb="2" />
+                <Text size="1" color="gray" weight="medium" style={{ fontStyle: 'italic' }}>
+                  + {hoverInfo.features.length - 2} more features...
+                </Text>
+                <Text size="1" color="blue" weight="bold" as="div" mt="1">
+                  Click to see all
+                </Text>
+              </Box>
+            )}
           </Card>
         </Popup>
       )}

@@ -53,7 +53,7 @@ def classify_controlled_airspace(record: dict) -> dict:
         "is_sua": False,
         "upper_limit": record.get("UPPER_VAL") or "",
         "lower_limit": record.get("LOWER_VAL") or "",
-        "local_type": local_type,
+        # "local_type": local_type,
     }
 
 

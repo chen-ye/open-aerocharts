@@ -102,7 +102,7 @@ function App() {
   }, [basemapUrlOrId, showTerrain, aeronauticalLayers, basemapBrightness]);
 
   return (
-    <Theme accentColor="blue" grayColor="gray" radius="medium">
+    <Theme accentColor="purple" grayColor="gray" radius="medium">
       <div className="app-container">
         <SettingsPanel
           basemap={basemapUrlOrId}
