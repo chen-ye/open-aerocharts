@@ -1,0 +1,16 @@
+<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="icon-halo" x="-50%" y="-50%" width="200%" height="200%">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="dilated"/>
+      <feFlood flood-color="#e6e6e6" flood-opacity="0.95" result="haloColor"/>
+      <feComposite in="haloColor" in2="dilated" operator="in" result="halo"/>
+      <feMerge>
+        <feMergeNode in="halo"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#icon-halo)">
+    <polygon points="12,4 20,18 4,18" fill="none" stroke="#3e63dd" stroke-width="2"/>
+  </g>
+</svg>
