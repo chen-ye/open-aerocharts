@@ -5,23 +5,21 @@ import { Protocol } from 'pmtiles';
 import { Card, Box, Text, Flex } from '@radix-ui/themes';
 import { addVfrIcons } from '../../utils/vfrIcons';
 import styles from '../../mapStyles';
+import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 
 interface VfrMapProps {
   basemapUrlOrId: string;
   showTerrain: boolean;
-  showAeronautical: boolean;
+  aeronauticalLayers: AeronauticalLayerState;
   basemapBrightness: number;
 }
 
 export const VfrMap: React.FC<VfrMapProps> = ({
   basemapUrlOrId,
   showTerrain,
-  showAeronautical,
+  aeronauticalLayers,
   basemapBrightness,
 }) => {
-  // We use CartoCDN base map, but MapLibre requires it via the `mapStyle` prop.
-  // The Map component from react-map-gl handles style reloading when basemapUrl changes.
-
   const mapStyle = useMemo<string | maplibregl.StyleSpecification>(() => {
     // If the basemapUrlOrId is a URL, treat it as a style URL
     if (URL.canParse(basemapUrlOrId)) {
@@ -56,8 +54,23 @@ export const VfrMap: React.FC<VfrMapProps> = ({
   }, []);
 
   const interactiveLayerIds = useMemo(() => [
-    'airspaces-fill',
-    'airports-symbol',
+    'airspaces-class-b',
+    'airspaces-class-b-fill',
+    'airspaces-class-c',
+    'airspaces-class-c-fill',
+    'airspaces-class-d',
+    'airspaces-class-d-fill',
+    'airspaces-sua',
+    'airspaces-sua-fill',
+    'airspaces-trsa',
+    'airspaces-trsa-fill',
+    'airspaces-class-e-fill',
+    'airways-low-line',
+    'airways-high-line',
+    'airports-public',
+    'airports-private',
+    'airports-heliport',
+    'airports-other',
     'navaids-symbol',
     'localizers-symbol'
   ], []);
@@ -71,12 +84,75 @@ export const VfrMap: React.FC<VfrMapProps> = ({
     };
   }, []);
 
+  const airwayLinePaint: maplibregl.LineLayerSpecification['paint'] = useMemo(() => ({
+    'line-color': [
+      'match',
+      ['get', 'route_type'],
+      'Victor', '#000000',
+      'GPS', '#0040D9',
+      'LFMF', '#8B4513',
+      '#0ea5e9' // default light blue
+    ] as unknown as maplibregl.ExpressionSpecification,
+    'line-width': [
+      'case',
+      ['>', ['get', 'width'], 5], 4,
+      1.5 // default thin line
+    ] as unknown as maplibregl.ExpressionSpecification,
+    'line-opacity': 0.7
+  }), []);
+
+  const airwaySymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => ({
+    'symbol-placement': 'line-center',
+    'text-field': [
+      'format',
+      ['to-string', ['get', 'mea']], { 'font-scale': 0.85 },
+      '\n', {},
+      ['get', 'airway'], { 'font-scale': 1.0 },
+      '\n', {},
+      ['to-string', ['get', 'distance']], { 'font-scale': 0.85 }
+    ] as unknown as maplibregl.ExpressionSpecification,
+    'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+    'text-size': 11,
+    'text-allow-overlap': false,
+    'text-ignore-placement': false,
+    'text-rotation-alignment': 'map',
+    'text-pitch-alignment': 'map'
+  }), []);
+
+  const airwaySymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
+    'text-color': '#000000',
+    'text-halo-color': '#ffffff',
+    'text-halo-width': 2,
+  }), []);
+
+  const airportSymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => ({
+    'icon-image': 'airport-magenta',
+    'icon-size': 0.8,
+    'icon-allow-overlap': true,
+    'text-field': ['get', 'name'],
+    'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+    'text-size': 12,
+    'text-offset': [0, 1.2],
+    'text-anchor': 'top',
+    'text-allow-overlap': true,
+    'text-ignore-placement': true, // Critical info always renders
+  }), []);
+
+  const airportSymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
+    'text-color': '#A8007F',
+    'text-halo-color': 'rgba(255, 255, 255, 0.95)',
+    'text-halo-width': 1.5
+  }), []);
+
+  const showRunways = aeronauticalLayers.showAirportsMaster &&
+    (aeronauticalLayers.publicAirports || aeronauticalLayers.privateAirports || aeronauticalLayers.heliports);
+
   return (
     <Map
       onLoad={onMapLoad}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
-      interactiveLayerIds={showAeronautical ? interactiveLayerIds : []}
+      interactiveLayerIds={aeronauticalLayers.showAll ? interactiveLayerIds : []}
       initialViewState={{
         longitude:  -121.596667, // San Martin Airport
         latitude: 37.081667,
@@ -150,164 +226,199 @@ export const VfrMap: React.FC<VfrMapProps> = ({
       )}
 
       {/* Aeronautical Data from PMTiles */}
-      {showAeronautical && (
+      {aeronauticalLayers.showAll && (
         <Source
           id="cifp"
           type="vector"
-          url="pmtiles:///cifp_data.pmtiles"
+          url="pmtiles:///open-aerocharts/cifp_data.pmtiles"
         />
       )}
-      {showAeronautical && (
+      {aeronauticalLayers.showAll && (
         <>
           {/* Airspaces */}
-          <Layer
-            id="airspaces-line"
-            type="line"
-            source="cifp"
-            source-layer="airspaces"
-            filter={['!=', ['get', 'type'], 'E']}
-            paint={{
-              'line-color': [
-                'match',
-                ['get', 'type'],
-                'B', '#0040D9', // Class B Solid Blue
-                'C', '#A8007F', // Class C Solid Magenta
-                'D', '#0040D9', // Class D Dashed Blue
-                '#969696'
-              ],
-              'line-width': [
-                'match',
-                ['get', 'type'],
-                'B', 3,
-                'C', 3,
-                'D', 1.5,
-                1
-              ],
-              'line-dasharray': [
-                 'match',
-                 ['get', 'type'],
-                 'D', ['literal', [4, 4]], // Class D dashes
-                 ['literal', [1]] // default solid
-              ]
-            }}
-          />
-          {/* Class E Vignette: Blur layer (Bottom) */}
-          <Layer
-            id="airspaces-vignette-blur"
-            type="line"
-            source="cifp"
-            source-layer="airspaces"
-            filter={['==', ['get', 'type'], 'E']}
-            paint={{
-              // Magenta is typical for floors at 700 AGL; Blue is typical for 1200+ AGL
-              // But without exact data, we use a nice magenta here
-              'line-color': '#A8007F',
-              'line-width': 12,
-              'line-blur': 8,
-              'line-opacity': 0.5
-            }}
-          />
-          {/* Class E Vignette: Crisp layer (Top) */}
-          <Layer
-            id="airspaces-vignette-edge"
-            type="line"
-            source="cifp"
-            source-layer="airspaces"
-            filter={['==', ['get', 'type'], 'E']}
-            paint={{
-              'line-color': '#A8007F',
-              'line-width': 1,
-              'line-offset': 1
-            }}
-          />
-          <Layer
-            id="airways-line"
-            type="line"
-            source="cifp"
-            source-layer="airways"
-            paint={{
-              'line-color': [
-                'match',
-                ['get', 'route_type'],
-                'Victor', '#000000',
-                'GPS', '#0040D9',
-                'LFMF', '#8B4513',
-                '#0ea5e9' // default light blue
-              ],
-              'line-width': [
-                'case',
-                ['>', ['get', 'width'], 5], 4,
-                1.5 // default thin line
-              ],
-              'line-opacity': 0.7
-            }}
-          />
-          {/* Airway Labels */}
-          <Layer
-            id="airways-symbol"
-            type="symbol"
-            source="cifp"
-            source-layer="airways"
-            minzoom={6}
-            layout={{
-              'symbol-placement': 'line-center',
-              'text-field': [
-                'format',
-                ['to-string', ['get', 'mea']], { 'font-scale': 0.85 },
-                '\n', {},
-                ['get', 'airway'], { 'font-scale': 1.0 },
-                '\n', {},
-                ['to-string', ['get', 'distance']], { 'font-scale': 0.85 }
-              ],
-              'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
-              'text-size': 11,
-              'text-allow-overlap': false,
-              'text-ignore-placement': false,
-              'text-rotation-alignment': 'map',
-              'text-pitch-alignment': 'map'
-            }}
-            paint={{
-              'text-color': '#000000',
-              'text-halo-color': '#ffffff',
-              'text-halo-width': 2,
-            }}
-          />
-          {/* Runway footprints */}
-          <Layer
-            id="runways-line"
-            type="line"
-            source="cifp"
-            source-layer="runways"
-            paint={{
-              'line-color': '#000000',
-              'line-width': 4
-            }}
-          />
-          {/* Airports Points */}
-          <Layer
-            id="airports-symbol"
-            type="symbol"
-            source="cifp"
-            source-layer="airports"
-            layout={{
-              'icon-image': 'airport-magenta',
-              'icon-size': 0.8,
-              'icon-allow-overlap': true,
-              'text-field': ['get', 'name'],
-              'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
-              'text-size': 12,
-              'text-offset': [0, 1.2],
-              'text-anchor': 'top',
-              'text-allow-overlap': true,
-              'text-ignore-placement': true, // Critical info always renders
-            }}
-            paint={{
-              'text-color': '#A8007F',
-              'text-halo-color': 'rgba(255, 255, 255, 0.95)',
-              'text-halo-width': 1.5
-            }}
-          />
-          {/* Navaids Points */}
+          {aeronauticalLayers.showAirspaceMaster && (
+            <>
+              {aeronauticalLayers.controlledAirspace && (
+                <>
+                  <Layer
+                    id="airspaces-class-b"
+                    type="line"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
+                    paint={{ 'line-color': '#0040D9', 'line-width': 3 }}
+                  />
+                  <Layer
+                    id="airspaces-class-b-fill"
+                    type="fill"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
+                    paint={{ 'fill-opacity': 0 }}
+                  />
+                  <Layer
+                    id="airspaces-class-c"
+                    type="line"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
+                    paint={{ 'line-color': '#A8007F', 'line-width': 3 }}
+                  />
+                  <Layer
+                    id="airspaces-class-c-fill"
+                    type="fill"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
+                    paint={{ 'fill-opacity': 0 }}
+                  />
+                  <Layer
+                    id="airspaces-class-d"
+                    type="line"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
+                    paint={{ 'line-color': '#0040D9', 'line-width': 1.5, 'line-dasharray': [4, 4] }}
+                  />
+                  <Layer
+                    id="airspaces-class-d-fill"
+                    type="fill"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
+                    paint={{ 'fill-opacity': 0 }}
+                  />
+                </>
+              )}
+              {aeronauticalLayers.suaMoa && (
+                <>
+                  <Layer
+                    id="airspaces-sua"
+                    type="line"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
+                    paint={{ 'line-color': '#969696', 'line-width': 1.5 }}
+                  />
+                  <Layer
+                    id="airspaces-sua-fill"
+                    type="fill"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
+                    paint={{ 'fill-opacity': 0 }}
+                  />
+                </>
+              )}
+              {aeronauticalLayers.trsa && (
+                <>
+                  <Layer
+                    id="airspaces-trsa"
+                    type="line"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'TRSA']]}
+                    paint={{ 'line-color': '#969696', 'line-width': 1.5 }}
+                  />
+                  <Layer
+                    id="airspaces-trsa-fill"
+                    type="fill"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'TRSA']]}
+                    paint={{ 'fill-opacity': 0 }}
+                  />
+                </>
+              )}
+              {/* Class E Vignette */}
+              {aeronauticalLayers.classE && (
+                <>
+                  <Layer
+                    id="airspaces-vignette-blur"
+                    type="line"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['==', ['get', 'type'], 'E']}
+                    paint={{
+                      'line-color': '#A8007F',
+                      'line-width': 12,
+                      'line-blur': 8,
+                      'line-opacity': 0.5
+                    }}
+                  />
+                  <Layer
+                    id="airspaces-vignette-edge"
+                    type="line"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['==', ['get', 'type'], 'E']}
+                    paint={{
+                      'line-color': '#A8007F',
+                      'line-width': 1,
+                      'line-offset': 1
+                    }}
+                  />
+                  <Layer
+                    id="airspaces-class-e-fill"
+                    type="fill"
+                    source="cifp"
+                    source-layer="airspaces"
+                    filter={['==', ['get', 'type'], 'E']}
+                    paint={{ 'fill-opacity': 0 }}
+                  />
+                </>
+              )}
+            </>
+          )}
+
+          {/* Airways */}
+          {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.airways && (
+            <>
+              {aeronauticalLayers.enrouteLow && (
+                <>
+                  <Layer id="airways-low-line" type="line" source="cifp" source-layer="airways" filter={['==', ['get', 'structure'], 'Low']} paint={airwayLinePaint} />
+                  <Layer id="airways-low-symbol" type="symbol" source="cifp" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'Low']} layout={airwaySymbolLayout} paint={airwaySymbolPaint} />
+                </>
+              )}
+              {aeronauticalLayers.enrouteHigh && (
+                <>
+                  <Layer id="airways-high-line" type="line" source="cifp" source-layer="airways" filter={['==', ['get', 'structure'], 'High']} paint={airwayLinePaint} />
+                  <Layer id="airways-high-symbol" type="symbol" source="cifp" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'High']} layout={airwaySymbolLayout} paint={airwaySymbolPaint} />
+                </>
+              )}
+            </>
+          )}
+          {/* Airports */}
+          {aeronauticalLayers.showAirportsMaster && (
+            <>
+              {showRunways && (
+                <Layer
+                  id="runways-line"
+                  type="line"
+                  source="cifp"
+                  source-layer="runways"
+                  paint={{
+                    'line-color': '#000000',
+                    'line-width': 4
+                  }}
+                />
+              )}
+              {aeronauticalLayers.publicAirports && (
+                <Layer id="airports-public" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'public']} layout={airportSymbolLayout} paint={airportSymbolPaint} />
+              )}
+              {aeronauticalLayers.privateAirports && (
+                <Layer id="airports-private" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'private']} layout={airportSymbolLayout} paint={airportSymbolPaint} />
+              )}
+              {aeronauticalLayers.heliports && (
+                <Layer id="airports-heliport" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'heliport']} layout={airportSymbolLayout} paint={airportSymbolPaint} />
+              )}
+              {aeronauticalLayers.otherAirports && (
+                <Layer id="airports-other" type="symbol" source="cifp" source-layer="airports" filter={['!', ['in', ['get', 'facility_type'], ['literal', ['public', 'private', 'heliport']]]]} layout={airportSymbolLayout} paint={airportSymbolPaint} />
+              )}
+            </>
+          )}
+        {/* Navaids Points */}
+        {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.navaids && (
           <Layer
             id="navaids-symbol"
             type="symbol"
@@ -337,7 +448,9 @@ export const VfrMap: React.FC<VfrMapProps> = ({
               'text-halo-width': 1.5
             }}
           />
-          {/* Localizers */}
+        )}
+        {/* Localizers */}
+        {aeronauticalLayers.showAirportsMaster && aeronauticalLayers.publicAirports && (
           <Layer
             id="localizers-symbol"
             type="symbol"
@@ -358,6 +471,7 @@ export const VfrMap: React.FC<VfrMapProps> = ({
               'text-halo-width': 1
             }}
           />
+        )}
         </>
       )}
 

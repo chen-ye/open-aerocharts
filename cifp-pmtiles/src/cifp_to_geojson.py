@@ -70,17 +70,33 @@ def build_pmtiles_geojson(cifp_path):
 
     print("Building lookup dictionaries...", flush=True)
     fixes = {}
-
     airport_features = []
+
     print("Extracting Airports...", flush=True)
     for a in c.get_airports():
         p = a.to_dict()['primary']
         lat, lon = p.get('lat'), p.get('lon')
         if lat is not None and lon is not None:
             elev = float(p.get('elevation') or 0.0)
+
+            # Determine facility type for toggles
+            is_heliport = (p.get('airport_name') or '').upper().find('HELIPORT') != -1 or (p.get('airport_id') or '').startswith('H')
+            is_private = (p.get('public_military') or '') == 'P'
+            if is_heliport:
+                fac_type = 'heliport'
+            elif is_private:
+                fac_type = 'private'
+            else:
+                fac_type = 'public'
+
             airport_features.append(geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
-                properties={'id': p.get('airport_id'), 'name': p.get('airport_name'), 'type': 'airport'}
+                properties={
+                    'id': p.get('airport_id'),
+                    'name': p.get('airport_name'),
+                    'type': 'airport',
+                    'facility_type': fac_type
+                }
             ))
             if p.get('airport_id'):
                 fixes[p.get('airport_id').strip()] = (lon, lat, elev)
@@ -153,13 +169,23 @@ def build_pmtiles_geojson(cifp_path):
                 coords.append(coords[0])
             airspace_features.append(geojson.Feature(
                 geometry=geojson.Polygon([coords]),
-                properties={'name': key[0], 'type': key[1]}
+                properties={
+                    'name': key[0],
+                    'type': key[1],
+                    'airspace_class': key[1],
+                    'is_sua': key[1] in ['P', 'R', 'W', 'A', 'MOA']
+                }
             ))
         elif len(coords) == 2:
             coords = unwrap_coordinates(coords)
             airspace_features.append(geojson.Feature(
                 geometry=geojson.LineString(coords),
-                properties={'name': key[0], 'type': key[1]}
+                properties={
+                    'name': key[0],
+                    'type': key[1],
+                    'airspace_class': key[1],
+                    'is_sua': key[1] in ['P', 'R', 'W', 'A', 'MOA']
+                }
             ))
 
     with open('data/airspaces.geojson', 'w') as f:
@@ -251,13 +277,17 @@ def build_pmtiles_geojson(cifp_path):
                     (ulon2, ulat2, max(elev2, parse_altitude(min_alt)))
                 ]
 
+                # Determine Low vs High airway structure
+                structure = 'High' if key.startswith('J') or key.startswith('Q') else 'Low'
+
                 airway_features.append(geojson.Feature(
                     geometry=geojson.LineString(coords),
                     properties={
                         'airway': key,
                         'mea': mea_val,
                         'distance': dist_nm,
-                        'route_type': route_type
+                        'route_type': route_type,
+                        'structure': structure
                     }
                 ))
 

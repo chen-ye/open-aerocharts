@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Layers, X } from 'lucide-react';
 import { Card, Flex, Heading, IconButton, Select, Switch, Text, Box, Slider } from '@radix-ui/themes';
+import { AeronauticalSettings } from './AeronauticalSettings';
+import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 
 interface SettingsPanelProps {
   basemap: string;
   setBasemap: (url: string) => void;
   showTerrain: boolean;
   setShowTerrain: (show: boolean) => void;
-  showAeronautical: boolean;
-  setShowAeronautical: (show: boolean) => void;
+  aeronauticalLayers: AeronauticalLayerState;
+  setAeronauticalLayers: React.Dispatch<React.SetStateAction<AeronauticalLayerState>>;
   basemapBrightness: number;
   setBasemapBrightness: (val: number) => void;
 }
@@ -18,8 +20,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setBasemap,
   showTerrain,
   setShowTerrain,
-  showAeronautical,
-  setShowAeronautical,
+  aeronauticalLayers,
+  setAeronauticalLayers,
   basemapBrightness,
   setBasemapBrightness
 }) => {
@@ -88,27 +90,19 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               />
             </Flex>
 
-            <Flex align="center" gap="2">
+            <Flex align="center" justify="between">
+              <Text as="label" size="2" weight="bold" htmlFor="terrain-toggle">Terrain/Hillshade</Text>
               <Switch
                 id="terrain-toggle"
                 checked={showTerrain}
-                onCheckedChange={setShowTerrain}
+                onCheckedChange={(c: boolean) => setShowTerrain(c)}
               />
-              <Text as="label" htmlFor="terrain-toggle" size="2" style={{ cursor: 'pointer' }}>
-                Show 3D Terrain
-              </Text>
             </Flex>
 
-            <Flex align="center" gap="2">
-              <Switch
-                id="aero-toggle"
-                checked={showAeronautical}
-                onCheckedChange={setShowAeronautical}
-              />
-              <Text as="label" htmlFor="aero-toggle" size="2" style={{ cursor: 'pointer' }}>
-                Show CIFP Data
-              </Text>
-            </Flex>
+            <AeronauticalSettings
+              layers={aeronauticalLayers}
+              setLayers={setAeronauticalLayers}
+            />
           </Flex>
         </Card>
       )}
