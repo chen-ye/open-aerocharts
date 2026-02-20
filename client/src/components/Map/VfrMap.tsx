@@ -10,12 +10,14 @@ interface VfrMapProps {
   basemapUrlOrId: string;
   showTerrain: boolean;
   showAeronautical: boolean;
+  basemapBrightness: number;
 }
 
 export const VfrMap: React.FC<VfrMapProps> = ({
   basemapUrlOrId,
   showTerrain,
   showAeronautical,
+  basemapBrightness,
 }) => {
   // We use CartoCDN base map, but MapLibre requires it via the `mapStyle` prop.
   // The Map component from react-map-gl handles style reloading when basemapUrl changes.
@@ -87,6 +89,40 @@ export const VfrMap: React.FC<VfrMapProps> = ({
       mapLib={maplibregl}
     >
       <NavigationControl position="bottom-right" visualizePitch={true} />
+
+      {/* Basemap Dimmer */}
+      <Source
+        id="basemap-dimmer-source"
+        type="geojson"
+        data={{
+          type: 'FeatureCollection',
+          features: [
+            {
+              type: 'Feature',
+              geometry: {
+                type: 'Polygon',
+                coordinates: [[
+                  [-180, -90],
+                  [180, -90],
+                  [180, 90],
+                  [-180, 90],
+                  [-180, -90]
+                ]]
+              },
+              properties: {}
+            }
+          ]
+        }}
+      >
+        <Layer
+          id="basemap-dimmer-layer"
+          type="fill"
+          paint={{
+            'fill-color': '#000000',
+            'fill-opacity': 1 - (basemapBrightness / 100)
+          }}
+        />
+      </Source>
 
       {/* 3D Terrain */}
       {showTerrain && (
@@ -204,6 +240,36 @@ export const VfrMap: React.FC<VfrMapProps> = ({
                 1.5 // default thin line
               ],
               'line-opacity': 0.7
+            }}
+          />
+          {/* Airway Labels */}
+          <Layer
+            id="airways-symbol"
+            type="symbol"
+            source="cifp"
+            source-layer="airways"
+            minzoom={6}
+            layout={{
+              'symbol-placement': 'line-center',
+              'text-field': [
+                'format',
+                ['to-string', ['get', 'mea']], { 'font-scale': 0.85 },
+                '\n', {},
+                ['get', 'airway'], { 'font-scale': 1.0 },
+                '\n', {},
+                ['to-string', ['get', 'distance']], { 'font-scale': 0.85 }
+              ],
+              'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+              'text-size': 11,
+              'text-allow-overlap': false,
+              'text-ignore-placement': false,
+              'text-rotation-alignment': 'map',
+              'text-pitch-alignment': 'map'
+            }}
+            paint={{
+              'text-color': '#000000',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 2,
             }}
           />
           {/* Runway footprints */}

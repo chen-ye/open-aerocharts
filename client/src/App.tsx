@@ -8,6 +8,7 @@ function App() {
   );
   const [showTerrain, setShowTerrain] = useState(false);
   const [showAeronautical, setShowAeronautical] = useState(true);
+  const [basemapBrightness, setBasemapBrightness] = useState(100);
 
   return (
     <div className="app-container">
@@ -18,11 +19,14 @@ function App() {
         setShowTerrain={setShowTerrain}
         showAeronautical={showAeronautical}
         setShowAeronautical={setShowAeronautical}
+        basemapBrightness={basemapBrightness}
+        setBasemapBrightness={setBasemapBrightness}
       />
       <VfrMap
         basemapUrlOrId={basemapUrlOrId}
         showTerrain={showTerrain}
         showAeronautical={showAeronautical}
+        basemapBrightness={basemapBrightness}
       />
     </div>
   );

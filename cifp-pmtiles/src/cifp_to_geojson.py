@@ -1,7 +1,19 @@
 import sys
 import geojson
+import math
 from collections import defaultdict
 from cifparse import CIFP
+
+def haversine(lon1, lat1, lon2, lat2):
+    R = 3440.065 # Earth radius in NM
+    dLat = math.radians(lat2 - lat1)
+    dLon = math.radians(lon2 - lon1)
+    a = math.sin(dLat / 2) * math.sin(dLat / 2) + \
+        math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * \
+        math.sin(dLon / 2) * math.sin(dLon / 2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
 
 def parse_altitude(alt_str):
     if not alt_str:
@@ -196,20 +208,58 @@ def build_pmtiles_geojson(cifp_path):
     airway_features = []
     for key, pts in airway_groups.items():
         pts.sort(key=lambda x: x.get('seq_no') or 0)
-        coords = []
+        valid_pts = []
         for p in pts:
             fix = (p.get('point_id') or '').strip()
             if fix in fixes:
-                lon, lat, elev = fixes[fix]
-                min_alt = parse_altitude(p.get('min_alt_1'))
-                coords.append((lon, lat, max(elev, min_alt)))
+                valid_pts.append((p, fixes[fix]))
 
-        if len(coords) >= 2:
-            coords = unwrap_coordinates(coords)
-            airway_features.append(geojson.Feature(
-                geometry=geojson.LineString(coords),
-                properties={'airway': key}
-            ))
+        for i in range(len(valid_pts) - 1):
+            p1, fix1 = valid_pts[i]
+            p2, fix2 = valid_pts[i+1]
+            lon1, lat1, elev1 = fix1
+            lon2, lat2, elev2 = fix2
+
+            c_unwrapped = unwrap_coordinates([(lon1, lat1, elev1), (lon2, lat2, elev2)])
+            if len(c_unwrapped) == 2:
+                ulon1, ulat1, _ = c_unwrapped[0]
+                ulon2, ulat2, _ = c_unwrapped[1]
+
+                # Filter out dupes
+                if ulon1 == ulon2 and ulat1 == ulat2:
+                    continue
+
+                dist_nm = round(haversine(lon1, lat1, lon2, lat2))
+                min_alt = p1.get('min_alt_1')
+                if min_alt and str(min_alt).strip().isdigit():
+                    mea_val = int(str(min_alt).strip())
+                else:
+                    try:
+                        mea_val = int(parse_altitude(min_alt))
+                    except (ValueError, TypeError):
+                        mea_val = 0
+
+                route_type = p1.get('route_type') or p1.get('airway_type')
+                if not route_type:
+                    if key.startswith('V'): route_type = 'Victor'
+                    elif key.startswith('Q') or key.startswith('T'): route_type = 'GPS'
+                    elif key.startswith('J'): route_type = 'Victor' # High Victor
+                    else: route_type = 'Unknown'
+
+                coords = [
+                    (ulon1, ulat1, max(elev1, parse_altitude(min_alt))),
+                    (ulon2, ulat2, max(elev2, parse_altitude(min_alt)))
+                ]
+
+                airway_features.append(geojson.Feature(
+                    geometry=geojson.LineString(coords),
+                    properties={
+                        'airway': key,
+                        'mea': mea_val,
+                        'distance': dist_nm,
+                        'route_type': route_type
+                    }
+                ))
 
     with open('data/airways.geojson', 'w') as f:
         geojson.dump(geojson.FeatureCollection(airway_features), f)

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layers, X } from 'lucide-react';
-import { Card, Flex, Heading, IconButton, Select, Switch, Text, Box } from '@radix-ui/themes';
+import { Card, Flex, Heading, IconButton, Select, Switch, Text, Box, Slider } from '@radix-ui/themes';
 
 interface SettingsPanelProps {
   basemap: string;
@@ -9,6 +9,8 @@ interface SettingsPanelProps {
   setShowTerrain: (show: boolean) => void;
   showAeronautical: boolean;
   setShowAeronautical: (show: boolean) => void;
+  basemapBrightness: number;
+  setBasemapBrightness: (val: number) => void;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -18,6 +20,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setShowTerrain,
   showAeronautical,
   setShowAeronautical,
+  basemapBrightness,
+  setBasemapBrightness
 }) => {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -72,6 +76,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   </Select.Group>
                 </Select.Content>
               </Select.Root>
+            </Flex>
+
+            <Flex direction="column" gap="2">
+              <Text as="label" size="2" weight="medium" color="gray">Basemap Brightness</Text>
+              <Slider
+                value={[basemapBrightness]}
+                onValueChange={(val: number[]) => setBasemapBrightness(val[0])}
+                max={100}
+                step={1}
+              />
             </Flex>
 
             <Flex align="center" gap="2">
