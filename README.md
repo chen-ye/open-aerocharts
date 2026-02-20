@@ -19,6 +19,10 @@ The project is split into two packages:
   airways, navaids, and airports.
 - **Basemap**: CartoCDN-derived basemaps.
 
+## References
+
+- [FAA Aeronautical Chart User's Guide](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/aero_guide)
+
 ## Getting Started
 
 1. Clone the repository.
