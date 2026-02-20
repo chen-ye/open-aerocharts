@@ -12,6 +12,7 @@
   "dependencies": {
     "@mapbox/maki": "^8.2.0",
     "@radix-ui/themes": "^3.3.0",
+    "@turf/helpers": "^7.3.4",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.575.0",
     "maplibre-gl": "^5.18.0",

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { AeroMap } from './components/Map/AeroMap';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
+import { FlightPlanPanel } from './components/FlightPlanPanel/FlightPlanPanel';
 import { defaultAeronauticalState } from './types/AeronauticalLayerState';
 import type { AeronauticalLayerState } from './types/AeronauticalLayerState';
+import type { FlightPlan } from './types/FlightPlan';
 import { Theme } from '@radix-ui/themes';
 
 export const accentColor = "purple" as const;
@@ -24,6 +26,8 @@ function App() {
     const brightness = params.get('brightness');
     return brightness ? parseInt(brightness, 10) : 100;
   });
+
+  const [flightPlan, setFlightPlan] = useState<FlightPlan | null>(null);
 
   const [aeronauticalLayers, setAeronauticalLayers] = useState<AeronauticalLayerState>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -122,7 +126,9 @@ function App() {
           showTerrain={showTerrain}
           aeronauticalLayers={aeronauticalLayers}
           basemapBrightness={basemapBrightness}
+          flightPlan={flightPlan}
         />
+        <FlightPlanPanel onFlightPlanChange={setFlightPlan} />
       </div>
     </Theme>
   );

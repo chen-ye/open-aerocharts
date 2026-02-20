@@ -7,8 +7,9 @@ import { X } from 'lucide-react';
 import { addAeroIcons } from '../../utils/aeroIcons.ts';
 import styles from '../../mapStyles';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
+import type { FlightPlan } from '../../types/FlightPlan';
 import { accentColor, grayColor } from '../../App.tsx';
-import { crimson, crimsonDark, indigo, indigoDark, violet, violetDark, blue, gray, grayDark, purple, purpleDark, slate, slateDark, brown, brownDark } from '@radix-ui/colors';
+import { crimson, crimsonDark, indigo, indigoDark, violet, violetDark, blue, gray, grayDark, purple, purpleDark, slate, slateDark, brown, brownDark, blueDark, mint } from '@radix-ui/colors';
 
 const FeatureList = ({
   features,
@@ -62,6 +63,7 @@ interface AeroMapProps {
   showTerrain: boolean;
   aeronauticalLayers: AeronauticalLayerState;
   basemapBrightness: number;
+  flightPlan: FlightPlan | null;
 }
 
 export const AeroMap: React.FC<AeroMapProps> = ({
@@ -69,6 +71,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   showTerrain,
   aeronauticalLayers,
   basemapBrightness,
+  flightPlan,
 }) => {
   const mapStyle = useMemo<string | maplibregl.StyleSpecification>(() => {
     // If the basemapUrlOrId is a URL, treat it as a style URL
@@ -97,7 +100,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   const addAirwayBgIcon = (map: maplibregl.Map, isDark: boolean) => {
     const definitions = [
       { id: 'airway-bg-gray', color: isDark ? grayDark.gray11 : gray.gray11 },
-      { id: 'airway-bg-blue', color: blue.blue9 },
+      { id: 'airway-bg-blue', color: blueDark.blue8 },
       { id: 'airway-bg-brown', color: isDark ? brownDark.brown9 : brown.brown9 }
     ];
 
@@ -130,6 +133,21 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     const svgHaloColor = isDarkMap ? '#000000' : '#ffffff';
     addAeroIcons(e.target, svgHaloColor, 0.95);
     addAirwayBgIcon(e.target, isDarkMap);
+  }, [isDarkMap]);
+
+  // Re-inject icons every time the base Map Style finishes mutating/swapping
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onStyleData = useCallback((e: any) => {
+    if (!mapRef.current) return;
+    // We only care when the style explicitly finishes loading its base sprite sheet
+    if (!e.target.isStyleLoaded()) return;
+    const svgHaloColor = isDarkMap ? '#000000' : '#ffffff';
+
+    // Only inject if missing
+    if (!mapRef.current.hasImage('airway-bg-blue')) {
+      addAeroIcons(mapRef.current, svgHaloColor, 0.95);
+      addAirwayBgIcon(mapRef.current, isDarkMap);
+    }
   }, [isDarkMap]);
 
   // Reload icons when dark/light mode changes
@@ -227,16 +245,22 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   }), [isDarkMap]);
 
   const airwaySymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => {
+    const minDetailZoom = Math.max(0, 10 - aeronauticalLayers.declutterLevel);
     return {
       'symbol-placement': 'line-center',
       'symbol-spacing': 500000,
       'icon-image': [
-        'match',
-        ['get', 'route_type'],
-        'O', 'airway-bg-gray',
-        'R', 'airway-bg-blue',
-        'H', 'airway-bg-brown',
-        'airway-bg-gray'
+        'step', ['zoom'],
+        '',
+        minDetailZoom,
+        [
+          'match',
+          ['get', 'route_type'],
+          'O', 'airway-bg-gray',
+          'R', 'airway-bg-blue',
+          'H', 'airway-bg-brown',
+          'airway-bg-gray'
+        ]
       ] as unknown as maplibregl.ExpressionSpecification,
       'icon-text-fit': 'both',
       'icon-text-fit-padding': [-2, 4, -2, 4],
@@ -248,7 +272,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       'text-rotation-alignment': 'map',
       'text-pitch-alignment': 'map'
     };
-  }, []);
+  }, [aeronauticalLayers.declutterLevel]);
 
   const airwayMeaLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => {
     const minDetailZoom = Math.max(0, 10 - aeronauticalLayers.declutterLevel);
@@ -292,16 +316,33 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     };
   }, [aeronauticalLayers.declutterLevel]);
 
-  const airwaySymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
-    'text-color': [
-      'match',
-      ['get', 'route_type'],
-      'O', isDarkMap ? '#000000' : '#ffffff', // Contests against gray11
-      'R', '#ffffff', // Contrasts against blue9
-      'H', '#ffffff', // Contrasts against brown9
-      isDarkMap ? '#000000' : '#ffffff'       // Default
-    ] as unknown as maplibregl.ExpressionSpecification
-  }), [isDarkMap]);
+  const airwaySymbolPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => {
+    const minDetailZoom = Math.max(0, 10 - aeronauticalLayers.declutterLevel);
+    return {
+      'text-color': [
+        'match',
+        ['get', 'route_type'],
+        'O', isDarkMap ? '#000000' : '#ffffff', // Contests against gray11
+        'R', '#ffffff', // Contrasts against blue9
+        'H', '#ffffff', // Contrasts against brown9
+        isDarkMap ? '#000000' : '#ffffff'       // Default
+      ] as unknown as maplibregl.ExpressionSpecification,
+      'text-halo-color': [
+        'match',
+        ['get', 'route_type'],
+        'O', isDarkMap ? grayDark.gray11 : gray.gray11,
+        'R', blueDark.blue7,
+        'H', isDarkMap ? brownDark.brown9 : brown.brown9,
+        isDarkMap ? grayDark.gray11 : gray.gray11
+      ] as unknown as maplibregl.ExpressionSpecification,
+      'text-halo-width': [
+        'step', ['zoom'],
+        1.5,
+        minDetailZoom,
+        0
+      ] as unknown as maplibregl.ExpressionSpecification
+    };
+  }, [isDarkMap, aeronauticalLayers.declutterLevel]);
 
   const airwayDetailPaint: maplibregl.SymbolLayerSpecification['paint'] = useMemo(() => ({
     'text-color': textColor,
@@ -360,7 +401,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       ['get', 'upper_limit']
     ] as unknown as maplibregl.ExpressionSpecification,
     'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
-    'text-size': 10,
+    'text-size': 12,
     'symbol-placement': 'line',
     'text-keep-upright': true,
     'text-max-angle': 30,
@@ -412,6 +453,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   return (
     <Map
       onLoad={onMapLoad}
+      onStyleData={onStyleData}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
       onClick={onMapClick}
@@ -426,6 +468,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       style={{ width: '100%', height: '100%' }}
       hash={true}
       mapLib={maplibregl}
+      terrain={showTerrain ? { source: 'aws-terrain', exaggeration: 1.2 } : undefined}
     >
       <NavigationControl position="bottom-right" visualizePitch={true} />
 
@@ -478,16 +521,18 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           maxzoom={14}
         />
       )}
+
+      {/* 3D Terrain Shading Material */}
       {showTerrain && (
         <Layer
           id="hillshade-layer"
           type="hillshade"
           source="aws-terrain"
           paint={{
-            'hillshade-exaggeration': 1,
-            'hillshade-shadow-color': '#000000',
-            'hillshade-highlight-color': '#FFFFFF',
-            'hillshade-accent-color': '#000000',
+            'hillshade-exaggeration': 0.8,
+            'hillshade-shadow-color': isDarkMap ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.2)',
+            'hillshade-highlight-color': isDarkMap ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.4)',
+            'hillshade-accent-color': 'rgba(0, 0, 0, 0.3)',
           }}
         />
       )}
@@ -551,6 +596,51 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           }}
         />
       </Source>
+
+      {/* Flight Plan */}
+      {flightPlan && (
+        <Source id="flight-plan-source" type="geojson" data={flightPlan.geometry}>
+          <Layer
+            id="flight-plan-line"
+            type="line"
+            filter={['==', '$type', 'LineString']}
+            paint={{
+              'line-color': isDarkMap ? '#ff00ff' : '#d000d0', // Magenta
+              'line-width': 4,
+              'line-opacity': 0.8
+            }}
+          />
+          <Layer
+            id="flight-plan-point"
+            type="circle"
+            filter={['==', '$type', 'Point']}
+            paint={{
+              'circle-radius': 6,
+              'circle-color': mint.mint9,
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff'
+            }}
+          />
+          <Layer
+            id="flight-plan-label"
+            type="symbol"
+            filter={['==', '$type', 'Point']}
+            layout={{
+              'text-field': ['get', 'id'],
+              'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+              'text-size': 12,
+              'text-offset': [0, 1.2],
+              'text-anchor': 'top',
+              'text-allow-overlap': false
+            }}
+            paint={{
+              'text-color': mint.mint11,
+              'text-halo-color': haloColor,
+              'text-halo-width': 2
+            }}
+          />
+        </Source>
+      )}
 
       {/* Aeronautical Data — separate PMTiles sources for optimal zoom ranges */}
       {aeronauticalLayers.showAll && (
