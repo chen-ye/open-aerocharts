@@ -270,9 +270,13 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     ] as unknown as maplibregl.ExpressionSpecification,
     'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
     'text-size': 10,
-    'text-anchor': 'center',
+    'symbol-placement': 'line',
+    'text-keep-upright': true,
+    'text-max-angle': 30,
     'text-allow-overlap': false,
-    'symbol-placement': 'point'
+    'text-ignore-placement': false,
+    'symbol-spacing': 350,
+    'text-offset': [0, 0]
   }), []);
 
   const getZoomRankFilter = (baseZooms: Record<number, number>): maplibregl.ExpressionSpecification => {
