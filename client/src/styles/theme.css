@@ -61,7 +61,7 @@ body {
 /* Desktop Styles */
 @media (min-width: 769px) {
   .map-feature-panel {
-    top: var(--size-4);
+    bottom: var(--size-4);
     left: var(--size-4);
     width: 320px;
     max-height: calc(100vh - 48px);
