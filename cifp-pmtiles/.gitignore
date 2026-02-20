@@ -28,11 +28,10 @@ env/
 venv/
 ENV/
 
-# Data and Outputs
+# Data
 FAACIFP18
 CIFP_*.zip
 *.pdf
 *.txt
 *.xlsx
 data/
-output/
