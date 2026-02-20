@@ -35,6 +35,16 @@ ADDS_DATASETS: dict[str, dict[str, str]] = {
         "output": "data/dof_raw.geojson",
         "label": "Digital Obstacle File (DOF)",
     },
+    "runways": {
+        "item_id": "bc80e5ca97804c2fbc0c10482377adf5",
+        "output": "data/am_runways_raw.geojson",
+        "label": "Airport Diagram Runways",
+    },
+    "taxiways": {
+        "item_id": "d1c02f9f3f7144af8ead3aca44961c59",
+        "output": "data/am_taxiways_raw.geojson",
+        "label": "Airport Diagram Taxiways",
+    },
 }
 
 

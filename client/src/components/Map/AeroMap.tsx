@@ -162,6 +162,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'waypoints-symbol',
     'localizers-symbol',
     'obstacles-symbol',
+    'am-runways-fill',
+    'am-taxiways-fill',
   ], []);
 
   React.useEffect(() => {
@@ -377,13 +379,22 @@ export const AeroMap: React.FC<AeroMapProps> = ({
         />
       </Source>
 
-      {/* Aeronautical Data from PMTiles */}
+      {/* Aeronautical Data — separate PMTiles sources for optimal zoom ranges */}
       {aeronauticalLayers.showAll && (
-        <Source
-          id="cifp"
-          type="vector"
-          url="pmtiles:///open-aerocharts/faa_ais.pmtiles"
-        />
+        <>
+          <Source id="src-airspaces" type="vector"
+            url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}airspaces.pmtiles`}
+          />
+          <Source id="src-boundary" type="vector"
+            url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}boundary.pmtiles`}
+          />
+          <Source id="src-other" type="vector"
+            url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}other_layers.pmtiles`}
+          />
+          <Source id="src-diagrams" type="vector"
+            url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}airport_diagrams.pmtiles`}
+          />
+        </>
       )}
       {aeronauticalLayers.showAll && (
         <>
@@ -395,7 +406,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-b"
                     type="line"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
                     paint={{ 'line-color': '#0040D9', 'line-width': 3 }}
@@ -403,7 +414,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-b-fill"
                     type="fill"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
                     paint={{ 'fill-opacity': 0 }}
@@ -411,7 +422,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-c"
                     type="line"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
                     paint={{ 'line-color': '#A8007F', 'line-width': 3 }}
@@ -419,7 +430,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-c-fill"
                     type="fill"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
                     paint={{ 'fill-opacity': 0 }}
@@ -427,7 +438,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-d"
                     type="line"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
                     paint={{ 'line-color': '#0040D9', 'line-width': 1.5, 'line-dasharray': [4, 4] }}
@@ -435,7 +446,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-d-fill"
                     type="fill"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
                     paint={{ 'fill-opacity': 0 }}
@@ -447,7 +458,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-sua"
                     type="line"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
                     paint={{ 'line-color': '#969696', 'line-width': 1.5 }}
@@ -455,7 +466,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-sua-fill"
                     type="fill"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
                     paint={{ 'fill-opacity': 0 }}
@@ -467,7 +478,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-trsa"
                     type="line"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'TRSA']]}
                     paint={{ 'line-color': '#969696', 'line-width': 1.5 }}
@@ -475,7 +486,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-trsa-fill"
                     type="fill"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'TRSA']]}
                     paint={{ 'fill-opacity': 0 }}
@@ -488,7 +499,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-vignette-blur"
                     type="line"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['==', ['get', 'type'], 'E']}
                     paint={{
@@ -501,7 +512,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-vignette-edge"
                     type="line"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['==', ['get', 'type'], 'E']}
                     paint={{
@@ -513,7 +524,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="airspaces-class-e-fill"
                     type="fill"
-                    source="cifp"
+                    source="src-airspaces"
                     source-layer="airspaces"
                     filter={['==', ['get', 'type'], 'E']}
                     paint={{ 'fill-opacity': 0 }}
@@ -528,14 +539,14 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             <>
               {aeronauticalLayers.enrouteLow && (
                 <>
-                  <Layer id="airways-low-line" type="line" source="cifp" source-layer="airways" filter={['==', ['get', 'structure'], 'Low']} paint={airwayLinePaint} />
-                  <Layer id="airways-low-symbol" type="symbol" source="cifp" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
+                  <Layer id="airways-low-line" type="line" source="src-other" source-layer="airways" filter={['==', ['get', 'structure'], 'Low']} paint={airwayLinePaint} />
+                  <Layer id="airways-low-symbol" type="symbol" source="src-other" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'Low']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
                 </>
               )}
               {aeronauticalLayers.enrouteHigh && (
                 <>
-                  <Layer id="airways-high-line" type="line" source="cifp" source-layer="airways" filter={['==', ['get', 'structure'], 'High']} paint={airwayLinePaint} />
-                  <Layer id="airways-high-symbol" type="symbol" source="cifp" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
+                  <Layer id="airways-high-line" type="line" source="src-other" source-layer="airways" filter={['==', ['get', 'structure'], 'High']} paint={airwayLinePaint} />
+                  <Layer id="airways-high-symbol" type="symbol" source="src-other" source-layer="airways" minzoom={6} filter={['==', ['get', 'structure'], 'High']} layout={{ ...airwaySymbolLayout, 'symbol-sort-key': 20 } as any} paint={airwaySymbolPaint} />
                 </>
               )}
             </>
@@ -546,7 +557,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             <Layer
               id="navaids-symbol"
               type="symbol"
-              source="cifp"
+              source="src-other"
               source-layer="navaids"
               layout={{
                 'icon-image': [
@@ -581,7 +592,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             <Layer
               id="waypoints-symbol"
               type="symbol"
-              source="cifp"
+              source="src-other"
               source-layer="waypoints"
               minzoom={7}
               layout={{
@@ -623,7 +634,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             <Layer
               id="localizers-symbol"
               type="symbol"
-              source="cifp"
+              source="src-other"
               source-layer="localizers"
               layout={{
                 'icon-image': 'navaid-vor',
@@ -652,7 +663,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             <Layer
               id="obstacles-symbol"
               type="symbol"
-              source="cifp"
+              source="src-other"
               source-layer="obstacles"
               minzoom={7}
               layout={{
@@ -695,12 +706,81 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           {/* Airports */}
           {aeronauticalLayers.showAirportsMaster && (
             <>
+              {/* Airport Diagram Polygons (high zoom) */}
+              {showRunways && (
+                <>
+                  <Layer
+                    id="am-taxiways-fill"
+                    type="fill"
+                    source="src-diagrams"
+                    source-layer="am_taxiways"
+                    minzoom={12}
+                    paint={{
+                      'fill-color': isDarkMap ? '#3a3a4a' : '#bbbbbb',
+                      'fill-opacity': 0.7
+                    }}
+                  />
+                  <Layer
+                    id="am-taxiways-outline"
+                    type="line"
+                    source="src-diagrams"
+                    source-layer="am_taxiways"
+                    minzoom={12}
+                    paint={{
+                      'line-color': isDarkMap ? '#555566' : '#999999',
+                      'line-width': 0.5
+                    }}
+                  />
+                  <Layer
+                    id="am-runways-fill"
+                    type="fill"
+                    source="src-diagrams"
+                    source-layer="am_runways"
+                    minzoom={12}
+                    paint={{
+                      'fill-color': isDarkMap ? '#555566' : '#666666',
+                      'fill-opacity': 0.85
+                    }}
+                  />
+                  <Layer
+                    id="am-runways-outline"
+                    type="line"
+                    source="src-diagrams"
+                    source-layer="am_runways"
+                    minzoom={12}
+                    paint={{
+                      'line-color': isDarkMap ? '#777788' : '#444444',
+                      'line-width': 1
+                    }}
+                  />
+                  <Layer
+                    id="am-runways-label"
+                    type="symbol"
+                    source="src-diagrams"
+                    source-layer="am_runways"
+                    minzoom={13}
+                    layout={{
+                      'text-field': ['get', 'rwy_id'],
+                      'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
+                      'text-size': 10,
+                      'text-allow-overlap': false,
+                      'symbol-placement': 'point'
+                    }}
+                    paint={{
+                      'text-color': isDarkMap ? '#cccccc' : '#333333',
+                      'text-halo-color': haloColor,
+                      'text-halo-width': 1
+                    }}
+                  />
+                </>
+              )}
               {showRunways && (
                 <Layer
                   id="runways-line"
                   type="line"
-                  source="cifp"
+                  source="src-other"
                   source-layer="runways"
+                  maxzoom={12}
                   paint={{
                     'line-color': '#444444',
                     'line-width': 4
@@ -708,22 +788,22 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 />
               )}
               {aeronauticalLayers.publicAirports && (
-                <Layer id="airports-public" type="symbol" source="cifp" source-layer="airports" filter={['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military']]]} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 1 } as any} paint={airportSymbolPaint} />
+                <Layer id="airports-public" type="symbol" source="src-other" source-layer="airports" filter={['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military']]]} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 1 } as any} paint={airportSymbolPaint} />
               )}
               {aeronauticalLayers.privateAirports && (
-                <Layer id="airports-private" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'private']} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 2 } as any} paint={airportSymbolPaint} />
+                <Layer id="airports-private" type="symbol" source="src-other" source-layer="airports" filter={['==', ['get', 'facility_type'], 'private']} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 2 } as any} paint={airportSymbolPaint} />
               )}
               {aeronauticalLayers.heliports && (
-                <Layer id="airports-heliport" type="symbol" source="cifp" source-layer="airports" filter={['==', ['get', 'facility_type'], 'heliport']} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 3 } as any} paint={airportSymbolPaint} />
+                <Layer id="airports-heliport" type="symbol" source="src-other" source-layer="airports" filter={['==', ['get', 'facility_type'], 'heliport']} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 3 } as any} paint={airportSymbolPaint} />
               )}
               {aeronauticalLayers.otherAirports && (
-                <Layer id="airports-other" type="symbol" source="cifp" source-layer="airports" filter={['!', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military', 'private', 'heliport']]]]} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 4 } as any} paint={airportSymbolPaint} />
+                <Layer id="airports-other" type="symbol" source="src-other" source-layer="airports" filter={['!', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military', 'private', 'heliport']]]]} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 4 } as any} paint={airportSymbolPaint} />
               )}
               {/* Fuel Ticks Overlay */}
               <Layer
                 id="airports-fuel-ticks"
                 type="symbol"
-                source="cifp"
+                source="src-other"
                 source-layer="airports"
                 filter={['==', ['get', 'has_fuel'], true]}
                 layout={{

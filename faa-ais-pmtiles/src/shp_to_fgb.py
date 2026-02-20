@@ -323,6 +323,98 @@ def convert_obstacles(
 
 
 # ---------------------------------------------------------------------------
+# Airport Diagram Runways (ADDS GeoJSON)
+# ---------------------------------------------------------------------------
+
+def convert_am_runways(
+    raw_path: str = "data/am_runways_raw.geojson",
+    output: str = "data/am_runways.fgb",
+) -> None:
+    """Convert Airport Diagram Runway GeoJSON to FlatGeobuf."""
+    if not os.path.exists(raw_path):
+        print(f"  AM Runway file not found at {raw_path}")
+        return
+
+    print("Processing Airport Diagram Runways...")
+    with open(raw_path) as f:
+        data = json.load(f)
+
+    features: list[geojson.Feature] = []
+    for ft in data.get("features", []):
+        raw = ft.get("properties", {})
+        geom = ft.get("geometry")
+        if geom is None:
+            continue
+
+        # SURFACE: 1=paved, 2=unpaved, etc.
+        # RWY_OPER: 1=closed, 2=open
+        features.append(geojson.Feature(
+            geometry=geom,
+            properties={
+                "faa_id": (raw.get("FAA_ID") or "").strip(),
+                "icao_id": (raw.get("ICAO_ID") or "").strip(),
+                "rwy_id": (raw.get("RWY_ID") or "").strip(),
+                "surface": (raw.get("SURFACE") or "").strip(),
+                "rwy_oper": (raw.get("RWY_OPER") or "").strip(),
+                "rank": 2,
+            },
+        ))
+
+    os.makedirs(os.path.dirname(output), exist_ok=True)
+    gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
+    gdf.geometry = gdf.geometry.force_2d()
+    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
+    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+
+    print(f"  Wrote {len(features)} runway features to {output}")
+
+
+# ---------------------------------------------------------------------------
+# Airport Diagram Taxiways (ADDS GeoJSON)
+# ---------------------------------------------------------------------------
+
+def convert_am_taxiways(
+    raw_path: str = "data/am_taxiways_raw.geojson",
+    output: str = "data/am_taxiways.fgb",
+) -> None:
+    """Convert Airport Diagram Taxiway GeoJSON to FlatGeobuf."""
+    if not os.path.exists(raw_path):
+        print(f"  AM Taxiway file not found at {raw_path}")
+        return
+
+    print("Processing Airport Diagram Taxiways...")
+    with open(raw_path) as f:
+        data = json.load(f)
+
+    features: list[geojson.Feature] = []
+    for ft in data.get("features", []):
+        raw = ft.get("properties", {})
+        geom = ft.get("geometry")
+        if geom is None:
+            continue
+
+        features.append(geojson.Feature(
+            geometry=geom,
+            properties={
+                "faa_id": (raw.get("FAA_ID") or "").strip(),
+                "icao_id": (raw.get("ICAO_ID") or "").strip(),
+                "designator": (raw.get("DESIGNATOR") or "").strip(),
+                "surface": (raw.get("SURFACE") or "").strip(),
+                "twy_oper": (raw.get("TWY_OPER") or "").strip(),
+                "rank": 3,
+            },
+        ))
+
+    os.makedirs(os.path.dirname(output), exist_ok=True)
+    gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
+    gdf.geometry = gdf.geometry.force_2d()
+    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
+    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+
+    print(f"  Wrote {len(features)} taxiway features to {output}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -331,6 +423,8 @@ def main() -> None:
     convert_boundary_airspace()
     convert_holding_patterns()
     convert_obstacles()
+    convert_am_runways()
+    convert_am_taxiways()
 
 
 if __name__ == "__main__":

@@ -39,8 +39,7 @@ shapefiles/
 data/
 
 # PMTiles
-**/*.pmtiles
-!output/cifp_data.pmtiles
+!output/faa_ais.pmtiles
 *.pmtiles-journal
 
 # Test files

@@ -15,8 +15,8 @@ The project is split into two packages:
 
 - **3D Terrain**: Global AWS Open Data Registry Terrarium Tiles integrated
   natively with MapLibre mountain hillshading.
-- **Aeronautical Data**: Complete US CIFP-derived vector tiles providing
-  airspaces, airways, navaids, and airports.
+- **Aeronautical Data**: FAA AIS-derived vector tiles providing airspaces,
+  airways, navaids, and airports.
 - **Basemap**: CartoCDN-derived basemaps.
 
 ## Getting Started

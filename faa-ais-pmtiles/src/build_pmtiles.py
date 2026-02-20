@@ -8,6 +8,15 @@ from src import shp_to_fgb
 from src import fetch_nasr
 from src import cifp_to_fgb
 
+# Each PMTiles file is served directly to the frontend — no tile-join needed.
+# This allows each file to use its own optimal zoom range.
+PMTILES_FILES = [
+    "airspaces",
+    "boundary",
+    "other_layers",
+    "airport_diagrams",
+]
+
 def run_cmd(cmd):
     print(f"Running: {cmd}")
     subprocess.run(cmd, shell=True, check=True)
@@ -70,27 +79,29 @@ def main():
         "-L holding_patterns:data/holding_patterns.fgb "
         "-L obstacles:data/obstacles.fgb"
     )
+    cmd_airport_diagrams = (
+        "uv run tippecanoe -Z10 -z14 -o output/airport_diagrams.pmtiles "
+        "--no-feature-limit --no-tile-size-limit -f "
+        "-L am_runways:data/am_runways.fgb "
+        "-L am_taxiways:data/am_taxiways.fgb"
+    )
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        f1 = executor.submit(run_cmd, cmd_airspaces)
-        f2 = executor.submit(run_cmd, cmd_boundary)
-        f3 = executor.submit(run_cmd, cmd_other)
-        concurrent.futures.wait([f1, f2, f3])
-        f1.result()
-        f2.result()
-        f3.result()
+        futures = [
+            executor.submit(run_cmd, cmd_airspaces),
+            executor.submit(run_cmd, cmd_boundary),
+            executor.submit(run_cmd, cmd_other),
+            executor.submit(run_cmd, cmd_airport_diagrams),
+        ]
+        concurrent.futures.wait(futures)
+        for f in futures:
+            f.result()
 
-    print("Step 4: Joining PMTiles...")
-    cmd_join = (
-        "uv run tile-join -o output/faa_ais.pmtiles -f "
-        "output/airspaces.pmtiles output/boundary.pmtiles output/other_layers.pmtiles"
-    )
-    run_cmd(cmd_join)
-
-    print("Pipeline complete! Generated faa_ais.pmtiles")
+    print("Pipeline complete!")
 
     print("Symlinking output to client/public/...")
-    run_cmd("ln -sf ../../faa-ais-pmtiles/output/faa_ais.pmtiles ../client/public/faa_ais.pmtiles")
+    for name in PMTILES_FILES:
+        run_cmd(f"ln -sf ../../faa-ais-pmtiles/output/{name}.pmtiles ../client/public/{name}.pmtiles")
     print("Done.")
 
 if __name__ == "__main__":
