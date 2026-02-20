@@ -7,14 +7,14 @@ import { addVfrIcons } from '../../utils/vfrIcons';
 import styles from '../../mapStyles';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 
-interface VfrMapProps {
+interface AeroMapProps {
   basemapUrlOrId: string;
   showTerrain: boolean;
   aeronauticalLayers: AeronauticalLayerState;
   basemapBrightness: number;
 }
 
-export const VfrMap: React.FC<VfrMapProps> = ({
+export const AeroMap: React.FC<AeroMapProps> = ({
   basemapUrlOrId,
   showTerrain,
   aeronauticalLayers,

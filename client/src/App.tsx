@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { VfrMap } from './components/Map/VfrMap';
+import { AeroMap } from './components/Map/AeroMap';
 import { SettingsPanel } from './components/SettingsPanel/SettingsPanel';
 import { defaultAeronauticalState } from './types/AeronauticalLayerState';
 import type { AeronauticalLayerState } from './types/AeronauticalLayerState';
@@ -114,7 +114,7 @@ function App() {
           basemapBrightness={basemapBrightness}
           setBasemapBrightness={setBasemapBrightness}
         />
-        <VfrMap
+        <AeroMap
           basemapUrlOrId={basemapUrlOrId}
           showTerrain={showTerrain}
           aeronauticalLayers={aeronauticalLayers}
