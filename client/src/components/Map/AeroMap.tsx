@@ -276,7 +276,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'text-allow-overlap': false,
     'text-ignore-placement': false,
     'symbol-spacing': 350,
-    'text-offset': [0, 0]
+    'text-offset': [0, 1]
   }), []);
 
   const getZoomRankFilter = (baseZooms: Record<number, number>): maplibregl.ExpressionSpecification => {
