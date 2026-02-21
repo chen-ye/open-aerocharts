@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, Switch, Text, Separator, Slider } from '@radix-ui/themes';
-import { violet, crimson, indigo, slate, gray, grayDark, plum, cyan, blue, blueDark } from '@radix-ui/colors';
+import { violet, crimson, indigo, slate, gray, grayDark, plum, blueDark } from '@radix-ui/colors';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 import { grayColor } from '../../App.tsx';
 
