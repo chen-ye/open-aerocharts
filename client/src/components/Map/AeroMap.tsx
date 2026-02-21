@@ -1003,9 +1003,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     filter={['all', ['==', ['get', 'type'], 'E'], ['any', ['==', ['get', 'lower_limit'], '0'], ['==', ['get', 'lower_limit'], 'SFC']]]}
                     paint={{
                       'line-color': crimson.crimson9, // crimson-9
-                      'line-width': 1,
-                      'line-offset': 1,
-                      'line-dasharray': [12, 12]
+                       'line-width': 1,
+                       'line-offset': 1,
+                      'line-dasharray': [8, 8]
                     }}
                   />
                   <Layer
