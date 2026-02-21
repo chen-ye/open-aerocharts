@@ -8,7 +8,7 @@ import type { AeronauticalLayerState } from './types/AeronauticalLayerState';
 import type { FlightPlan, SearchIndex } from './types/FlightPlan';
 import { Theme } from '@radix-ui/themes';
 
-export const accentColor = "purple" as const;
+export const accentColor = "iris" as const;
 export const grayColor = "gray" as const;
 
 function App() {
