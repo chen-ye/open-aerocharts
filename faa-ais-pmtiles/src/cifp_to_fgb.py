@@ -198,9 +198,24 @@ def build_pmtiles_fgb(cifp_path):
             else:
                 rank = 5
 
+            # Parse NAVAID type from class (e.g., 'V' for VOR/VORTAC/VORDME, 'T' for TACAN, 'D' for DME)
+            nav_type = 'vhf'
+            if nav_class.startswith('V'):
+                if 'T' in nav_class:
+                    nav_type = 'vortac'
+                elif 'D' in nav_class:
+                    nav_type = 'vordme'
+                else:
+                    nav_type = 'vor'
+            elif nav_class.startswith('T') or nav_class.startswith('M'):
+                nav_type = 'tacan'
+            elif nav_class.startswith('D'):
+                nav_type = 'dme'
+            # (Note: ILS/Localizers are handled separately)
+
             navaid_features.append(geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
-                properties={'id': ident, 'name': p.get('vhf_name'), 'frequency': p.get('frequency'), 'type': 'vhf', 'rank': rank}
+                properties={'id': ident, 'name': p.get('vhf_name'), 'frequency': p.get('frequency'), 'type': nav_type, 'rank': rank}
             ))
             if ident:
                 fixes[ident] = (lon, lat, elev)
