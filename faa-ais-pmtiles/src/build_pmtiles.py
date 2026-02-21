@@ -14,7 +14,6 @@ PMTILES_FILES = [
     "airspaces",
     "enroute",
     "boundary",
-    "other_layers",
     "airport_diagrams",
 ]
 
