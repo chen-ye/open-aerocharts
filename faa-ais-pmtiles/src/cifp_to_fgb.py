@@ -157,7 +157,8 @@ def build_pmtiles_fgb(cifp_path):
 
             feat = geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
-                properties=properties
+                properties=properties,
+                tippecanoe={ 'minzoom': 0 if rank == 1 else (rank + 1) } # Root-level control
             )
 
             airport_features_dict[ident] = feat
