@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Card, Flex, TextArea, Button, Heading, Text, IconButton, ScrollArea, Table, Badge } from '@radix-ui/themes';
-import { Plane, X } from 'lucide-react';
+import { Plane, X, Github } from 'lucide-react';
 import type { SearchIndex, FlightPlan } from '../../types/FlightPlan';
 import { parseRoute } from '../../utils/routeParser';
 import { grayColor } from '../../App.tsx';
@@ -132,20 +132,37 @@ export const FlightPlanPanel: React.FC<FlightPlanPanelProps> = ({
   if (!isOpen) {
     return (
       <Box className="desktop-only" position="absolute" top="4" left="4" style={{ zIndex: 10 }}>
-        <IconButton
-          size="3"
-          variant="surface"
-          color={grayColor}
-          onClick={() => setIsOpen(true)}
-          title="Flight Plan"
-          style={{
-            backgroundColor: 'var(--glass-bg)',
-            backdropFilter: 'blur(var(--glass-blur))',
-            boxShadow: '0 0 0 1px var(--glass-border)'
-          }}
-        >
-          <Plane size={20} />
-        </IconButton>
+        <Flex gap="2">
+          <IconButton
+            size="3"
+            variant="surface"
+            color={grayColor}
+            onClick={() => setIsOpen(true)}
+            title="Flight Plan"
+            style={{
+              backgroundColor: 'var(--glass-bg)',
+              backdropFilter: 'blur(var(--glass-blur))',
+              boxShadow: '0 0 0 1px var(--glass-border)'
+            }}
+          >
+            <Plane size={20} />
+          </IconButton>
+          <a href="https://github.com/chen-ye/open-aerocharts" target="_blank" rel="noopener noreferrer">
+            <IconButton
+              size="3"
+              variant="surface"
+              color={grayColor}
+              title="View on GitHub"
+              style={{
+                backgroundColor: 'var(--glass-bg)',
+                backdropFilter: 'blur(var(--glass-blur))',
+                boxShadow: '0 0 0 1px var(--glass-border)'
+              }}
+            >
+              <Github size={20} />
+            </IconButton>
+          </a>
+        </Flex>
       </Box>
     );
   }
