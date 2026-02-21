@@ -154,6 +154,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     }
   }, [setSelectedFeatures]);
 
+  const onMapContextMenu = useCallback(() => {
+    // Note: react-map-gl's contextmenu event prevents default behavior by default if we use it this way
+    setSelectedFeatures(null);
+  }, [setSelectedFeatures]);
+
   const interactiveLayerIds = useMemo(() => [
     'airspaces-class-b',
     'airspaces-class-b-fill',
@@ -425,6 +430,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
       onClick={onMapClick}
+      onContextMenu={onMapContextMenu}
       interactiveLayerIds={aeronauticalLayers.showAll ? interactiveLayerIds : []}
       initialViewState={{
         longitude:  -121.596667, // San Martin Airport
