@@ -624,7 +624,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               'text-allow-overlap': false
             }}
             paint={{
-              'text-color': cyan.cyan11,
+              'text-color': cyan.cyan9,
               'text-halo-color': haloColor,
               'text-halo-width': 2
             }}
@@ -986,7 +986,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           )}
 
           {/* Airways */}
-          {aeronauticalLayers.showAirwaysMaster && (
+          {aeronauticalLayers.showAirwaysMaster && aeronauticalLayers.airways && (
             <>
               {aeronauticalLayers.enrouteLow && (
                 <>
