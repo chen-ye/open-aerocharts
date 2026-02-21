@@ -1178,6 +1178,21 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           {/* Airports */}
           {aeronauticalLayers.showAirportsMaster && (
             <>
+              {/* Fuel Ticks Underlay */}
+              <Layer
+                id="airports-fuel-ticks"
+                type="symbol"
+                source="src-airports-navaids"
+                source-layer="airports"
+                filter={["all", ["==", ["get", "has_fuel"], true], getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 })] as maplibregl.ExpressionSpecification}
+                layout={{
+                  'icon-image': 'apt-fuel-ticks',
+                  'icon-size': 0.8,
+                  'icon-allow-overlap': true,
+                  'icon-ignore-placement': true,
+                  'symbol-sort-key': 1
+                }}
+              />
               {aeronauticalLayers.publicAirports && (
                 <>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -1202,21 +1217,6 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer id="airports-other" type="symbol" source="src-airports-navaids" source-layer="airports" filter={['all', ['!', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military', 'private', 'heliport']]]], getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 4 } as any} paint={airportSymbolPaint} />
                 </>
               )}
-              {/* Fuel Ticks Overlay */}
-              <Layer
-                id="airports-fuel-ticks"
-                type="symbol"
-                source="src-airports-navaids"
-                source-layer="airports"
-                filter={["all", ["==", ["get", "has_fuel"], true], getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 })] as maplibregl.ExpressionSpecification}
-                layout={{
-                  'icon-image': 'apt-fuel-ticks',
-                  'icon-size': 0.8,
-                  'icon-allow-overlap': true,
-                  'icon-ignore-placement': true,
-                  'symbol-sort-key': 1
-                }}
-              />
             </>
           )}
         </>
