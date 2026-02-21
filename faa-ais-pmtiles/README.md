@@ -237,20 +237,26 @@ Example:
 
 1. **Install Prerequisites**: `tippecanoe`, `uv`
 2. **Execute Full Pipeline**:
+
    ```bash
    uv run build-pmtiles
    ```
+
 3. **Data Quality Validation**:
+
    ```bash
    uv run spot-check
    ```
+
    _Note: This utility decodes key tiles to ensure high-priority features (like
    KSJC) were not dropped during Phase 2._
 
 4. **Enumeration Discovery**:
+
    ```bash
    uv run list-enums
    ```
+
    _Note: Use this to view all possible unique values for categorical properties
    (like `type` or `lighting`) across all datasets._
 
