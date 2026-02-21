@@ -209,7 +209,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       7, 2,
       10, 4
     ] as unknown as maplibregl.ExpressionSpecification,
-    'line-opacity': 0.6
+    'line-opacity': [
+      'interpolate', ['linear'], ['zoom'],
+      3, 0.2,
+      7, 0.6
+    ] as unknown as maplibregl.ExpressionSpecification
   }), [isDarkMap]);
 
   const airwaySymbolLayout: maplibregl.SymbolLayerSpecification['layout'] = useMemo(() => {
@@ -334,13 +338,25 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       'heliport', 'apt-helipad',
       'apt-ifr-civil' // default/fallback
     ] as unknown as maplibregl.ExpressionSpecification,
-    'icon-size': 0.8,
+    'icon-size': [
+      'interpolate', ['linear'], ['zoom'],
+      4, 0.5,
+      8, 0.8
+    ] as unknown as maplibregl.ExpressionSpecification,
     'icon-allow-overlap': true,
     'icon-ignore-placement': false,
     'text-field': ['get', 'id'],
     'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
-    'text-size': 12,
-    'text-offset': [0, 1.2],
+    'text-size': [
+      'interpolate', ['linear'], ['zoom'],
+      4, 9,
+      8, 12
+    ] as unknown as maplibregl.ExpressionSpecification,
+    'text-offset': [
+      'interpolate', ['linear'], ['zoom'],
+      4, ['literal', [0, 0.7]],
+      8, ['literal', [0, 1.2]]
+    ] as unknown as maplibregl.ExpressionSpecification,
     'text-anchor': 'top',
     'text-allow-overlap': false,
     'text-ignore-placement': false,
@@ -975,7 +991,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     filter={['all', ['==', ['get', 'type'], 'E'], ['!=', ['get', 'lower_limit'], '0'], ['!=', ['get', 'lower_limit'], 'SFC']]}
                     paint={{
                       'line-color': crimson.crimson9, // crimson-9
-                      'line-width': ['interpolate', ['linear'], ['zoom'], 4, 6, 10, 12] as unknown as maplibregl.ExpressionSpecification,
+                      'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1, 10, 12] as unknown as maplibregl.ExpressionSpecification,
                       'line-opacity': 0.1
                     }}
                   />

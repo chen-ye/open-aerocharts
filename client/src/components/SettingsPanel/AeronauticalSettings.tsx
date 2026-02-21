@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, Switch, Text, Separator, Slider } from '@radix-ui/themes';
-import { violet, crimson, indigo, slate, gray, grayDark, plum } from '@radix-ui/colors';
+import { violet, crimson, indigo, slate, gray, grayDark, plum, cyan, blue, blueDark } from '@radix-ui/colors';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 import { grayColor } from '../../App.tsx';
 
@@ -198,8 +198,18 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
               />
             </Flex>
             <Flex direction="column" gap="2">
-              <ToggleRow label="Enroute High" checked={layers.enrouteHigh} disabled={!layers.showAirwaysMaster} onChange={(c: boolean) => updateLayer('enrouteHigh', c)} />
-              <ToggleRow label="Enroute Low" checked={layers.enrouteLow} disabled={!layers.showAirwaysMaster} onChange={(c: boolean) => updateLayer('enrouteLow', c)} />
+              <ToggleRow label="Enroute High" legend={
+                <Flex gap="1">
+                  <LegendBadge label="Q" color={blueDark.blue8} textColor={gray.gray1} />
+                  <LegendBadge label="J" color={gray.gray9} textColor={grayDark.gray1} />
+                </Flex>
+              } checked={layers.enrouteHigh} disabled={!layers.showAirwaysMaster} onChange={(c: boolean) => updateLayer('enrouteHigh', c)} />
+              <ToggleRow label="Enroute Low" legend={
+                <Flex gap="1">
+                  <LegendBadge label="T" color={blueDark.blue8} textColor={gray.gray1} />
+                  <LegendBadge label="V" color={gray.gray9} textColor={grayDark.gray1} />
+                </Flex>
+              }checked={layers.enrouteLow} disabled={!layers.showAirwaysMaster} onChange={(c: boolean) => updateLayer('enrouteLow', c)} />
               <ToggleRow label="Airways" checked={layers.airways} disabled={!layers.showAirwaysMaster} onChange={(c: boolean) => updateLayer('airways', c)} />
               <ToggleRow
                 label="Navaids"
