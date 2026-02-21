@@ -5,5 +5,5 @@
       <path d="M7.5 7.5L16.5 16.5M16.5 7.5L7.5 16.5" stroke="black" stroke-width="3" stroke-linecap="round"/>
     </mask>
   </defs>
-  <circle cx="12" cy="12" r="9" fill="#e93d82" mask="url(#mask-x)" />
+  <circle cx="12" cy="12" r="9" fill="#e93d82" />
 </svg>

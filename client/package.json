@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@carbon/icon-helpers": "^10.72.0",
+    "@carbon/icons": "^11.75.0",
     "@mapbox/maki": "^8.2.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/themes": "^3.3.0",
