@@ -116,6 +116,7 @@ def get_airport_metadata() -> dict[str, dict]:
                     continue
 
                 arpt_id = arpt_id.strip()
+                icao_id = (row.get("ICAO_ID") or "").strip()
                 fuel_types = row.get("FUEL_TYPES", "").strip()
                 twr_type = row.get("TWR_TYPE_CODE", "").strip()
                 far_139 = row.get("FAR_139_TYPE_CODE", "").strip()
@@ -126,6 +127,8 @@ def get_airport_metadata() -> dict[str, dict]:
                     "far_139": far_139
                 }
                 metadata_lookup[arpt_id] = metadata
+                if icao_id:
+                    metadata_lookup[icao_id] = metadata
 
     print(f"Found metadata for {len(metadata_lookup)} airports.")
 

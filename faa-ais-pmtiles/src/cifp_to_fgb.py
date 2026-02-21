@@ -115,12 +115,14 @@ def build_pmtiles_fgb(cifp_path):
                 fac_type = 'civil_hard' if surface == 'H' else 'civil_soft'
 
             ident = p.get('airport_id', '').strip()
-            # Normalize ID for NASR lookup (US mainland uses K prefix for ICAO 4-letter)
-            nasr_id = ident
-            if ident.startswith('K') and len(ident) == 4:
-                nasr_id = ident[1:]
+            # Try direct lookup (now robust with ICAO_ID indexing)
+            meta = airport_metadata.get(ident)
 
-            meta = airport_metadata.get(ident) or airport_metadata.get(nasr_id) or {}
+            # Fallback for continental US if ICAO_ID was missing from NASR but present in CIFP
+            if not meta and ident.startswith('K') and len(ident) == 4:
+                meta = airport_metadata.get(ident[1:])
+
+            meta = meta or {}
             has_fuel = meta.get('has_fuel', False)
             has_tower = meta.get('has_tower', False)
             far_139 = meta.get('far_139', '')
