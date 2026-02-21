@@ -21,6 +21,8 @@ cifp-to-fgb = "src.cifp_to_fgb:main"
 fetch-airspace-shp = "src.fetch_airspace_shp:main"
 shp-to-fgb = "src.shp_to_fgb:main"
 build-pmtiles = "src.build_pmtiles:main"
+spot-check = "src.spot_check:main"
+list-enums = "src.list_enums:main"
 
 [build-system]
 requires = ["hatchling"]

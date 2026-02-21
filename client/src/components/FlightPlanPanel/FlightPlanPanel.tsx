@@ -74,7 +74,7 @@ export const FlightPlanContent: React.FC<FlightPlanContentProps> = ({
         <Accordion type="single" collapsible defaultValue="waypoints">
           <AccordionItem value="waypoints">
             <AccordionTrigger>
-              Waypoints ({activePlan.points.length})
+              Fixes ({activePlan.points.length})
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea type="auto" scrollbars="vertical" style={{ maxHeight: 200 }}>

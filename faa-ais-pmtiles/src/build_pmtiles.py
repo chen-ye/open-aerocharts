@@ -57,26 +57,34 @@ def main():
     print("Step 3: Compiling into PMTiles with tippecanoe concurrently...")
     os.makedirs("output", exist_ok=True)
 
+    cmd_airspaces = (
+        "uv run tippecanoe -Z0 -z10 -o output/airspaces.pmtiles "
+        "--no-feature-limit --no-tile-size-limit -f "
+        "-l airspaces data/airspaces.fgb"
+    )
     cmd_enroute = (
         "uv run tippecanoe -Z0 -z8 -o output/enroute.pmtiles "
         "--no-feature-limit --no-tile-size-limit -f "
         "-L airways:data/airways.fgb "
-        "-L airspaces:data/airspaces.fgb"
+        "-L airspaces:data/airspaces_e.fgb"
     )
     cmd_boundary = (
         "uv run tippecanoe -Z0 -z8 -o output/boundary.pmtiles "
         "--no-feature-limit --no-tile-size-limit -f "
         "-l boundary_airspace data/boundary_airspace.fgb"
     )
-    cmd_other = (
-        "uv run tippecanoe -zg -o output/other_layers.pmtiles --drop-densest-as-needed -f "
+    cmd_airports_navaids = (
+        "uv run tippecanoe -Z0 -z10 -o output/airports_navaids.pmtiles --no-feature-limit --no-tile-size-limit -f "
         "--order-by=rank --order-smallest-first "
-        "-L airports:data/airports.fgb "
+        "-L airports:data/airports.geojson "
         "-L navaids:data/navaids.fgb "
-        "-L waypoints:data/waypoints.fgb "
-        "-L procedures:data/procedures.fgb "
         "-L runways:data/runways.fgb "
         "-L localizers:data/localizers.fgb "
+    )
+    cmd_waypoints_obstacles = (
+        "uv run tippecanoe -Z0 -z10 -o output/waypoints_obstacles.pmtiles --drop-fraction-as-needed -f "
+        "--order-by=rank --order-smallest-first "
+        "-L waypoints:data/waypoints.fgb "
         "-L holding_patterns:data/holding_patterns.fgb "
         "-L obstacles:data/obstacles.fgb"
     )
@@ -89,9 +97,11 @@ def main():
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [
+            executor.submit(run_cmd, cmd_airspaces),
             executor.submit(run_cmd, cmd_enroute),
             executor.submit(run_cmd, cmd_boundary),
-            executor.submit(run_cmd, cmd_other),
+            executor.submit(run_cmd, cmd_airports_navaids),
+            executor.submit(run_cmd, cmd_waypoints_obstacles),
             executor.submit(run_cmd, cmd_airport_diagrams),
         ]
         concurrent.futures.wait(futures)
@@ -101,8 +111,12 @@ def main():
     print("Pipeline complete!")
 
     print("Symlinking output to client/public/...")
-    for name in PMTILES_FILES:
-        run_cmd(f"ln -sf ../../faa-ais-pmtiles/output/{name}.pmtiles ../client/public/{name}.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/airspaces.pmtiles ../client/public/airspaces.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/enroute.pmtiles ../client/public/enroute.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/boundary.pmtiles ../client/public/boundary.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/airports_navaids.pmtiles ../client/public/airports_navaids.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/waypoints_obstacles.pmtiles ../client/public/waypoints_obstacles.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/airport_diagrams.pmtiles ../client/public/airport_diagrams.pmtiles")
     print("Done.")
 
 if __name__ == "__main__":

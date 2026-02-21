@@ -96,10 +96,15 @@ def build_pmtiles_fgb(cifp_path):
     airport_features = []
 
     print("Extracting Airports...", flush=True)
+    airport_features_dict = {}
     for a in c.get_airports():
         p = a.to_dict()['primary']
         lat, lon = p.get('lat'), p.get('lon')
         if lat is not None and lon is not None:
+            ident = p.get('airport_id', '').strip()
+            if not ident:
+                continue
+
             elev = float(p.get('elevation') or 0.0)
 
             surface = p.get('longest_surface')
@@ -150,14 +155,16 @@ def build_pmtiles_fgb(cifp_path):
                 'rank': rank
             }
 
-            airport_features.append(geojson.Feature(
+            feat = geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
                 properties=properties
-            ))
-            if p.get('airport_id'):
-                fixes[p.get('airport_id').strip()] = (lon, lat, elev)
+            )
 
-    save_fgb(airport_features, 'data/airports.fgb')
+            airport_features_dict[ident] = feat
+            fixes[ident] = (lon, lat, elev)
+
+    with open('data/airports.geojson', 'w') as f:
+        geojson.dump(geojson.FeatureCollection(list(airport_features_dict.values())), f)
 
     print("Extracting Navaids...", flush=True)
     navaid_features = []

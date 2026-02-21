@@ -140,8 +140,8 @@ def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]
 # Airspaces (merged output)
 # ---------------------------------------------------------------------------
 
-def convert_airspaces(output: str = "data/airspaces.fgb") -> None:
-    """Merge controlled airspace + SUA into a single FlatGeobuf file, dissolving overlaps."""
+def convert_airspaces(output_critical: str = "data/airspaces.fgb", output_e: str = "data/airspaces_e.fgb") -> None:
+    """Merge controlled airspace + SUA into separate High-Priority and Class E files."""
     print("Processing controlled airspace (shapefiles)...")
     controlled = convert_class_airspace()
 
@@ -149,32 +149,33 @@ def convert_airspaces(output: str = "data/airspaces.fgb") -> None:
     sua = convert_sua()
 
     all_features = controlled + sua
-    os.makedirs(os.path.dirname(output), exist_ok=True)
+    os.makedirs(os.path.dirname(output_critical), exist_ok=True)
 
     gdf = gpd.GeoDataFrame.from_features(all_features, crs="EPSG:4326")
-    # Force 2D
     gdf.geometry = gdf.geometry.force_2d()
-
-    # Clean topological errors (like self-intersections) that cause shapely union_all to crash
     gdf.geometry = gdf.geometry.buffer(0)
 
     # Class E5, E6, E7 airspaces don't need distinct names and should merge perfectly
     e_non_surface = gdf["local_type"].isin(["CLASS_E5", "CLASS_E6", "CLASS_E7"])
     gdf.loc[e_non_surface, "name"] = ""
 
-    # Dissolve overlapping geometries that share the exact same properties
-    # E.g. merging adjacent or overlapping Class E5 segments with the same name
     dissolution_cols = ["name", "type", "airspace_class", "is_sua", "upper_limit", "lower_limit", "local_type"]
-
-    print(f"Dissolving {len(gdf)} airspace geometries by {dissolution_cols}...")
-    # fillna because dissolve groups by exact value, and NaNs break it
     gdf[dissolution_cols] = gdf[dissolution_cols].fillna("")
-    gdf = gdf.dissolve(by=dissolution_cols, as_index=False)
 
-    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
-    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+    # Split: Class E goes to enroute, everything else (B, C, D, SUA) is critical
+    is_e = gdf["airspace_class"] == "E"
+    gdf_e = gdf[is_e].copy()
+    gdf_critical = gdf[~is_e].copy()
 
-    print(f"Wrote {len(gdf)} dissolved airspace features to {output}")
+    print(f"Dissolving {len(gdf_critical)} critical airspace geometries...")
+    gdf_critical = gdf_critical.dissolve(by=dissolution_cols, as_index=False)
+    gdf_critical.to_file(output_critical, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+
+    print(f"Dissolving {len(gdf_e)} Class E airspace geometries...")
+    gdf_e = gdf_e.dissolve(by=dissolution_cols, as_index=False)
+    gdf_e.to_file(output_e, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+
+    print(f"Wrote airspaces to {output_critical} and {output_e}")
 
 
 # ---------------------------------------------------------------------------

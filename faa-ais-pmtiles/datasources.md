@@ -7,14 +7,18 @@ pipeline.
 
 ### From CIFP (ARINC 424)
 
-| Layer                     | Source                 | Status         | Output                    |
-| ------------------------- | ---------------------- | -------------- | ------------------------- |
-| Airports                  | `cifparse` → FAACIFP18 | ✅ Implemented | `data/airports.geojson`   |
-| Navaids (VHF/NDB)         | `cifparse` → FAACIFP18 | ✅ Implemented | `data/navaids.geojson`    |
-| Procedures (SID/STAR/IAP) | `cifparse` → FAACIFP18 | ✅ Implemented | `data/procedures.geojson` |
-| Airways                   | `cifparse` → FAACIFP18 | ✅ Implemented | `data/airways.geojson`    |
-| Runways                   | `cifparse` → FAACIFP18 | ✅ Implemented | `data/runways.geojson`    |
-| Localizers                | `cifparse` → FAACIFP18 | ✅ Implemented | `data/localizers.geojson` |
+| Layer             | Source                 | Status         | Output                   |
+| ----------------- | ---------------------- | -------------- | ------------------------ |
+| Airports          | `cifparse` → FAACIFP18 | ✅ Implemented | `data/airports.geojson`* |
+| Navaids (VHF/NDB) | `cifparse` → FAACIFP18 | ✅ Implemented | `data/navaids.geojson`   |
+
+*Note: Airports are emitted as GeoJSON to allow Tippecanoe to respect explicit
+`minzoom` and rank-based feature preservation properties during dense tile
+compilation. | Procedures (SID/STAR/IAP) | `cifparse` → FAACIFP18 | ✅
+Implemented | `data/procedures.geojson` | | Airways | `cifparse` → FAACIFP18 |
+✅ Implemented | `data/airways.geojson` | | Runways | `cifparse` → FAACIFP18 |
+✅ Implemented | `data/runways.geojson` | | Localizers | `cifparse` → FAACIFP18
+| ✅ Implemented | `data/localizers.geojson` |
 
 CIFP download: https://aeronav.faa.gov/Upload_313-d/cifp/
 

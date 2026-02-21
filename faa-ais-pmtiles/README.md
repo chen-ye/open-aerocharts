@@ -1,243 +1,258 @@
 # CIFP to PMTiles Data Pipeline
 
 This directory contains a pipeline for automatically downloading and converting
-FAA CIFP (ARINC 424) datasets into MapLibre/Mapbox compatible 3D PMTiles. The
-extracted database provides routing and spatial features tailored for VFR/IFR
-webmaps.
+FAA aeronautical datasets into MapLibre/Mapbox compatible 3D PMTiles.
 
-## Architecture
+## Pipeline Architecture
 
-- `src/fetch_cifp.py`
-  - Scrapes the FAA AeroNav portal and automatically downloads the latest 28-day
-    cycle CIFP `.zip` bundle.
-- `src/cifp_to_geojson.py`
-  - Utilizes `cifparse` to unpack the CIFP records and generates valid GeoJSON
-    files for each functional aeronautical layer.
-  - All GeoJSON features are emitted with `Z` (elevation/altitude) coordinate
-    mapping for 3D engine capabilities.
-- `build_pmtiles.py`
-  - Orchestrates the fetching, parsing, and finally the execution of
-    `tippecanoe` to produce `output/faa_ais.pmtiles`.
+The pipeline is split into two distinct phases to ensure data quality and
+rendering performance.
 
-## Extracted Features & PMTile Structure
+### Phase 1: Download & Normalization
 
-The pipeline exports a PMTiles archive populated with multiple internal layers
-(features). The geometries natively support 3D dimensions as
-`[lon, lat, elevation]`.
+In this phase, raw datasets are fetched from multiple FAA portals and normalized
+into intermediate bulk geodata formats (**FlatGeobuf** and **GeoJSON**).
 
-Below is the structure of each feature layer stored inside the `pmtiles`
-database, along with a GeoJSON representation example.
+- **Data Transformation**:
+  - Irrelevant properties are dropped to minimize tile size.
+  - Geometries are postprocessed (e.g., coalescing Class E airspace boundaries).
+  - Coordinates are mapped to 3D `[lon, lat, elevation]` for engine
+    compatibility.
+- **Client-Side Optimization**: The resulting schema is tailored for direct
+  high-performance rendering in the browser.
 
-### 1. Airports (`airports.geojson`)
+### Phase 2: Tileization
 
-- **Geometry**: `Point`
-- **Z-Coordinate**: Airport Elevation (MSL)
-- **Properties**:
-  - `type`: "airport"
-  - `id`: Airport identifier (e.g. `00AK`)
-  - `name`: Facility Name (e.g. `LOWELL FLD`)
+Normalized data is processed through `tippecanoe` to produce a collection of
+vector PMTiles.
+
+- **Semantic Split**: Archives are organized by data importance and information
+  density.
+- **Optimal Zoom Levels**: Each archive is compiled with specific zoom
+  constraints to balance detail versus performance.
+- **Feature Preservation**: High-priority features (e.g., major airports) use
+  custom flags to bypass standard density-based truncation.
+
+---
+
+## Data Flow Mapping
+
+| Feature                 | Primary Datasource | Intermediate Format         | Final PMTile Archive          |
+| :---------------------- | :----------------- | :-------------------------- | :---------------------------- |
+| **Airports**            | CIFP (ARINC 424)   | `data/airports.geojson`*    | `airports_navaids.pmtiles`    |
+| **Navaids (VHF/NDB)**   | CIFP (ARINC 424)   | `data/navaids.fgb`          | `airports_navaids.pmtiles`    |
+| **Airspaces (B/C/D)**   | NFDC Shapefiles    | `data/airspaces.fgb`        | `airspaces.pmtiles`           |
+| **Airspaces (SUA)**     | ADDS ArcGIS        | `data/airspaces.fgb`        | `airspaces.pmtiles`           |
+| **Airspaces (Class E)** | NFDC Shapefiles    | `data/airspaces.fgb`        | `enroute.pmtiles`             |
+| **Airways**             | CIFP (ARINC 424)   | `data/airways.fgb`          | `enroute.pmtiles`             |
+| **Procedures**          | CIFP (ARINC 424)   | `data/procedures.fgb`       | `enroute.pmtiles`             |
+| **Runways**             | CIFP (ARINC 424)   | `data/runways.fgb`          | `airports_navaids.pmtiles`    |
+| **Localizers**          | CIFP (ARINC 424)   | `data/localizers.fgb`       | `airports_navaids.pmtiles`    |
+| **Waypoints**           | CIFP (ARINC 424)   | `data/waypoints.fgb`        | `waypoints_obstacles.pmtiles` |
+| **Holding Patterns**    | ADDS ArcGIS        | `data/holding_patterns.fgb` | `waypoints_obstacles.pmtiles` |
+| **Obstacles**           | ADDS ArcGIS        | `data/obstacles.fgb`        | `waypoints_obstacles.pmtiles` |
+| **Diagrams (Taxi/RW)**  | ADDS ArcGIS        | `data/am_*.fgb`             | `airport_diagrams.pmtiles`    |
+
+_\*Airports use GeoJSON to allow Tippecanoe to respect explicit minzoom/priority
+ranks._
+
+---
+
+## Feature Schemas & Examples
+
+### 1. Airports
+
+- **Layer**: `airports`
+- **Rank 1**: Major International
+- **Rank 2**: Regional/Municipal
+
+```typescript
+interface AirportProperties {
+  id: string; // e.g., "KSJC"
+  name: string; // e.g., "SAN JOSE INTL"
+  type: "airport";
+  facility_type:
+    | "private"
+    | "civil_hard"
+    | "civil_soft"
+    | "seaplane"
+    | "military";
+  surface: "S" | "H" | "W"; // Soft, Hard, Water
+  rank: 1 | 2 | 3 | 4; // 1=Major, 4=Minor
+  longest_runway: number; // in feet
+  is_military: boolean;
+  is_ifr: boolean;
+  has_fuel: boolean; // FBO availability
+}
+```
+
+Example:
 
 ```json
 {
   "type": "Feature",
-  "geometry": {
-    "type": "Point",
-    "coordinates": [-151.692222, 59.948889, 252.0]
-  },
+  "geometry": { "type": "Point", "coordinates": [-121.92, 37.36, 62.0] },
   "properties": {
-    "id": "00AK",
-    "name": "LOWELL FLD",
+    "id": "KSJC",
+    "name": "SAN JOSE INTL",
+    "rank": 1,
     "type": "airport"
   }
 }
 ```
 
-### 2. Navaids (`navaids.geojson`)
+### 2. Navaids
 
-Extracts both VHF (VORs, VORTACs, DMEs) and NDB facilities.
+- **Layer**: `navaids`
 
-- **Geometry**: `Point`
-- **Z-Coordinate**: Navaid Antenna Elevation (MSL)
-- **Properties**:
-  - `type`: "vhf" or "ndb"
-  - `id`: Ident (e.g. `ADK`)
-  - `name`: Full Name (e.g. `MOUNT MOFFETT`)
-  - `frequency`: Operating Frequency (e.g. `114.0`)
+```typescript
+interface NavaidProperties {
+  id: string; // e.g., "SJC"
+  name: string; // e.g., "SAN JOSE"
+  frequency: number; // e.g., 114.1
+  type: "vhf" | "ndb";
+  rank: 4 | 5;
+}
+```
+
+Example:
 
 ```json
 {
-  "type": "Feature",
-  "geometry": {
-    "type": "Point",
-    "coordinates": [-176.674275, 51.871075, 329.0]
-  },
   "properties": {
-    "id": "ADK",
-    "name": "MOUNT MOFFETT",
-    "frequency": 114.0,
+    "id": "SJC",
+    "name": "SAN JOSE",
+    "frequency": 114.1,
     "type": "vhf"
   }
 }
 ```
 
-### 3. Airspaces (`airspaces.geojson`)
+### 3. Airspaces
 
-Extracts controlled (Class B, C, D) and restrictive (Prohibited, Restricted,
-MOA) airspace boundaries.
+- **Layer**: `airspaces`, `enroute`, `boundary_airspace`
 
-- **Geometry**: `Polygon` or `LineString`
-- **Z-Coordinate**: Upper Limit Ceiling (MSL)
-- **Properties**:
-  - `name`: Region/Center Name
-  - `type`: Airspace Class/Type indicator code
+```typescript
+type AirspaceType =
+  | "CLASS_B"
+  | "CLASS_C"
+  | "CLASS_D"
+  | "E"
+  | "A"
+  | "MOA"
+  | "R"
+  | "W"
+  | "P"
+  | "D";
+type BoundaryType =
+  | "ARTCC"
+  | "FIR"
+  | "ACC"
+  | "CLASS"
+  | "SATA"
+  | "CTA"
+  | "CTA-P"
+  | "ADIZ"
+  | "DEF"
+  | "UTA"
+  | "OCA";
+
+interface AirspaceProperties {
+  name: string;
+  type: AirspaceType | BoundaryType;
+  airspace_class: string;
+  is_sua: boolean;
+  upper_limit: string; // e.g., "10000" or "FL180"
+  lower_limit: string; // e.g., "4000" or "SFC"
+}
+```
+
+Example:
 
 ```json
 {
-  "type": "Feature",
-  "geometry": {
-    "type": "Polygon",
-    "coordinates": [[
-      [-149.983055, 61.176666, 4100.0],
-      [-149.900000, 61.180000, 4100.0],
-      ...
-    ]]
-  },
   "properties": {
-    "name": "ANCHORAGE",
-    "type": "C"
+    "name": "SAN FRANCISCO",
+    "type": "B",
+    "upper_val": 10000,
+    "lower_val": 4000
   }
 }
 ```
 
-### 4. Procedures (`procedures.geojson`)
+### 4. Airways
 
-Extracts operational routing legs for SIDs, STARs, and standard Approach paths.
+- **Layer**: `airways`
 
-- **Geometry**: `LineString`
-- **Z-Coordinate**: Minimum Crossing Altitude at each fix/waypoint (MSL)
-- **Properties**:
-  - `airport`: Destination/Departure facility ID
-  - `procedure`: Procedure designation
-  - `transition`: Associated routing transition
-
-```json
-{
-  "type": "Feature",
-  "geometry": {
-    "type": "LineString",
-    "coordinates": [
-      [-174.213836, 52.238328, 18000.0],
-      [-174.518714, 52.266289, 0.0]
-    ]
-  },
-  "properties": {
-    "airport": "PAAK",
-    "procedure": "INOTY1",
-    "transition": "RW34"
-  }
+```typescript
+interface AirwayProperties {
+  airway: string; // e.g., "V230"
+  type: "victor" | "jet" | "q" | "t";
+  route_type: "O" | "R"; // O=Optional/Standard, R=Regulated/Required
+  structure: "Low" | "High";
+  rank: 5;
 }
 ```
 
-### 5. Airways (`airways.geojson`)
-
-Extracts the low enroute (Victor) and high enroute (Jet/Q) networked flight
-paths.
-
-- **Geometry**: `LineString`
-- **Z-Coordinate**: Minimum Enroute Altitude (MEA) (MSL)
-- **Properties**:
-  - `airway`: Airway identifier (e.g. `A342`, `V108`)
+Example:
 
 ```json
 {
-  "type": "Feature",
-  "geometry": {
-    "type": "LineString",
-    "coordinates": [
-      [163.702353, 51.607208, 18000.0],
-      [170.154239, 52.93775, 18000.0]
-    ]
-  },
-  "properties": {
-    "airway": "A342"
-  }
+  "properties": { "airway": "V230", "type": "victor" }
 }
 ```
 
-### 6. Runways (`runways.geojson`)
+### 5. Waypoints & Obstacles
 
-Extracts runway endpoints and threshold locations for visual diagram scaling.
+- **Layer**: `waypoints`, `obstacles`
 
-- **Geometry**: `Point`
-- **Z-Coordinate**: Threshold Elevation (MSL)
-- **Properties**:
-  - `type`: "runway"
-  - `airport`: Local Airport ID
-  - `runway`: Identifier (e.g. `RW03`)
-  - `bearing`: Magnetic Bearing
-  - `length`: Physical Length (ft)
-  - `width`: Physical Width (ft)
+```typescript
+interface WaypointProperties {
+  id: string; // e.g., "VINCO"
+  name: string;
+  type: "named" | "rnav" | "compulsory";
+  usage: "L" | "H" | "B" | ""; // Low, High, Both, Terminal
+  rank: 3 | 4 | 5 | 6;
+}
+
+interface ObstacleProperties {
+  type: string; // e.g., "T-L TWR"
+  amsl: number; // Altitude Above Mean Sea Level
+  agl: number; // Height Above Ground Level
+  lighting: "N" | "U" | "D" | "W" | "R" | "M" | "L" | "S" | "H" | "C" | "F";
+}
+```
+
+Example:
 
 ```json
 {
-  "type": "Feature",
-  "geometry": {
-    "type": "Point",
-    "coordinates": [-156.463889, 59.088889, 70.0]
-  },
-  "properties": {
-    "airport": "00AN",
-    "runway": "RW03",
-    "length": 4517,
-    "bearing": 30.3,
-    "width": 60,
-    "type": "runway"
-  }
+  "properties": { "id": "VINCO", "type": "compulsory" }
 }
 ```
 
-### 7. Localizers (`localizers.geojson`)
+---
 
-Extracts Instrument Landing System (ILS) Localizer and Glide Slope beam
-emitters.
+## Running & Validating
 
-- **Geometry**: `Point`
-- **Z-Coordinate**: Glide Slope Emitter Elevation (MSL)
-- **Properties**:
-  - `type`: "localizer"
-  - `airport`: Host Airport ID
-  - `runway`: Target Runway ID
-  - `ident`: LOC Identifier
-  - `frequency`: LOC Frequency
-  - `bearing`: Beam Alignment Course
+1. **Install Prerequisites**: `tippecanoe`, `uv`
+2. **Execute Full Pipeline**:
+   ```bash
+   uv run build-pmtiles
+   ```
+3. **Data Quality Validation**:
+   ```bash
+   uv run spot-check
+   ```
+   _Note: This utility decodes key tiles to ensure high-priority features (like
+   KSJC) were not dropped during Phase 2._
 
-```json
-{
-  "type": "Feature",
-  "geometry": {
-    "type": "Point",
-    "coordinates": [-161.846411, 60.768492, 106.0]
-  },
-  "properties": {
-    "airport": "PABE",
-    "runway": "RW19R",
-    "ident": "IBET",
-    "frequency": 111.5,
-    "bearing": 192.5,
-    "type": "localizer"
-  }
-}
-```
+4. **Enumeration Discovery**:
+   ```bash
+   uv run list-enums
+   ```
+   _Note: Use this to view all possible unique values for categorical properties
+   (like `type` or `lighting`) across all datasets._
 
-## Running the Pipeline
-
-1. Install system prerequisites: `tippecanoe`
-2. Install Python manager: `uv`
-3. Enter `faa-ais-pmtiles` directory.
-4. Run orchestrator script:
-
-```bash
-uv run build-pmtiles
-```
-
-5. Once completed, find the MapLibre-ready database at `output/faa_ais.pmtiles`.
+5. **Outputs**: Files in `output/` are automatically symlinked to
+   `client/public/`.

@@ -644,8 +644,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           <Source id="src-boundary" type="vector"
             url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}boundary.pmtiles`}
           />
-          <Source id="src-other" type="vector"
-            url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}other_layers.pmtiles`}
+          <Source id="src-airports-navaids" type="vector"
+            url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}airports_navaids.pmtiles`}
+          />
+          <Source id="src-waypoints-obstacles" type="vector"
+            url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}waypoints_obstacles.pmtiles`}
           />
           <Source id="src-diagrams" type="vector"
             url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}airport_diagrams.pmtiles`}
@@ -727,7 +730,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                   <Layer
                     id="runways-line"
                     type="line"
-                    source="src-other"
+                    source="src-airports-navaids"
                     source-layer="runways"
                     maxzoom={9}
                     paint={{
@@ -1022,9 +1025,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             <Layer
               id="obstacles-symbol"
               type="symbol"
-              source="src-other"
+              source="src-waypoints-obstacles"
               source-layer="obstacles"
-              minzoom={getZoom(5)}
+              minzoom={10}
               filter={getZoomRankFilter({ 0: 0, 7: 2, 9: 3, 11: 6 })}
               layout={{
                 'icon-image': [
@@ -1068,8 +1071,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             <Layer
               id="localizers-symbol"
               type="symbol"
-              source="src-other"
+              source="src-airports-navaids"
               source-layer="localizers"
+              minzoom={9}
               layout={{
                 'icon-image': 'navaid-vor',
                 'icon-size': 0.5,
@@ -1097,7 +1101,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             <Layer
               id="waypoints-symbol"
               type="symbol"
-              source="src-other"
+              source="src-waypoints-obstacles"
               source-layer="waypoints"
               minzoom={getZoom(4)}
               filter={getZoomRankFilter({ 0: 2, 5: 3, 7: 4, 9: 6 })}
@@ -1140,7 +1144,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
             <Layer
               id="navaids-symbol"
               type="symbol"
-              source="src-other"
+              source="src-airports-navaids"
               source-layer="navaids"
               filter={getZoomRankFilter({ 0: 1, 5: 2, 6: 3, 7: 4, 8: 6 })}
               layout={{
@@ -1177,32 +1181,32 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               {aeronauticalLayers.publicAirports && (
                 <>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  <Layer id="airports-public" type="symbol" source="src-other" source-layer="airports" filter={['all', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military']]], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 1 } as any} paint={airportSymbolPaint} />
+                  <Layer id="airports-public" type="symbol" source="src-airports-navaids" source-layer="airports" filter={['all', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military']]], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 1 } as any} paint={airportSymbolPaint} />
                 </>
               )}
               {aeronauticalLayers.privateAirports && (
                 <>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  <Layer id="airports-private" type="symbol" source="src-other" source-layer="airports" filter={['all', ['==', ['get', 'facility_type'], 'private'], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 2 } as any} paint={airportSymbolPaint} />
+                  <Layer id="airports-private" type="symbol" source="src-airports-navaids" source-layer="airports" filter={['all', ['==', ['get', 'facility_type'], 'private'], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 2 } as any} paint={airportSymbolPaint} />
                 </>
               )}
               {aeronauticalLayers.heliports && (
                 <>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  <Layer id="airports-heliport" type="symbol" source="src-other" source-layer="airports" filter={['all', ['==', ['get', 'facility_type'], 'heliport'], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 3 } as any} paint={airportSymbolPaint} />
+                  <Layer id="airports-heliport" type="symbol" source="src-airports-navaids" source-layer="airports" filter={['all', ['==', ['get', 'facility_type'], 'heliport'], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 3 } as any} paint={airportSymbolPaint} />
                 </>
               )}
               {aeronauticalLayers.otherAirports && (
                 <>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  <Layer id="airports-other" type="symbol" source="src-other" source-layer="airports" filter={['all', ['!', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military', 'private', 'heliport']]]], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 4 } as any} paint={airportSymbolPaint} />
+                  <Layer id="airports-other" type="symbol" source="src-airports-navaids" source-layer="airports" filter={['all', ['!', ['in', ['get', 'facility_type'], ['literal', ['civil_hard', 'civil_soft', 'seaplane', 'military', 'private', 'heliport']]]], getZoomRankFilter({ 0: 0, 4: 1, 5: 2, 7: 3, 9: 6 })] as maplibregl.ExpressionSpecification} layout={{ ...airportSymbolLayout, 'symbol-sort-key': 4 } as any} paint={airportSymbolPaint} />
                 </>
               )}
               {/* Fuel Ticks Overlay */}
               <Layer
                 id="airports-fuel-ticks"
                 type="symbol"
-                source="src-other"
+                source="src-airports-navaids"
                 source-layer="airports"
                 filter={['==', ['get', 'has_fuel'], true]}
                 layout={{
