@@ -960,7 +960,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     type="line"
                     source="src-enroute"
                     source-layer="airspaces"
-                    filter={['==', ['get', 'type'], 'E']}
+                    filter={['all', ['==', ['get', 'type'], 'E'], ['!=', ['get', 'lower_limit'], '0'], ['!=', ['get', 'lower_limit'], 'SFC']]}
                     paint={{
                       'line-color': crimson.crimson9, // crimson-9
                       'line-width': ['interpolate', ['linear'], ['zoom'], 4, 6, 10, 12] as unknown as maplibregl.ExpressionSpecification,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Flex, Switch, Text, Separator, Slider } from '@radix-ui/themes';
+import { violet, crimson, indigo, slate, gray, grayDark } from '@radix-ui/colors';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 import { grayColor } from '../../App.tsx';
 
@@ -7,6 +8,27 @@ interface AeronauticalSettingsProps {
   layers: AeronauticalLayerState;
   setLayers: React.Dispatch<React.SetStateAction<AeronauticalLayerState>>;
 }
+
+const LegendBadge = ({ label, color, textColor = gray.gray1 }: { label: string, color: string, textColor?: string }) => (
+  <Box
+    style={{
+      width: 16,
+      height: 16,
+      borderRadius: 4,
+      backgroundColor: color,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 11,
+      fontWeight: 'bold',
+      color: textColor,
+      flexShrink: 0,
+      'textBoxTrim': 'trim-both'
+    }}
+  >
+    {label}
+  </Box>
+);
 
 export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ layers, setLayers }) => {
   const updateLayer = <K extends keyof AeronauticalLayerState>(key: K, value: AeronauticalLayerState[K]) => {
@@ -88,10 +110,40 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
               />
             </Flex>
             <Flex direction="column" gap="2">
-              <ToggleRow label="Controlled (B/C/D)" checked={layers.controlledAirspace} disabled={!layers.showAirspaceMaster} onChange={(c: boolean) => updateLayer('controlledAirspace', c)} />
-              <ToggleRow label="SUA / MOA" checked={layers.suaMoa} disabled={!layers.showAirspaceMaster} onChange={(c: boolean) => updateLayer('suaMoa', c)} />
-              <ToggleRow label="TRSA" checked={layers.trsa} disabled={!layers.showAirspaceMaster} onChange={(c: boolean) => updateLayer('trsa', c)} />
-              <ToggleRow label="Class E" checked={layers.classE} disabled={!layers.showAirspaceMaster} onChange={(c: boolean) => updateLayer('classE', c)} />
+              <ToggleRow
+                label="Controlled"
+                legend={
+                  <Flex gap="1">
+                    <LegendBadge label="B" color={violet.violet9} />
+                    <LegendBadge label="C" color={crimson.crimson9} />
+                    <LegendBadge label="D" color={indigo.indigo9} />
+                  </Flex>
+                }
+                checked={layers.controlledAirspace}
+                disabled={!layers.showAirspaceMaster}
+                onChange={(c: boolean) => updateLayer('controlledAirspace', c)}
+              />
+              <ToggleRow
+                label="SUA / MOA"
+                legend={<LegendBadge label="S" color={slate.slate8}textColor={grayDark.gray1} />}
+                checked={layers.suaMoa}
+                disabled={!layers.showAirspaceMaster}
+                onChange={(c: boolean) => updateLayer('suaMoa', c)}
+              />
+              <ToggleRow
+                label="TRSA"
+                legend={<LegendBadge label="T" color={slate.slate8} textColor={grayDark.gray1} />}
+                checked={layers.trsa}
+                disabled={!layers.showAirspaceMaster}
+                onChange={(c: boolean) => updateLayer('trsa', c)}
+              />
+              <ToggleRow
+                label="Class E"
+                legend={<LegendBadge label="E" color={crimson.crimson7} textColor={grayDark.gray1} />}
+                checked={layers.classE}
+                disabled={!layers.showAirspaceMaster}
+                onChange={(c: boolean) => updateLayer('classE', c)}
+              />
               <ToggleRow label="Parachute Area" checked={layers.parachuteArea} disabled={!layers.showAirspaceMaster} onChange={(c: boolean) => updateLayer('parachuteArea', c)} />
               <ToggleRow label="Mode C" checked={layers.modeC} disabled={!layers.showAirspaceMaster} onChange={(c: boolean) => updateLayer('modeC', c)} />
             </Flex>
@@ -149,9 +201,12 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
   );
 };
 
-const ToggleRow = ({ label, checked, disabled, onChange }: { label: string, checked: boolean, disabled?: boolean, onChange: (c: boolean) => void }) => (
+const ToggleRow = ({ label, checked, disabled, onChange, legend }: { label: string, checked: boolean, disabled?: boolean, onChange: (c: boolean) => void, legend?: React.ReactNode }) => (
   <Flex align="center" justify="between" gap="2">
-    <Text size="2" color={disabled ? grayColor : undefined} style={{ opacity: disabled ? 0.5 : 1, minWidth: 0, flexShrink: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Text>
+    <Flex align="center" gap="2" style={{ minWidth: 0, flexShrink: 1 }}>
+        {legend}
+        <Text size="2" color={disabled ? grayColor : undefined} style={{ opacity: disabled ? 0.5 : 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Text>
+    </Flex>
     <Switch size="1" checked={checked} disabled={disabled} onCheckedChange={onChange} />
   </Flex>
 );

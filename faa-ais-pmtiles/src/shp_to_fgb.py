@@ -172,7 +172,10 @@ def convert_airspaces(output_critical: str = "data/airspaces.fgb", output_e: str
     gdf_critical.to_file(output_critical, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
 
     print(f"Dissolving {len(gdf_e)} Class E airspace geometries...")
-    gdf_e = gdf_e.dissolve(by=dissolution_cols, as_index=False)
+    # For Class E, we ignore upper_limit and name/is_sua to merge sectors with same floor
+    # This creates a cleaner "footprint" of the airspace tier (e.g. 700ft vs 1200ft)
+    e_dissolve_cols = ["type", "airspace_class", "lower_limit", "local_type"]
+    gdf_e = gdf_e.dissolve(by=e_dissolve_cols, as_index=False)
     gdf_e.to_file(output_e, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
 
     print(f"Wrote airspaces to {output_critical} and {output_e}")
