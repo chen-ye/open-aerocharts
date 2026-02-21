@@ -330,7 +330,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       'apt-civil-unpaved' // default/fallback
     ] as unknown as maplibregl.ExpressionSpecification,
     'icon-size': 0.8,
-    'icon-allow-overlap': false,
+    'icon-allow-overlap': true,
     'icon-ignore-placement': false,
     'text-field': ['get', 'id'],
     'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
