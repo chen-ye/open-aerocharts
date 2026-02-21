@@ -9,7 +9,7 @@ import styles from '../../mapStyles';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 import type { FlightPlan } from '../../types/FlightPlan';
 import { accentColor, grayColor } from '../../App.tsx';
-import { crimson, crimsonDark, indigo, indigoDark, violet, violetDark, blue, gray, grayDark, purple, purpleDark, slate, slateDark, brown, brownDark, blueDark, mint, cyan } from '@radix-ui/colors';
+import { crimson, crimsonDark, indigo, indigoDark, violet, violetDark, blue, gray, grayDark, purple, purpleDark, slate, slateDark, brown, brownDark, blueDark, cyan, cyanDark } from '@radix-ui/colors';
 import { FeatureList } from './FeatureList';
 
 interface AeroMapProps {
@@ -624,7 +624,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               'text-allow-overlap': false
             }}
             paint={{
-              'text-color': cyan.cyan9,
+              'text-color': cyanDark.cyan11,
               'text-halo-color': haloColor,
               'text-halo-width': 2
             }}
