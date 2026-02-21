@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, Switch, Text, Separator, Slider } from '@radix-ui/themes';
-import { violet, crimson, indigo, slate, gray, grayDark } from '@radix-ui/colors';
+import { violet, crimson, indigo, slate, gray, grayDark, plum } from '@radix-ui/colors';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 import { grayColor } from '../../App.tsx';
 
@@ -10,25 +10,44 @@ interface AeronauticalSettingsProps {
 }
 
 const LegendBadge = ({ label, color, textColor = gray.gray1 }: { label: string, color: string, textColor?: string }) => (
-  <Box
+  <Flex
+    width="1em"
+    height="1em"
+    align="center"
+    justify="center"
     style={{
-      width: 16,
-      height: 16,
-      borderRadius: 4,
       backgroundColor: color,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: 11,
-      fontWeight: 'bold',
-      color: textColor,
+      borderRadius: 'var(--radius-1)',
       flexShrink: 0,
-      'textBoxTrim': 'trim-both'
     }}
   >
-    {label}
-  </Box>
+    <Text size="1" weight="bold" style={{ color: textColor }} trim="both">
+      {label}
+    </Text>
+  </Flex>
 );
+
+const IconBadge = ({ icon, color }: { icon: string, color: string }) => (
+  <Box
+    width="14px"
+    height="14px"
+    style={{
+      backgroundColor: color,
+      WebkitMask: `url("${icon}") no-repeat center / contain`,
+      mask: `url("${icon}") no-repeat center / contain`,
+      display: 'block',
+      flexShrink: 0,
+    }}
+  />
+);
+
+import aptCivilIcon from '../../assets/icons/carbon/apt-ifr-civil.svg?url';
+import heliportIcon from '../../assets/icons/carbon/apt-helipad.svg?url';
+import privateIcon from '../../assets/icons/carbon/apt-private.svg?url';
+import ultralightIcon from '../../assets/icons/carbon/apt-ultralight.svg?url';
+import navaidIcon from '../../assets/icons/carbon/nav-vor.svg?url';
+import waypointIcon from '../../assets/icons/carbon/wpt-rnav-solid.svg?url';
+import obstacleIcon from '../../assets/icons/carbon/obs-major.svg?url';
 
 export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ layers, setLayers }) => {
   const updateLayer = <K extends keyof AeronauticalLayerState>(key: K, value: AeronauticalLayerState[K]) => {
@@ -91,10 +110,28 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
               />
             </Flex>
             <Flex direction="column" gap="2">
-              <ToggleRow label="Public Airports" checked={layers.publicAirports} disabled={!layers.showAirportsMaster} onChange={(c: boolean) => updateLayer('publicAirports', c)} />
-              <ToggleRow label="Heliports" checked={layers.heliports} disabled={!layers.showAirportsMaster} onChange={(c: boolean) => updateLayer('heliports', c)} />
-              <ToggleRow label="Private Airports" checked={layers.privateAirports} disabled={!layers.showAirportsMaster} onChange={(c: boolean) => updateLayer('privateAirports', c)} />
-              <ToggleRow label="Other Fields" checked={layers.otherAirports} disabled={!layers.showAirportsMaster} onChange={(c: boolean) => updateLayer('otherAirports', c)} />
+              <ToggleRow
+                label="Public Airports"
+                legend={<IconBadge icon={aptCivilIcon} color={crimson.crimson9} />}
+                checked={layers.publicAirports}
+                disabled={!layers.showAirportsMaster}
+                onChange={(c: boolean) => updateLayer('publicAirports', c)}
+              />
+              <ToggleRow
+                label="Heliports"
+                legend={<IconBadge icon={heliportIcon} color={crimson.crimson9} />}
+                checked={layers.heliports}
+                disabled={!layers.showAirportsMaster}
+                onChange={(c: boolean) => updateLayer('heliports', c)}
+              />
+              <ToggleRow
+                label="Private Airports"
+                legend={<IconBadge icon={privateIcon} color={crimson.crimson9} />}
+                checked={layers.privateAirports}
+                disabled={!layers.showAirportsMaster}
+                onChange={(c: boolean) => updateLayer('privateAirports', c)}
+              />
+              <ToggleRow label="Other Fields" legend={<IconBadge icon={ultralightIcon} color={crimson.crimson9} />} checked={layers.otherAirports} disabled={!layers.showAirportsMaster} onChange={(c: boolean) => updateLayer('otherAirports', c)} />
             </Flex>
           </Box>
           <Separator size="4" />
@@ -164,8 +201,20 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
               <ToggleRow label="Enroute High" checked={layers.enrouteHigh} disabled={!layers.showAirwaysMaster} onChange={(c: boolean) => updateLayer('enrouteHigh', c)} />
               <ToggleRow label="Enroute Low" checked={layers.enrouteLow} disabled={!layers.showAirwaysMaster} onChange={(c: boolean) => updateLayer('enrouteLow', c)} />
               <ToggleRow label="Airways" checked={layers.airways} disabled={!layers.showAirwaysMaster} onChange={(c: boolean) => updateLayer('airways', c)} />
-              <ToggleRow label="Navaids" checked={layers.navaids} disabled={!layers.showAirwaysMaster} onChange={(c: boolean) => updateLayer('navaids', c)} />
-              <ToggleRow label="Waypoints" checked={layers.waypoints} disabled={!layers.showAirwaysMaster} onChange={(c: boolean) => updateLayer('waypoints', c)} />
+              <ToggleRow
+                label="Navaids"
+                legend={<IconBadge icon={navaidIcon} color={indigo.indigo9} />}
+                checked={layers.navaids}
+                disabled={!layers.showAirwaysMaster}
+                onChange={(c: boolean) => updateLayer('navaids', c)}
+              />
+              <ToggleRow
+                label="Waypoints"
+                legend={<IconBadge icon={waypointIcon} color={indigo.indigo9} />}
+                checked={layers.waypoints}
+                disabled={!layers.showAirwaysMaster}
+                onChange={(c: boolean) => updateLayer('waypoints', c)}
+              />
             </Flex>
           </Box>
           <Separator size="4" />
@@ -191,7 +240,12 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
           {/* Standalone */}
           <Box>
             <Flex direction="column" gap="2">
-              <ToggleRow label="Obstacles (DOF)" checked={layers.obstacles} onChange={(c: boolean) => updateLayer('obstacles', c)} />
+              <ToggleRow
+                label="Obstacles (DOF)"
+                legend={<IconBadge icon={obstacleIcon} color={plum.plum9} />}
+                checked={layers.obstacles}
+                onChange={(c: boolean) => updateLayer('obstacles', c)}
+              />
             </Flex>
           </Box>
 
@@ -204,9 +258,11 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({ laye
 const ToggleRow = ({ label, checked, disabled, onChange, legend }: { label: string, checked: boolean, disabled?: boolean, onChange: (c: boolean) => void, legend?: React.ReactNode }) => (
   <Flex align="center" justify="between" gap="2">
     <Flex align="center" gap="2" style={{ minWidth: 0, flexShrink: 1 }}>
-        {legend}
         <Text size="2" color={disabled ? grayColor : undefined} style={{ opacity: disabled ? 0.5 : 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Text>
     </Flex>
-    <Switch size="1" checked={checked} disabled={disabled} onCheckedChange={onChange} />
+    <Flex align="center" gap="2">
+        {legend}
+        <Switch size="1" checked={checked} disabled={disabled} onCheckedChange={onChange} />
+    </Flex>
   </Flex>
 );
