@@ -9,7 +9,7 @@ import styles from '../../mapStyles';
 import type { AeronauticalLayerState } from '../../types/AeronauticalLayerState';
 import type { FlightPlan } from '../../types/FlightPlan';
 import { accentColor, grayColor } from '../../App.tsx';
-import { crimson, crimsonDark, indigo, indigoDark, violet, violetDark, blue, gray, grayDark, purple, purpleDark, slate, slateDark, brown, brownDark, blueDark, mint } from '@radix-ui/colors';
+import { crimson, crimsonDark, indigo, indigoDark, violet, violetDark, blue, gray, grayDark, purple, purpleDark, slate, slateDark, brown, brownDark, blueDark, mint, cyan } from '@radix-ui/colors';
 import { FeatureList } from './FeatureList';
 
 interface AeroMapProps {
@@ -569,13 +569,23 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       {flightPlan && (
         <Source id="flight-plan-source" type="geojson" data={flightPlan.geometry}>
           <Layer
+            id="flight-plan-line-casing"
+            type="line"
+            filter={['==', '$type', 'LineString']}
+            paint={{
+              'line-color': isDarkMap ? '#000000' : '#ffffff',
+              'line-width': 7,
+              'line-opacity': 0.8
+            }}
+          />
+          <Layer
             id="flight-plan-line"
             type="line"
             filter={['==', '$type', 'LineString']}
             paint={{
-              'line-color': isDarkMap ? '#ff00ff' : '#d000d0', // Magenta
+              'line-color': cyan.cyan9,
               'line-width': 4,
-              'line-opacity': 0.8
+              'line-opacity': 1
             }}
           />
           <Layer
@@ -597,8 +607,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               'icon-ignore-placement': true
             }}
             paint={{
-              'icon-color': mint.mint9,
-              'icon-halo-color': '#ffffff',
+              'icon-color': cyan.cyan9,
+              'icon-halo-color': isDarkMap ? '#000000' : '#ffffff',
               'icon-halo-width': 1
             }}
           />
@@ -610,12 +620,12 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               'text-field': ['get', 'id'],
               'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
               'text-size': 12,
-              'text-offset': [0, 1.2],
-              'text-anchor': 'top',
+              'text-offset': [1.2, 0],
+              'text-anchor': 'left',
               'text-allow-overlap': false
             }}
             paint={{
-              'text-color': mint.mint11,
+              'text-color': cyan.cyan11,
               'text-halo-color': haloColor,
               'text-halo-width': 2
             }}

@@ -133,6 +133,16 @@ function App() {
       changed = true;
     }
 
+    if (routeString) {
+      if (params.get('route') !== routeString) {
+        params.set('route', routeString);
+        changed = true;
+      }
+    } else if (params.has('route')) {
+      params.delete('route');
+      changed = true;
+    }
+
     const isLayersDefault = Object.entries(aeronauticalLayers).every(
       ([key, val]) => {
         if (key === 'declutterLevel') return true; // Handled separately
