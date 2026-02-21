@@ -23,12 +23,8 @@ def run_cmd(cmd):
     subprocess.run(cmd, shell=True, check=True)
 
 def fetch_nasr_wrapper():
-    # Fetch NASR and save down a local cache file for the build step to use
-    import json
-    fuel_lookup = fetch_nasr.get_airport_fuel()
-    os.makedirs("data", exist_ok=True)
-    with open("data/nasr_fuel.json", "w") as f:
-        json.dump(fuel_lookup, f)
+    # Fetch NASR metadata (caching is handled within fetch_nasr.py)
+    fetch_nasr.get_airport_metadata()
 
 def main():
     print("Step 1: Fetching data concurrently...")

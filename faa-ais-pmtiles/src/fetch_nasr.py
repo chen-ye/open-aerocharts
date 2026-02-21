@@ -64,19 +64,19 @@ def find_latest_csv_zip_url() -> tuple[str, str, str]:
     return "https://nfdc.faa.gov/webContent/28DaySub/2026-03-19/28DaySubscription_CSV.zip", "2026-03-19"
 
 
-def get_airport_fuel() -> dict[str, bool]:
-    """Download NASR CSV zip and return a dict of {airport_id: has_fuel}."""
+def get_airport_metadata() -> dict[str, dict]:
+    """Download NASR CSV zip and return a dict of {airport_id: {has_fuel, has_tower, far_139}}."""
     import os
     import json
     url, cycle_date = find_latest_csv_zip_url()
 
-    cache_path = "data/nasr_fuel.json"
-    cycle_path = "data/nasr_fuel.cycle"
+    cache_path = "data/nasr_metadata.json"
+    cycle_path = "data/nasr_metadata.cycle"
 
     if os.path.exists(cache_path) and os.path.exists(cycle_path):
         with open(cycle_path, "r") as f:
             if f.read().strip() == cycle_date:
-                print(f"NASR fuel tracking for cycle {cycle_date} already exists. Skipping download.")
+                print(f"NASR airport metadata for cycle {cycle_date} already exists. Skipping download.")
                 with open(cache_path, "r") as cache_f:
                     return json.load(cache_f)
     print(f"Downloading NASR CSV bundle from {url}...")
@@ -86,7 +86,7 @@ def get_airport_fuel() -> dict[str, bool]:
         r.raise_for_status()
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 503:
-            # Akamai blocking or unavailable? Try the extra folder or just return empty
+            # Hardcoded fallback for now if cycle dates fail
             extra_url = "https://nfdc.faa.gov/webContent/28DaySub/extra/19_Mar_2026_CSV.zip"
             print(f"HTTP 503 Error. Retrying with fallback URL: {extra_url}")
             r = requests.get(extra_url, timeout=120)
@@ -94,10 +94,9 @@ def get_airport_fuel() -> dict[str, bool]:
         else:
             raise
 
-    fuel_lookup = {}
+    metadata_lookup = {}
 
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        # The file inside the zip is usually APT_BASE.csv
         apt_filename = None
         for name in z.namelist():
             if name.upper().endswith("APT_BASE.CSV"):
@@ -106,31 +105,45 @@ def get_airport_fuel() -> dict[str, bool]:
 
         if not apt_filename:
             print("Warning: APT_BASE.csv not found in the NASR zip.")
-            return fuel_lookup
+            return metadata_lookup
 
-        print(f"Parsing {apt_filename} for fuel data...")
+        print(f"Parsing {apt_filename} for airport metadata...")
         with z.open(apt_filename) as f:
             reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
             for row in reader:
-                site_no = row.get("SITE_NO")
                 arpt_id = row.get("ARPT_ID")
+                if not arpt_id:
+                    continue
+
+                arpt_id = arpt_id.strip()
                 fuel_types = row.get("FUEL_TYPES", "").strip()
+                twr_type = row.get("TWR_TYPE_CODE", "").strip()
+                far_139 = row.get("FAR_139_TYPE_CODE", "").strip()
 
-                # If there's any non-empty string in FUEL_TYPES, we consider it to have fuel
-                has_fuel = bool(fuel_types)
+                metadata = {
+                    "has_fuel": bool(fuel_types),
+                    "has_tower": twr_type == "ATCT",
+                    "far_139": far_139
+                }
+                metadata_lookup[arpt_id] = metadata
 
-                if arpt_id:
-                    fuel_lookup[arpt_id.strip()] = has_fuel
-                if site_no:
-                    # sometimes the id matches site_no in other sources
-                    fuel_lookup[site_no.strip()] = has_fuel
-
-    print(f"Found fuel data for {sum(1 for v in fuel_lookup.values() if v)} out of {len(fuel_lookup)} airports.")
+    print(f"Found metadata for {len(metadata_lookup)} airports.")
 
     os.makedirs("data", exist_ok=True)
     with open(cache_path, "w") as f:
-        json.dump(fuel_lookup, f)
+        json.dump(metadata_lookup, f)
     with open(cycle_path, "w") as f:
         f.write(cycle_date)
 
-    return fuel_lookup
+    return metadata_lookup
+
+
+def load_nasr_metadata() -> dict[str, dict]:
+    """Fast check: returns the cached metadata if it exists, otherwise empty dict."""
+    import os
+    import json
+    cache_path = "data/nasr_metadata.json"
+    if os.path.exists(cache_path):
+        with open(cache_path, "r") as f:
+            return json.load(f)
+    return {}

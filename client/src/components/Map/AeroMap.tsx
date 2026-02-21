@@ -383,12 +383,12 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     const zooms = Object.keys(baseZooms).map(Number).sort((a, b) => a - b);
     const initialRank = baseZooms[zooms[0]] + aeronauticalLayers.declutterLevel;
 
-    const stepExpr: unknown[] = ['step', ['zoom'], Math.min(6, Math.max(0, initialRank))];
+    const stepExpr: unknown[] = ['step', ['zoom'], Math.min(6, Math.max(1, initialRank))];
     for (let i = 1; i < zooms.length; i++) {
         const z = zooms[i];
         const maxRank = baseZooms[z] + aeronauticalLayers.declutterLevel;
         stepExpr.push(z);
-        stepExpr.push(Math.min(6, Math.max(0, maxRank)));
+        stepExpr.push(Math.min(6, Math.max(1, maxRank)));
     }
 
     return ['<=', ['to-number', ['get', 'rank'], 5], stepExpr] as unknown as maplibregl.ExpressionSpecification;

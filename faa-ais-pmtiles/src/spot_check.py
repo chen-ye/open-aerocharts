@@ -10,7 +10,11 @@ def run_decode(pmtiles_path, z, x, y):
         return None
     return result.stdout
 
-def check_feature_in_tile(tile_json, layer_name, property_name, expected_value):
+def check_feature_in_tile(tile_json, layer_name, matches):
+    """
+    Check if a feature exists in the tile that matches all provided property criteria.
+    matches is a dict { "prop_name": "expected_value" }
+    """
     if not tile_json:
         return False
     try:
@@ -20,7 +24,9 @@ def check_feature_in_tile(tile_json, layer_name, property_name, expected_value):
             current_layer = layer_collection.get("properties", {}).get("layer")
             if current_layer == layer_name:
                 for feature in layer_collection.get("features", []):
-                    if feature.get("properties", {}).get(property_name) == expected_value:
+                    props = feature.get("properties", {})
+                    # Check if all key-value pairs in 'matches' are present in feature properties
+                    if all(props.get(k) == v for k, v in matches.items()):
                         return True
     except json.JSONDecodeError:
         pass
@@ -32,44 +38,53 @@ def main():
 
     checks = [
         {
+            "name": "Rank 1 Check: KSFO at Z8",
+            "file": "airports_navaids.pmtiles",
+            "z": 8, "x": 40, "y": 99,
+            "layer": "airports",
+            "matches": {"id": "KSFO", "rank": 1}
+        },
+        {
+            "name": "Rank 1 Check: KATL at Z8",
+            "file": "airports_navaids.pmtiles",
+            "z": 8, "x": 67, "y": 102,
+            "layer": "airports",
+            "matches": {"id": "KATL", "rank": 1}
+        },
+        {
+            "name": "Rank 2 Check: KMER at Z8",
+            "file": "airports_navaids.pmtiles",
+            "z": 8, "x": 42, "y": 99,
+            "layer": "airports",
+            "matches": {"id": "KMER", "rank": 2}
+        },
+        {
             "name": "KSJC in airports_navaids at Z8",
             "file": "airports_navaids.pmtiles",
             "z": 8, "x": 41, "y": 99,
             "layer": "airports",
-            "prop": "id",
-            "value": "KSJC"
-        },
-        {
-            "name": "KSFO in airports_navaids at Z8",
-            "file": "airports_navaids.pmtiles",
-            "z": 8, "x": 40, "y": 99,
-            "layer": "airports",
-            "prop": "id",
-            "value": "KSFO"
+            "matches": {"id": "KSJC"}
         },
         {
             "name": "V230 airway in enroute at Z8",
             "file": "enroute.pmtiles",
             "z": 8, "x": 41, "y": 99,
             "layer": "airways",
-            "prop": "airway",
-            "value": "V230"
+            "matches": {"airway": "V230"}
         },
         {
             "name": "Obstacles in waypoints_obstacles at Z10",
             "file": "waypoints_obstacles.pmtiles",
             "z": 10, "x": 165, "y": 397,
             "layer": "obstacles",
-            "prop": "type",
-            "value": "T-L TWR"
+            "matches": {"type": "T-L TWR"}
         },
         {
             "name": "Waypoint VINCO in waypoints_obstacles at Z10",
             "file": "waypoints_obstacles.pmtiles",
             "z": 10, "x": 165, "y": 397,
             "layer": "waypoints",
-            "prop": "id",
-            "value": "VINCO"
+            "matches": {"id": "VINCO"}
         }
     ]
 
@@ -82,10 +97,10 @@ def main():
             continue
 
         tile_json = run_decode(path, check["z"], check["x"], check["y"])
-        if check_feature_in_tile(tile_json, check["layer"], check["prop"], check["value"]):
+        if check_feature_in_tile(tile_json, check["layer"], check["matches"]):
             print(f"PASSED: {check['name']}")
         else:
-            print(f"FAILED: {check['name']} - Feature not found in tile {check['z']}/{check['x']}/{check['y']}")
+            print(f"FAILED: {check['name']} - Feature matching {check['matches']} not found in tile {check['z']}/{check['x']}/{check['y']}")
             failed = True
 
     if failed:

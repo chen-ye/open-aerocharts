@@ -4,15 +4,10 @@ import geopandas as gpd
 import math
 from collections import defaultdict
 from cifparse import CIFP
+from src import fetch_nasr
 
-def get_airport_fuel():
-    import json
-    import os
-    if os.path.exists("data/nasr_fuel.json"):
-        with open("data/nasr_fuel.json", "r") as f:
-            return json.load(f)
-    print("WARNING: data/nasr_fuel.json not found, falling back to empty lookup.")
-    return {}
+def load_nasr_metadata():
+    return fetch_nasr.load_nasr_metadata()
 
 def haversine(lon1, lat1, lon2, lat2):
     R = 3440.065 # Earth radius in NM
@@ -72,8 +67,8 @@ def save_fgb(features, output_path):
     gdf.to_file(output_path, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
 
 def build_pmtiles_fgb(cifp_path):
-    print("Fetching NASR fuel data...", flush=True)
-    fuel_lookup = get_airport_fuel()
+    print("Fetching NASR airport metadata...", flush=True)
+    airport_metadata = load_nasr_metadata()
 
     print("Loading CIFP...", flush=True)
     c = CIFP(cifp_path)
@@ -120,27 +115,40 @@ def build_pmtiles_fgb(cifp_path):
                 fac_type = 'civil_hard' if surface == 'H' else 'civil_soft'
 
             ident = p.get('airport_id', '').strip()
-            has_fuel = fuel_lookup.get(ident, False)
+            # Normalize ID for NASR lookup (US mainland uses K prefix for ICAO 4-letter)
+            nasr_id = ident
+            if ident.startswith('K') and len(ident) == 4:
+                nasr_id = ident[1:]
+
+            meta = airport_metadata.get(ident) or airport_metadata.get(nasr_id) or {}
+            has_fuel = meta.get('has_fuel', False)
+            has_tower = meta.get('has_tower', False)
+            far_139 = meta.get('far_139', '')
             longest_runway = int(p.get('longest') or 0)
 
             # Determine facility rank for decluttering (lower is more important)
-            # Tier 1: International hubs / Very long runways (> 10,000ft)
-            # Tier 2: Large regional airports (> 7,000ft)
-            # Tier 3: Medium airports (> 4,000ft)
-            # Tier 4: Small airports / Private / others
+            # Tier 1: Major Hubs (FAR 139 Index D/E)
+            # Tier 2: Regional/Commercial (FAR 139 B/C OR Towered OR > 7500ft)
+            # Tier 3: General Aviation (Starts with K OR > 4000ft)
+            # Tier 4: Minor / Private / Others
 
-            if longest_runway >= 10000:
+            # FAR 139 Index D or E are major commercial hubs
+            is_major_hub = any(idx in far_139 for idx in ['D', 'E'])
+            # FAR 139 Index A, B, or C are standard commercial
+            is_commercial = any(idx in far_139 for idx in ['A', 'B', 'C'])
+
+            if is_major_hub:
                 rank = 1
-            elif longest_runway >= 7000:
+            elif is_commercial or has_tower or longest_runway >= 7500:
                 rank = 2
-            elif longest_runway >= 4000:
+            elif ident.startswith('K') and len(ident) == 4 or longest_runway >= 4000:
                 rank = 3
             else:
                 rank = 4
 
-            # Bonus for ICAO IDs (usually more significant)
-            if ident.startswith('K') and len(ident) == 4 and rank > 1:
-                rank -= 1
+            # Ensure military bases with huge runways remain Rank 1 even if not FAR 139
+            if usage == 'M' and longest_runway >= 10000:
+                rank = 1
 
             properties = {
                 'id': ident,
