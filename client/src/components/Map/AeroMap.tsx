@@ -596,18 +596,17 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               'icon-image': [
                 'match',
                 ['get', 'type'],
-                'compulsory', 'fix-compulsory',
-                'waypoint', 'fix-non-compulsory',
-                'navaid', 'navaid-vor',
-                'airport', 'apt-civil-paved-small',
-                'fix-non-compulsory' // default
+                'compulsory', 'fix-compulsory-cyan',
+                'waypoint', 'fix-non-compulsory-cyan',
+                'navaid', 'navaid-vor-cyan',
+                'airport', 'apt-civil-paved-small-cyan',
+                'fix-non-compulsory-cyan' // default
               ] as unknown as maplibregl.ExpressionSpecification,
               'icon-size': 0.8,
               'icon-allow-overlap': true,
               'icon-ignore-placement': true
             }}
             paint={{
-              'icon-color': cyan.cyan9,
               'icon-halo-color': isDarkMap ? '#000000' : '#ffffff',
               'icon-halo-width': 1
             }}

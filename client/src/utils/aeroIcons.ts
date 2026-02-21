@@ -46,6 +46,34 @@ export const addAeroIcons = (map: Map, haloColor = '#ffffff', haloOpacity = 0.95
       URL.revokeObjectURL(url);
     };
     img.src = url;
+
+    // Generate Cyan Variant for Flight Plan
+    const cyanIds = ['fix-compulsory', 'fix-non-compulsory', 'navaid-vor', 'apt-civil-paved-small'];
+    if (cyanIds.includes(id)) {
+      // Replace blacks/grays with Cyan 9 (#00A2C7)
+      // Note: This is a rough heuristic. Most icons use black stroke or fill.
+      let cyanSvg = finalSvg.replace(/stroke="[^"]*"/g, 'stroke="#00A2C7"')
+                            .replace(/fill="[^"]*"/g, 'fill="#00A2C7"');
+      
+      // If no stroke/fill defined (inherits black), force it.
+      // But SVG usually has explicit styling or classes.
+      // Let's assume standard simple SVGs for now. 
+      // Also need to keep the halo filter. The halo uses 'flood-color' in the filter definition.
+      // We don't change the halo color (it uses haloColor param), just the main graphic.
+      
+      const imgCyan = new Image(32, 32);
+      const blobCyan = new Blob([cyanSvg], { type: 'image/svg+xml;charset=utf-8' });
+      const urlCyan = URL.createObjectURL(blobCyan);
+      imgCyan.onload = () => {
+        const cyanId = `${id}-cyan`;
+        if (map.hasImage(cyanId)) {
+          map.removeImage(cyanId);
+        }
+        map.addImage(cyanId, imgCyan);
+        URL.revokeObjectURL(urlCyan);
+      };
+      imgCyan.src = urlCyan;
+    }
   };
 
   for (const [path, svgContent] of Object.entries(iconGlob)) {
