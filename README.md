@@ -60,3 +60,4 @@ The project is split into two packages:
 - [ ] 3D Airspace Support
 - [ ] 3D Airway/Waypoint support
 - [ ] 3D Flight Plan Visualization
+- [ ] Handle overlapping airways better
