@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Card, Flex, TextArea, Button, Heading, Text, IconButton, ScrollArea, Table, Badge } from '@radix-ui/themes';
-import { Plane, X, Github } from 'lucide-react';
+import { Plane, X, Github, MessageSquare } from 'lucide-react';
 import type { SearchIndex, FlightPlan } from '../../types/FlightPlan';
 import { parseRoute } from '../../utils/routeParser';
 import { grayColor } from '../../App.tsx';
@@ -118,6 +118,8 @@ interface FlightPlanPanelProps {
   onRouteStringChange: (route: string) => void;
   index: SearchIndex | null;
   loading: boolean;
+  showTooltip: boolean;
+  setShowTooltip: (show: boolean) => void;
 }
 
 export const FlightPlanPanel: React.FC<FlightPlanPanelProps> = ({
@@ -125,7 +127,9 @@ export const FlightPlanPanel: React.FC<FlightPlanPanelProps> = ({
   routeString,
   onRouteStringChange,
   index,
-  loading
+  loading,
+  showTooltip,
+  setShowTooltip
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -146,6 +150,20 @@ export const FlightPlanPanel: React.FC<FlightPlanPanelProps> = ({
             }}
           >
             <Plane size={20} />
+          </IconButton>
+          <IconButton
+            size="3"
+            variant={showTooltip ? "solid" : "surface"}
+            color={showTooltip ? "iris" : grayColor}
+            onClick={() => setShowTooltip(!showTooltip)}
+            title={showTooltip ? "Disable Hover Info" : "Enable Hover Info"}
+            style={{
+              backgroundColor: showTooltip ? undefined : 'var(--glass-bg)',
+              backdropFilter: 'blur(var(--glass-blur))',
+              boxShadow: '0 0 0 1px var(--glass-border)'
+            }}
+          >
+            <MessageSquare size={20} />
           </IconButton>
           <a href="https://github.com/chen-ye/open-aerocharts" target="_blank" rel="noopener noreferrer">
             <IconButton

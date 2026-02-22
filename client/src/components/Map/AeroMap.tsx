@@ -22,6 +22,7 @@ interface AeroMapProps {
   onSelectFeatures?: (features: { lngLat: [number, number]; features: any[] } | null) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   selectedFeatures?: { lngLat: [number, number]; features: any[] } | null;
+  showTooltip: boolean;
 }
 
 export const AeroMap: React.FC<AeroMapProps> = ({
@@ -31,7 +32,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   basemapBrightness,
   flightPlan,
   onSelectFeatures,
-  selectedFeatures: propSelectedFeatures
+  selectedFeatures: propSelectedFeatures,
+  showTooltip
 }) => {
   const mapStyle = useMemo<string | maplibregl.StyleSpecification>(() => {
     // If the basemapUrlOrId is a URL, treat it as a style URL
@@ -128,7 +130,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onMouseMove = useCallback((e: any) => {
-    if (e.features && e.features.length > 0) {
+    if (showTooltip && e.features && e.features.length > 0) {
       setHoverInfo({
         lngLat: [e.lngLat.lng, e.lngLat.lat],
         features: e.features,
@@ -136,7 +138,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     } else {
       setHoverInfo(null);
     }
-  }, []);
+  }, [showTooltip]);
 
   const onMouseLeave = useCallback(() => {
     setHoverInfo(null);

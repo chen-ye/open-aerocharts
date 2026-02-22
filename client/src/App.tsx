@@ -33,6 +33,11 @@ function App() {
     return params.get('route') || '';
   });
 
+  const [showTooltip, setShowTooltip] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tooltip') !== 'false';
+  });
+
   const [flightPlan, setFlightPlan] = useState<FlightPlan | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedFeatures, setSelectedFeatures] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
@@ -185,6 +190,16 @@ function App() {
       changed = true;
     }
 
+    if (!showTooltip) {
+      if (params.get('tooltip') !== 'false') {
+        params.set('tooltip', 'false');
+        changed = true;
+      }
+    } else if (params.has('tooltip')) {
+      params.delete('tooltip');
+      changed = true;
+    }
+
     if (changed) {
       const newSearch = params.toString();
       const newUrl = newSearch ? `?${newSearch}${window.location.hash}` : window.location.pathname + window.location.hash;
@@ -213,6 +228,7 @@ function App() {
           flightPlan={flightPlan}
           selectedFeatures={selectedFeatures}
           onSelectFeatures={setSelectedFeatures}
+          showTooltip={showTooltip}
         />
         <FlightPlanPanel
           onFlightPlanChange={setFlightPlan}
@@ -220,6 +236,8 @@ function App() {
           onRouteStringChange={setRouteString}
           index={index}
           loading={indexLoading}
+          showTooltip={showTooltip}
+          setShowTooltip={setShowTooltip}
         />
         <MobileBottomSheet
           selectedFeatures={selectedFeatures}
