@@ -124,9 +124,20 @@ export const AeroMap: React.FC<AeroMapProps> = ({
   const [hoverInfo, setHoverInfo] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [localSelectedFeatures, setLocalSelectedFeatures] = useState<{ lngLat: [number, number]; features: any[] } | null>(null);
+  const [isTilted, setIsTilted] = useState(false);
 
   const selectedFeatures = propSelectedFeatures !== undefined ? propSelectedFeatures : localSelectedFeatures;
   const setSelectedFeatures = onSelectFeatures || setLocalSelectedFeatures;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onMove = useCallback((e: any) => {
+    const pitch = e.target.getPitch();
+    if (pitch > 10 && !isTilted) {
+      setIsTilted(true);
+    } else if (pitch <= 10 && isTilted) {
+      setIsTilted(false);
+    }
+  }, [isTilted]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onMouseMove = useCallback((e: any) => {
@@ -402,6 +413,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'text-offset': [0, 1]
   }), []);
 
+  const airspace3dOpacity = isTilted ? 0.3 : 0;
+
   const getZoomRankFilter = (baseZooms: Record<number, number>): maplibregl.ExpressionSpecification => {
     const zooms = Object.keys(baseZooms).map(Number).sort((a, b) => a - b);
     const initialRank = baseZooms[zooms[0]] + aeronauticalLayers.declutterLevel;
@@ -446,6 +459,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
       onLoad={onMapLoad}
       onStyleData={onStyleData}
       onMouseMove={onMouseMove}
+      onMove={onMove}
       onMouseLeave={onMouseLeave}
       onClick={onMapClick}
       onContextMenu={onMapContextMenu}
@@ -456,6 +470,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
         zoom: 8,
         pitch: 0,
       }}
+      maxPitch={85}
+      projection={{ type: 'globe' }}
       mapStyle={mapStyle}
       style={{ width: '100%', height: '100%' }}
       hash={true}
@@ -775,6 +791,20 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               {aeronauticalLayers.controlledAirspace && (
                 <>
                   <Layer
+                    id="airspaces-class-b-3d"
+                    type="fill-extrusion"
+                    source="src-airspaces"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'B']]}
+                    paint={{
+                      'fill-extrusion-color': violet.violet9,
+                      'fill-extrusion-opacity': airspace3dOpacity,
+                      'fill-extrusion-opacity-transition': { duration: 300 },
+                      'fill-extrusion-base': ['get', 'lower_m'],
+                      'fill-extrusion-height': ['get', 'upper_m']
+                    }}
+                  />
+                  <Layer
                     id="airspaces-class-b-hairline"
                     type="line"
                     source="src-airspaces"
@@ -799,6 +829,20 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     paint={{ 'fill-opacity': 0 }}
                   />
                   <Layer
+                    id="airspaces-class-c-3d"
+                    type="fill-extrusion"
+                    source="src-airspaces"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
+                    paint={{
+                      'fill-extrusion-color': crimson.crimson9,
+                      'fill-extrusion-opacity': airspace3dOpacity,
+                      'fill-extrusion-opacity-transition': { duration: 300 },
+                      'fill-extrusion-base': ['get', 'lower_m'],
+                      'fill-extrusion-height': ['get', 'upper_m']
+                    }}
+                  />
+                  <Layer
                     id="airspaces-class-c-hairline"
                     type="line"
                     source="src-airspaces"
@@ -821,6 +865,20 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     source-layer="airspaces"
                     filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'C']]}
                     paint={{ 'fill-opacity': 0 }}
+                  />
+                  <Layer
+                    id="airspaces-class-d-3d"
+                    type="fill-extrusion"
+                    source="src-airspaces"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
+                    paint={{
+                      'fill-extrusion-color': indigo.indigo9,
+                      'fill-extrusion-opacity': airspace3dOpacity,
+                      'fill-extrusion-opacity-transition': { duration: 300 },
+                      'fill-extrusion-base': ['get', 'lower_m'],
+                      'fill-extrusion-height': ['get', 'upper_m']
+                    }}
                   />
                   <Layer
                     id="airspaces-class-d-hairline"
@@ -893,6 +951,20 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               {aeronauticalLayers.suaMoa && (
                 <>
                   <Layer
+                    id="airspaces-sua-3d"
+                    type="fill-extrusion"
+                    source="src-airspaces"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'is_sua'], true]]}
+                    paint={{
+                      'fill-extrusion-color': slateDark.slate8,
+                      'fill-extrusion-opacity': airspace3dOpacity,
+                      'fill-extrusion-opacity-transition': { duration: 300 },
+                      'fill-extrusion-base': ['get', 'lower_m'],
+                      'fill-extrusion-height': ['get', 'upper_m']
+                    }}
+                  />
+                  <Layer
                     id="airspaces-sua-hairline"
                     type="line"
                     source="src-airspaces"
@@ -934,6 +1006,20 @@ export const AeroMap: React.FC<AeroMapProps> = ({
               )}
               {aeronauticalLayers.trsa && (
                 <>
+                  <Layer
+                    id="airspaces-trsa-3d"
+                    type="fill-extrusion"
+                    source="src-airspaces"
+                    source-layer="airspaces"
+                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'TRSA']]}
+                    paint={{
+                      'fill-extrusion-color': slateDark.slate8,
+                      'fill-extrusion-opacity': airspace3dOpacity,
+                      'fill-extrusion-opacity-transition': { duration: 300 },
+                      'fill-extrusion-base': ['get', 'lower_m'],
+                      'fill-extrusion-height': ['get', 'upper_m']
+                    }}
+                  />
                   <Layer
                     id="airspaces-trsa-hairline"
                     type="line"

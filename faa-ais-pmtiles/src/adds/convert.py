@@ -16,6 +16,7 @@ import geojson
 import geopandas as gpd
 import shapefile
 
+from src.common.utils import parse_altitude
 
 # ---------------------------------------------------------------------------
 # Class Airspace (Shapefiles)
@@ -46,13 +47,18 @@ def classify_controlled_airspace(record: dict) -> dict:
     airspace_class = LOCAL_TYPE_TO_CLASS.get(local_type, raw_class)
     display_type = airspace_class if airspace_class == "E" else local_type
 
+    upper_val = record.get("UPPER_VAL") or ""
+    lower_val = record.get("LOWER_VAL") or ""
+
     return {
         "name": name,
         "type": display_type,
         "airspace_class": airspace_class,
         "is_sua": False,
-        "upper_limit": record.get("UPPER_VAL") or "",
-        "lower_limit": record.get("LOWER_VAL") or "",
+        "upper_limit": upper_val,
+        "lower_limit": lower_val,
+        "upper_m": parse_altitude(upper_val) * 0.3048,
+        "lower_m": parse_altitude(lower_val) * 0.3048,
         # "local_type": local_type,
     }
 
@@ -119,6 +125,9 @@ def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]
         type_code = (raw_props.get("TYPE_CODE") or "").strip().upper()
         name = (raw_props.get("NAME") or "").strip()
 
+        upper_val = raw_props.get("UPPER_VAL") or ""
+        lower_val = raw_props.get("LOWER_VAL") or ""
+
         features.append(geojson.Feature(
             geometry=geom,
             properties={
@@ -126,8 +135,10 @@ def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]
                 "type": type_code,
                 "airspace_class": type_code,
                 "is_sua": True,
-                "upper_limit": raw_props.get("UPPER_VAL") or "",
-                "lower_limit": raw_props.get("LOWER_VAL") or "",
+                "upper_limit": upper_val,
+                "lower_limit": lower_val,
+                "upper_m": parse_altitude(upper_val) * 0.3048,
+                "lower_m": parse_altitude(lower_val) * 0.3048,
                 "local_type": type_code,
             },
         ))
@@ -159,7 +170,7 @@ def convert_airspaces(output_critical: str = "data/airspaces.fgb", output_e: str
     e_non_surface = gdf["local_type"].isin(["CLASS_E5", "CLASS_E6", "CLASS_E7"])
     gdf.loc[e_non_surface, "name"] = ""
 
-    dissolution_cols = ["name", "type", "airspace_class", "is_sua", "upper_limit", "lower_limit", "local_type"]
+    dissolution_cols = ["name", "type", "airspace_class", "is_sua", "upper_limit", "lower_limit", "local_type", "upper_m", "lower_m"]
     gdf[dissolution_cols] = gdf[dissolution_cols].fillna("")
 
     # Split: Class E goes to enroute, everything else (B, C, D, SUA) is critical
