@@ -1,70 +1,20 @@
+"""
+Converts raw CIFP (ARINC 424) data into FlatGeobuf format.
+
+Extracts airports, navaids, airways, procedures, runways, and localizers using the `cifparse` library.
+Enriches airport data with metadata from NASR (fuel, tower, FAR 139 status).
+"""
+
 import sys
 import geojson
-import geopandas as gpd
-import math
 from collections import defaultdict
 from cifparse import CIFP
-from src import fetch_nasr
+from src.cifp import nasr
+from src.common.utils import parse_altitude, unwrap_coordinates, haversine, save_fgb
+from src.runways.geometry import get_opposite_runway_id, calculate_destination, create_runway_poly
 
 def load_nasr_metadata():
-    return fetch_nasr.load_nasr_metadata()
-
-def haversine(lon1, lat1, lon2, lat2):
-    R = 3440.065 # Earth radius in NM
-    dLat = math.radians(lat2 - lat1)
-    dLon = math.radians(lon2 - lon1)
-    a = math.sin(dLat / 2) * math.sin(dLat / 2) + \
-        math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * \
-        math.sin(dLon / 2) * math.sin(dLon / 2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
-
-
-
-def parse_altitude(alt_str):
-    if not alt_str:
-        return 0.0
-    alt_str = str(alt_str).strip()
-    if alt_str == 'GND':
-        return 0.0
-    if alt_str == 'UNL':
-        return 60000.0
-    try:
-        val = float(alt_str)
-        return val
-    except ValueError:
-        if alt_str.startswith('FL'):
-            try:
-                return float(alt_str[2:]) * 100
-            except Exception:
-                pass
-        return 0.0
-
-def unwrap_coordinates(coords):
-    if not coords:
-        return coords
-    unwrapped = [coords[0]]
-    for i in range(1, len(coords)):
-        prev_lon = unwrapped[-1][0]
-        curr_lon, lat, elev = coords[i]
-
-        while curr_lon - prev_lon > 180:
-            curr_lon -= 360
-        while curr_lon - prev_lon < -180:
-            curr_lon += 360
-
-        unwrapped.append((curr_lon, lat, elev))
-    return unwrapped
-
-def save_fgb(features, output_path):
-    if not features:
-        print(f"  No features for {output_path}, skipping.")
-        return
-    gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
-    gdf.sort_values(by='rank', ascending=True, inplace=True)
-    gdf.geometry = gdf.geometry.force_2d()
-    # Disable spatial index to ensure linear reading order by tippecanoe
-    gdf.to_file(output_path, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+    return nasr.load_nasr_metadata()
 
 def build_pmtiles_fgb(cifp_path):
     print("Fetching NASR airport metadata...", flush=True)
@@ -88,7 +38,6 @@ def build_pmtiles_fgb(cifp_path):
 
     print("Building lookup dictionaries...", flush=True)
     fixes = {}
-    airport_features = []
 
     print("Extracting Airports...", flush=True)
     airport_features_dict = {}
@@ -387,13 +336,13 @@ def build_pmtiles_fgb(cifp_path):
     save_fgb(airway_features, 'data/airways.fgb')
 
     print("Extracting Runways...", flush=True)
-    runway_features = []
+    thresholds = []
     for rw in c.get_runways():
         p = rw.to_dict()['primary']
         lat, lon = p.get('lat'), p.get('lon')
         if lat is not None and lon is not None:
             elev = float(p.get('threshold_elevation') or 0.0)
-            runway_features.append(geojson.Feature(
+            thresholds.append(geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
                 properties={
                     'airport': p.get('airport_id'),
@@ -405,6 +354,62 @@ def build_pmtiles_fgb(cifp_path):
                     'rank': 5
                 }
             ))
+
+    # Post-process thresholds into polygons
+    runway_features = []
+    by_airport = defaultdict(list)
+    for t in thresholds:
+        by_airport[t.properties['airport']].append(t)
+
+    for airport_id, airport_thresholds in by_airport.items():
+        processed = set()
+        for t1 in airport_thresholds:
+            id1 = t1.properties['runway']
+            if id1 in processed:
+                continue
+
+            id2 = get_opposite_runway_id(id1)
+            t2 = next((t for t in airport_thresholds if t.properties['runway'] == id2), None)
+
+            width_ft = float(t1.properties.get('width') or 100.0)
+            length_ft = float(t1.properties.get('length') or 0.0)
+
+            if t2:
+                # Two ends matched!
+                p1 = t1.geometry.coordinates
+                p2 = t2.geometry.coordinates
+                poly = create_runway_poly(p1, p2, width_ft)
+                if poly:
+                    runway_features.append(geojson.Feature(
+                        geometry=poly,
+                        properties={
+                            **t1.properties,
+                            'runway': f"{id1.replace('RW', '')}/{id2.replace('RW', '')}",
+                        }
+                    ))
+                processed.add(id1)
+                processed.add(id2)
+            else:
+                # One end only, use bearing and length if available
+                p1 = t1.geometry.coordinates
+                bearing = t1.properties.get('bearing')
+                if bearing is not None and length_ft > 0:
+                    try:
+                        b_val = float(bearing)
+                        p2 = calculate_destination(p1, b_val, length_ft)
+                        poly = create_runway_poly(p1, p2, width_ft)
+                        if poly:
+                            runway_features.append(geojson.Feature(
+                                geometry=poly,
+                                properties=t1.properties
+                            ))
+                    except (ValueError, TypeError):
+                        # Fallback to point if bearing invalid
+                        runway_features.append(t1)
+                else:
+                    # Fallback to point if no bearing/length
+                    runway_features.append(t1)
+                processed.add(id1)
 
     save_fgb(runway_features, 'data/runways.fgb')
 

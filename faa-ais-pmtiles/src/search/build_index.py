@@ -1,27 +1,16 @@
+"""
+Builds a searchable index of airports, navaids, and fixes from the CIFP dataset.
+
+Generates a JSON file mapping identifiers to their coordinates and metadata,
+optimized for client-side search.
+"""
+
 import sys
 import json
 import os
 from collections import defaultdict
 from cifparse import CIFP
-
-def parse_altitude(alt_str):
-    if not alt_str:
-        return 0.0
-    alt_str = str(alt_str).strip()
-    if alt_str == 'GND':
-        return 0.0
-    if alt_str == 'UNL':
-        return 60000.0
-    try:
-        val = float(alt_str)
-        return val
-    except ValueError:
-        if alt_str.startswith('FL'):
-            try:
-                return float(alt_str[2:]) * 100
-            except Exception:
-                pass
-        return 0.0
+from src.common.utils import parse_altitude
 
 def main():
     if len(sys.argv) < 2:
@@ -122,7 +111,8 @@ def main():
         grouped[key].append(p)
 
     for (airport, proc_id, trans_id), pts in grouped.items():
-        if not airport or not proc_id: continue
+        if not airport or not proc_id:
+            continue
         
         pts.sort(key=lambda x: x.get('seq_no') or 0)
         proc_points = []
@@ -148,7 +138,8 @@ def main():
                     'name': fix_name
                 })
         
-        if not proc_points: continue
+        if not proc_points:
+            continue
 
         proc_entry = procedures[airport][proc_id]
         

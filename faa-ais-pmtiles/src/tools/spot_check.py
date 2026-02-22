@@ -1,3 +1,10 @@
+"""
+Performs automated quality assurance checks on generated PMTiles.
+
+Decodes specific tiles at given zoom levels to verify the presence and properties
+of key features (e.g., major airports, specific waypoints).
+"""
+
 import subprocess
 import json
 import sys

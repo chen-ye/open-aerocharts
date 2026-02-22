@@ -48,10 +48,15 @@ The project is split into two packages:
 
 ## TODOs
 
-- [ ] Beef up flight planning
-- [ ] Fully support all aeronautical layers (more airports, TRSA, Localizers, VOR compass roses, etc.)
+- [ ] Flight Planning route fidelity/visualization improvements
+- [ ] Flight Planning navlog support
+- [ ] Flight Planning capability improvements
+- [ ] Fully support all aeronautical layers (more airports, TRSA, Mode C, Localizers, VOR compass roses, etc.)
 - [ ] Show weather/radar + METAR/TAF/FRS
 - [ ] Show TFRs/other SWIM data
 - [ ] Show Airport/Runway info
 - [ ] Custom Aeronautical basemap (light + dark)
 - [ ] Show VHF information
+- [ ] 3D Airspace Support
+- [ ] 3D Airway/Waypoint support
+- [ ] 3D Flight Plan Visualization

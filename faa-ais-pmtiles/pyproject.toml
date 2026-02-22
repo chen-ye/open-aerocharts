@@ -16,13 +16,13 @@ dependencies = [
 ]
 
 [project.scripts]
-fetch-cifp = "src.fetch_cifp:main"
-cifp-to-fgb = "src.cifp_to_fgb:main"
-fetch-airspace-shp = "src.fetch_airspace_shp:main"
-shp-to-fgb = "src.shp_to_fgb:main"
-build-pmtiles = "src.build_pmtiles:main"
-spot-check = "src.spot_check:main"
-list-enums = "src.list_enums:main"
+fetch-cifp = "src.cifp.fetch:main"
+cifp-to-fgb = "src.cifp.convert:main"
+fetch-airspace-shp = "src.adds.fetch:main"
+shp-to-fgb = "src.adds.convert:main"
+build-pmtiles = "src.pmtiles.build:main"
+spot-check = "src.tools.spot_check:main"
+list-enums = "src.tools.enums:main"
 
 [build-system]
 requires = ["hatchling"]

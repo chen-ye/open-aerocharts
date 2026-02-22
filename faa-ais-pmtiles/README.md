@@ -53,6 +53,8 @@ vector PMTiles.
 | **Obstacles**           | ADDS ArcGIS        | `data/obstacles.fgb`        | `waypoints_obstacles.pmtiles` |
 | **Diagrams (Taxi/RW)**  | ADDS ArcGIS        | `data/am_*.fgb`             | `airport_diagrams.pmtiles`    |
 
+_\*Runways from CIFP are automatically post-processed into polygons by matching thresholds and buffering the centerline._
+
 _\*Airports use GeoJSON to allow Tippecanoe to respect explicit minzoom/priority
 ranks._
 
@@ -259,6 +261,16 @@ Example:
 
    _Note: Use this to view all possible unique values for categorical properties
    (like `type` or `lighting`) across all datasets._
-
-5. **Outputs**: Files in `output/` are automatically symlinked to
-   `client/public/`.
+   
+   5. **Outputs**: Files in `output/` are automatically symlinked to
+      `client/public/`.
+   
+   ## Project Structure
+   
+   - **`src/cifp/`**: Handling of FAA CIFP (ARINC 424) datasets.
+   - **`src/adds/`**: Handling of ADDS ArcGIS and NFDC Shapefile datasets.
+   - **`src/runways/`**: Logic for generating runway polygons from threshold data.
+   - **`src/pmtiles/`**: Orchestration of the build pipeline.
+   - **`src/tools/`**: Utilities for inspection and validation.
+   - **`src/search/`**: Search index generation.
+   

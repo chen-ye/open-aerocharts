@@ -1,4 +1,9 @@
-import os
+"""
+Scans a data directory for GeoJSON and FlatGeobuf files and lists unique values for low-cardinality columns.
+
+Useful for discovering enumeration values in undocumented datasets.
+"""
+
 import geopandas as gpd
 import pandas as pd
 from pathlib import Path

@@ -1,10 +1,14 @@
-"""Fetch FAA NASR 28-day data for airport fuel availability."""
+"""
+Fetch FAA NASR 28-day data for airport metadata.
+
+Retrieves fuel availability, control tower presence, and FAR 139 certification status
+to support airport ranking and filtering.
+"""
 
 import csv
 import io
 import zipfile
 import requests
-from bs4 import BeautifulSoup
 
 NFDC_BASE = "https://nfdc.faa.gov/webContent/28DaySub/"
 

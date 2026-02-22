@@ -1,12 +1,19 @@
+"""
+Orchestrates the entire PMTiles build pipeline.
+
+Coordinates the fetching of raw data (CIFP, ADDS, NASR), conversion to intermediate
+formats (FlatGeobuf/GeoJSON), and the compilation of final PMTiles archives using `tippecanoe`.
+"""
+
 import os
 import subprocess
 import concurrent.futures
 
-from src import fetch_cifp
-from src import fetch_airspace_shp
-from src import shp_to_fgb
-from src import fetch_nasr
-from src import cifp_to_fgb
+from src.cifp import fetch as fetch_cifp
+from src.adds import fetch as fetch_airspace_shp
+from src.adds import convert as shp_to_fgb
+from src.cifp import nasr as fetch_nasr
+from src.cifp import convert as cifp_to_fgb
 
 # Each PMTiles file is served directly to the frontend — no tile-join needed.
 # This allows each file to use its own optimal zoom range.
