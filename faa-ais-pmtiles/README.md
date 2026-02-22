@@ -46,14 +46,14 @@ vector PMTiles.
 | **Airspaces (Class E)** | NFDC Shapefiles    | `data/airspaces.fgb`        | `enroute.pmtiles`             |
 | **Airways**             | CIFP (ARINC 424)   | `data/airways.fgb`          | `enroute.pmtiles`             |
 | **Procedures**          | CIFP (ARINC 424)   | `data/procedures.fgb`       | `enroute.pmtiles`             |
-| **Runways**             | CIFP (ARINC 424)   | `data/runways.fgb`          | `airports_navaids.pmtiles`    |
+| **Runways**             | CIFP + ADDS        | `data/runways.fgb`          | `airport_diagrams.pmtiles`    |
 | **Localizers**          | CIFP (ARINC 424)   | `data/localizers.fgb`       | `airports_navaids.pmtiles`    |
 | **Waypoints**           | CIFP (ARINC 424)   | `data/waypoints.fgb`        | `waypoints_obstacles.pmtiles` |
 | **Holding Patterns**    | ADDS ArcGIS        | `data/holding_patterns.fgb` | `waypoints_obstacles.pmtiles` |
 | **Obstacles**           | ADDS ArcGIS        | `data/obstacles.fgb`        | `waypoints_obstacles.pmtiles` |
-| **Diagrams (Taxi/RW)**  | ADDS ArcGIS        | `data/am_*.fgb`             | `airport_diagrams.pmtiles`    |
+| **Diagrams (Taxi)**     | ADDS ArcGIS        | `data/am_taxiways.fgb`      | `airport_diagrams.pmtiles`    |
 
-_\*Runways from CIFP are automatically post-processed into polygons by matching thresholds and buffering the centerline._
+_\*Runways are merged from ADDS (high-fidelity) and CIFP (polygonized), deduplicated, and served in the high-zoom diagrams layer._
 
 _\*Airports use GeoJSON to allow Tippecanoe to respect explicit minzoom/priority
 ranks._

@@ -54,10 +54,19 @@ def unwrap_coordinates(coords):
     return unwrapped
 
 def save_fgb(features, output_path):
-    if not features:
-        print(f"  No features for {output_path}, skipping.")
-        return
-    gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
+    if isinstance(features, gpd.GeoDataFrame):
+        if features.empty:
+            print(f"  No features for {output_path}, skipping.")
+            return
+        gdf = features
+        if gdf.crs is None:
+            gdf.set_crs("EPSG:4326", inplace=True)
+    else:
+        if not features:
+            print(f"  No features for {output_path}, skipping.")
+            return
+        gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
+
     if 'rank' in gdf.columns:
         gdf.sort_values(by='rank', ascending=True, inplace=True)
     gdf.geometry = gdf.geometry.force_2d()

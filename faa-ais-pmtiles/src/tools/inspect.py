@@ -6,6 +6,7 @@ Prints column names, sample data, and value counts for 'airspace_class' and 'typ
 
 import geopandas as gpd
 import os
+import sys
 
 def check_fgb(path):
     if not os.path.exists(path):
@@ -24,5 +25,9 @@ def check_fgb(path):
         print(gdf['type'].value_counts())
 
 if __name__ == "__main__":
-    check_fgb("data/airspaces.fgb")
-    check_fgb("data/airspaces_e.fgb")
+    if len(sys.argv) > 1:
+        for f in sys.argv[1:]:
+            check_fgb(f)
+    else:
+        check_fgb("data/airspaces.fgb")
+        check_fgb("data/airspaces_e.fgb")

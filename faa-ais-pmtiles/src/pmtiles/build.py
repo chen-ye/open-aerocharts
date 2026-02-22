@@ -14,6 +14,7 @@ from src.adds import fetch as fetch_airspace_shp
 from src.adds import convert as shp_to_fgb
 from src.cifp import nasr as fetch_nasr
 from src.cifp import convert as cifp_to_fgb
+from src.runways.merge import merge_runways
 
 # Each PMTiles file is served directly to the frontend — no tile-join needed.
 # This allows each file to use its own optimal zoom range.
@@ -56,6 +57,9 @@ def main():
         f1.result()
         f2.result()
 
+    print("Step 2.5: Merging Runways...")
+    merge_runways()
+
     print("Step 3: Compiling into PMTiles with tippecanoe concurrently...")
     os.makedirs("output", exist_ok=True)
 
@@ -80,7 +84,6 @@ def main():
         "--order-by=rank --order-smallest-first "
         "-L airports:data/airports.geojson "
         "-L navaids:data/navaids.fgb "
-        "-L runways:data/runways.fgb "
         "-L localizers:data/localizers.fgb "
     )
     cmd_waypoints_obstacles = (
@@ -93,8 +96,9 @@ def main():
     cmd_airport_diagrams = (
         "uv run tippecanoe -Z9 -z14 -o output/airport_diagrams.pmtiles "
         "--no-feature-limit --no-tile-size-limit -f "
-        "-L am_runways:data/am_runways.fgb "
-        "-L am_taxiways:data/am_taxiways.fgb"
+        "-L runways:data/runways.fgb "
+        "-L am_taxiways:data/am_taxiways.fgb "
+        "-L runway_labels:data/runway_labels.fgb"
     )
 
     with concurrent.futures.ThreadPoolExecutor() as executor:

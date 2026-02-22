@@ -355,8 +355,9 @@ def build_pmtiles_fgb(cifp_path):
                 }
             ))
 
-    # Post-process thresholds into polygons
+    # Post-process thresholds into polygons and labels
     runway_features = []
+    label_features = []
     by_airport = defaultdict(list)
     for t in thresholds:
         by_airport[t.properties['airport']].append(t)
@@ -379,30 +380,84 @@ def build_pmtiles_fgb(cifp_path):
                 p1 = t1.geometry.coordinates
                 p2 = t2.geometry.coordinates
                 poly = create_runway_poly(p1, p2, width_ft)
+                
+                # Sort bearings
+                b1 = float(t1.properties.get('bearing') or 0.0)
+                b2 = float(t2.properties.get('bearing') or 0.0)
+                bearings = sorted([b1, b2])
+                
+                combined_id = f"{id1.replace('RW', '')}/{id2.replace('RW', '')}"
+
                 if poly:
+                    props = t1.properties.copy()
+                    props.update({
+                        'runway': combined_id,
+                        'bearing_1': bearings[0],
+                        'bearing_2': bearings[1]
+                    })
+                    props.pop('bearing', None)
+                    
                     runway_features.append(geojson.Feature(
                         geometry=poly,
-                        properties={
-                            **t1.properties,
-                            'runway': f"{id1.replace('RW', '')}/{id2.replace('RW', '')}",
-                        }
+                        properties=props
                     ))
+                
+                # Create label features for both ends
+                # t1
+                l1_props = {
+                    'label': id1.replace('RW', ''),
+                    'runway_id': combined_id,
+                    'airport_id': airport_id,
+                    'bearing': b1,
+                    'type': 'runway_label'
+                }
+                label_features.append(geojson.Feature(geometry=t1.geometry, properties=l1_props))
+                
+                # t2
+                l2_props = {
+                    'label': id2.replace('RW', ''),
+                    'runway_id': combined_id,
+                    'airport_id': airport_id,
+                    'bearing': b2,
+                    'type': 'runway_label'
+                }
+                label_features.append(geojson.Feature(geometry=t2.geometry, properties=l2_props))
+
                 processed.add(id1)
                 processed.add(id2)
             else:
                 # One end only, use bearing and length if available
                 p1 = t1.geometry.coordinates
                 bearing = t1.properties.get('bearing')
+                
                 if bearing is not None and length_ft > 0:
                     try:
                         b_val = float(bearing)
                         p2 = calculate_destination(p1, b_val, length_ft)
                         poly = create_runway_poly(p1, p2, width_ft)
                         if poly:
+                            props = t1.properties.copy()
+                            props.update({
+                                'bearing_1': b_val,
+                                'bearing_2': None
+                            })
+                            props.pop('bearing', None)
+                            
                             runway_features.append(geojson.Feature(
                                 geometry=poly,
-                                properties=t1.properties
+                                properties=props
                             ))
+                            
+                            # Label for the known end
+                            l1_props = {
+                                'label': id1.replace('RW', ''),
+                                'runway_id': t1.properties.get('runway'), # No combined ID if single
+                                'airport_id': airport_id,
+                                'bearing': b_val,
+                                'type': 'runway_label'
+                            }
+                            label_features.append(geojson.Feature(geometry=t1.geometry, properties=l1_props))
+                            
                     except (ValueError, TypeError):
                         # Fallback to point if bearing invalid
                         runway_features.append(t1)
@@ -411,7 +466,8 @@ def build_pmtiles_fgb(cifp_path):
                     runway_features.append(t1)
                 processed.add(id1)
 
-    save_fgb(runway_features, 'data/runways.fgb')
+    save_fgb(runway_features, 'data/cifp_runways.fgb')
+    save_fgb(label_features, 'data/cifp_runway_labels.fgb')
 
     print("Extracting Localizers...", flush=True)
     loc_features = []

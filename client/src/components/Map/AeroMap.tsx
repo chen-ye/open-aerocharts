@@ -181,7 +181,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
     'waypoints-symbol',
     'localizers-symbol',
     'obstacles-symbol',
-    'am-runways-fill',
+    'runways-fill',
     'am-taxiways-fill',
   ], []);
 
@@ -720,10 +720,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     }}
                   /> */}
                   <Layer
-                    id="am-runways-fill"
+                    id="runways-fill"
                     type="fill"
                     source="src-diagrams"
-                    source-layer="am_runways"
+                    source-layer="runways"
                     minzoom={9}
                     paint={{
                       'fill-color': isDarkMap ? '#555566' : '#666666',
@@ -731,10 +731,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     }}
                   />
                   <Layer
-                    id="am-runways-outline"
+                    id="runways-outline"
                     type="line"
                     source="src-diagrams"
-                    source-layer="am_runways"
+                    source-layer="runways"
                     minzoom={9}
                     paint={{
                       'line-color': isDarkMap ? '#777788' : '#444444',
@@ -742,33 +742,25 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                     }}
                   />
                   <Layer
-                    id="am-runways-label"
+                    id="runways-label"
                     type="symbol"
                     source="src-diagrams"
-                    source-layer="am_runways"
-                    minzoom={13}
+                    source-layer="runway_labels"
+                    minzoom={12}
                     layout={{
-                      'text-field': ['get', 'rwy_id'],
+                      'text-field': ['get', 'label'],
                       'text-font': ['Open Sans Bold', 'Arial Unicode MS Regular'],
-                      'text-size': 10,
-                      'text-allow-overlap': false,
-                      'symbol-placement': 'point'
+                      'text-size': 11,
+                      'text-allow-overlap': true,
+                      'symbol-placement': 'point',
+                      // 'text-rotate': ['get', 'bearing'],
+                      // 'text-rotation-alignment': 'map',
+                      'text-pitch-alignment': 'map'
                     }}
                     paint={{
-                      'text-color': isDarkMap ? '#cccccc' : '#333333',
+                      'text-color': isDarkMap ? '#e0e0e0' : '#222222',
                       'text-halo-color': haloColor,
-                      'text-halo-width': 1
-                    }}
-                  />
-                  <Layer
-                    id="runways-line"
-                    type="line"
-                    source="src-airports-navaids"
-                    source-layer="runways"
-                    maxzoom={9}
-                    paint={{
-                      'line-color': '#444444',
-                      'line-width': 4
+                      'text-halo-width': 1.5
                     }}
                   />
                 </>
