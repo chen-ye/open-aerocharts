@@ -26,7 +26,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
   index,
   loading
 }) => {
-  const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [isCollapsed, setIsCollapsed] = React.useState(true);
 
   return (
     <Box className={`map-feature-panel mobile-only ${isCollapsed ? 'is-collapsed' : ''}`}>
