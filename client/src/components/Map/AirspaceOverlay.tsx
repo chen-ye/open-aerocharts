@@ -1,8 +1,8 @@
+import { Fp64Extension } from "@deck.gl/extensions";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { PMTilesSource } from "@loaders.gl/pmtiles";
 import { crimson, indigo, slateDark, violet } from "@radix-ui/colors";
 import { PathLayer, PolygonLayer, TileLayer } from "deck.gl";
-import { Fp64Extension } from "@deck.gl/extensions";
 import type React from "react";
 import { useEffect, useMemo } from "react";
 import { useControl } from "react-map-gl/maplibre";
@@ -94,78 +94,96 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 					return false;
 				});
 
-        // Flatten features for PolygonLayer
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const flatFeatures = filteredFeatures.flatMap((f: any) => {
-             if (f.geometry.type === 'Polygon') {
-                 return f;
-             }
-             if (f.geometry.type === 'MultiPolygon') {
-                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                 return f.geometry.coordinates.map((coords: any) => ({
-                     ...f,
-                     geometry: { type: 'Polygon', coordinates: coords }
-                 }));
-             }
-             return [];
-        });
+				// Flatten features for PolygonLayer
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const flatFeatures = filteredFeatures.flatMap((f: any) => {
+					if (f.geometry.type === "Polygon") {
+						return f;
+					}
+					if (f.geometry.type === "MultiPolygon") {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						return f.geometry.coordinates.map((coords: any) => ({
+							...f,
+							geometry: { type: "Polygon", coordinates: coords },
+						}));
+					}
+					return [];
+				});
 
-        const pathOffset = 30;
+				const pathOffset = 15;
 
-        return [
-            new PolygonLayer(props, {
-                id: `${props.id}-volume`,
-                data: flatFeatures,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                getPolygon: (f: any) => {
-                    const lowerM = f.properties.lower_m || 0;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    return f.geometry.coordinates.map((coord: any[]) =>
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        coord.map((p: any) => [p[0], p[1], lowerM])
-                    );
-                },
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                getElevation: (f: any) => (f.properties.upper_m || 0) - (f.properties.lower_m || 0),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                getFillColor: (f: any) => [...getColor(f.properties), 35],
-                extruded: true,
-                wireframe: false,
-                getPolygonOffset: ({layerIndex}) => [0, layerIndex * -10000],
-            }),
-            new PathLayer(props, {
-                id: `${props.id}-edges-upper`,
-                data: flatFeatures,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                getPath: (f: any) => {
-                    const upperM = f.properties.upper_m || 0;
-                    // Outer ring only
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    return f.geometry.coordinates[0].map((p: any) => [p[0], p[1], upperM + pathOffset]);
-                },
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                getColor: (f: any) => getColor(f.properties),
-                widthMinPixels: 1,
-                opacity: 1.0,
-                getPolygonOffset: ({layerIndex}) => [0, layerIndex * -10000],
-            }),
-            new PathLayer(props, {
-                id: `${props.id}-edges-upper`,
-                data: flatFeatures,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                getPath: (f: any) => {
-                    const lowerM = f.properties.lower_m || 0;
-                    // Outer ring only
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    return f.geometry.coordinates[0].map((p: any) => [p[0], p[1], lowerM - pathOffset]);
-                },
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                getColor: (f: any) => getColor(f.properties),
-                widthMinPixels: 1,
-                opacity: 1.0,
-                getPolygonOffset: ({layerIndex}) => [0, layerIndex * -10000],
-            })
-        ];
+				return [
+					new PolygonLayer(props, {
+						id: `${props.id}-volume`,
+						data: flatFeatures,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						getPolygon: (f: any) => {
+							const lowerM = f.properties.lower_m || 0;
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							return f.geometry.coordinates.map((coord: any[]) =>
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								coord.map((p: any) => [p[0], p[1], lowerM]),
+							);
+						},
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						getElevation: (f: any) =>
+							(f.properties.upper_m || 0) - (f.properties.lower_m || 0),
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						getFillColor: (f: any) =>
+							[...getColor(f.properties), 35] as [
+								number,
+								number,
+								number,
+								number,
+							],
+						extruded: true,
+						wireframe: false,
+						getPolygonOffset: ({ layerIndex }) => [0, layerIndex * -10000],
+						extensions: [new Fp64Extension()],
+					}),
+					new PathLayer(props, {
+						id: `${props.id}-edges-upper`,
+						data: flatFeatures,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						getPath: (f: any) => {
+							const upperM = f.properties.upper_m || 0;
+							// Outer ring only
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							return f.geometry.coordinates[0].map((p: any) => [
+								p[0],
+								p[1],
+								upperM + pathOffset,
+							]);
+						},
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						getColor: (f: any) =>
+							getColor(f.properties) as [number, number, number],
+						widthMinPixels: 1,
+						opacity: 1.0,
+						getPolygonOffset: ({ layerIndex }) => [0, layerIndex * -10000],
+					}),
+					new PathLayer(props, {
+						id: `${props.id}-edges-lower`,
+						data: flatFeatures,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						getPath: (f: any) => {
+							const lowerM = f.properties.lower_m || 0;
+							// Outer ring only
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							return f.geometry.coordinates[0].map((p: any) => [
+								p[0],
+								p[1],
+								lowerM - pathOffset,
+							]);
+						},
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						getColor: (f: any) =>
+							getColor(f.properties) as [number, number, number],
+						widthMinPixels: 1,
+						opacity: 1.0,
+						getPolygonOffset: ({ layerIndex }) => [0, layerIndex * -10000],
+					}),
+				];
 			},
 		});
 

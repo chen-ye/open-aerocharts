@@ -617,10 +617,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 	}, [selectedFeatures]);
 
 	return (
-        <ReactMap
-            canvasContextAttributes={{
-                antialias: true,
-            }}
+		<ReactMap
+			canvasContextAttributes={{
+				antialias: true,
+			}}
 			onLoad={onMapLoad}
 			onStyleData={onStyleData}
 			onMouseMove={onMouseMove}
