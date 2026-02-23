@@ -562,8 +562,6 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			[],
 		);
 
-	const _airspace3dOpacity = isTilted ? 0.3 : 0;
-
 	const getZoomRankFilter = (
 		baseZooms: Record<number, number>,
 	): maplibregl.ExpressionSpecification => {
@@ -619,7 +617,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 	}, [selectedFeatures]);
 
 	return (
-		<ReactMap
+        <ReactMap
+            canvasContextAttributes={{
+                antialias: true,
+            }}
 			onLoad={onMapLoad}
 			onStyleData={onStyleData}
 			onMouseMove={onMouseMove}
