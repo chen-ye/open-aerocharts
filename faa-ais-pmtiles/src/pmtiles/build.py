@@ -5,15 +5,15 @@ Coordinates the fetching of raw data (CIFP, ADDS, NASR), conversion to intermedi
 formats (FlatGeobuf/GeoJSON), and the compilation of final PMTiles archives using `tippecanoe`.
 """
 
+import concurrent.futures
 import os
 import subprocess
-import concurrent.futures
 
-from src.cifp import fetch as fetch_cifp
-from src.adds import fetch as fetch_airspace_shp
 from src.adds import convert as shp_to_fgb
-from src.cifp import nasr as fetch_nasr
+from src.adds import fetch as fetch_airspace_shp
 from src.cifp import convert as cifp_to_fgb
+from src.cifp import fetch as fetch_cifp
+from src.cifp import nasr as fetch_nasr
 from src.runways.merge import merge_runways
 
 # Each PMTiles file is served directly to the frontend — no tile-join needed.
@@ -25,13 +25,16 @@ PMTILES_FILES = [
     "airport_diagrams",
 ]
 
+
 def run_cmd(cmd):
     print(f"Running: {cmd}")
     subprocess.run(cmd, shell=True, check=True)
 
+
 def fetch_nasr_wrapper():
     # Fetch NASR metadata (caching is handled within fetch_nasr.py)
     fetch_nasr.get_airport_metadata()
+
 
 def main():
     print("Step 1: Fetching data concurrently...")
@@ -64,8 +67,8 @@ def main():
     os.makedirs("output", exist_ok=True)
 
     cmd_airspaces = (
-        "uv run tippecanoe -Z0 -z10 -o output/airspaces.pmtiles "
-        "--no-feature-limit --no-tile-size-limit -f "
+        "uv run tippecanoe -Z0 -z8 -o output/airspaces.pmtiles "
+        "--no-feature-limit --no-tile-size-limit --buffer=25 --no-clipping -f "
         "-l airspaces data/airspaces.fgb"
     )
     cmd_enroute = (
@@ -117,13 +120,26 @@ def main():
     print("Pipeline complete!")
 
     print("Symlinking output to client/public/...")
-    run_cmd("ln -sf ../../faa-ais-pmtiles/output/airspaces.pmtiles ../client/public/airspaces.pmtiles")
-    run_cmd("ln -sf ../../faa-ais-pmtiles/output/enroute.pmtiles ../client/public/enroute.pmtiles")
-    run_cmd("ln -sf ../../faa-ais-pmtiles/output/boundary.pmtiles ../client/public/boundary.pmtiles")
-    run_cmd("ln -sf ../../faa-ais-pmtiles/output/airports_navaids.pmtiles ../client/public/airports_navaids.pmtiles")
-    run_cmd("ln -sf ../../faa-ais-pmtiles/output/waypoints_obstacles.pmtiles ../client/public/waypoints_obstacles.pmtiles")
-    run_cmd("ln -sf ../../faa-ais-pmtiles/output/airport_diagrams.pmtiles ../client/public/airport_diagrams.pmtiles")
+    run_cmd(
+        "ln -sf ../../faa-ais-pmtiles/output/airspaces.pmtiles ../client/public/airspaces.pmtiles"
+    )
+    run_cmd(
+        "ln -sf ../../faa-ais-pmtiles/output/enroute.pmtiles ../client/public/enroute.pmtiles"
+    )
+    run_cmd(
+        "ln -sf ../../faa-ais-pmtiles/output/boundary.pmtiles ../client/public/boundary.pmtiles"
+    )
+    run_cmd(
+        "ln -sf ../../faa-ais-pmtiles/output/airports_navaids.pmtiles ../client/public/airports_navaids.pmtiles"
+    )
+    run_cmd(
+        "ln -sf ../../faa-ais-pmtiles/output/waypoints_obstacles.pmtiles ../client/public/waypoints_obstacles.pmtiles"
+    )
+    run_cmd(
+        "ln -sf ../../faa-ais-pmtiles/output/airport_diagrams.pmtiles ../client/public/airport_diagrams.pmtiles"
+    )
     print("Done.")
+
 
 if __name__ == "__main__":
     main()

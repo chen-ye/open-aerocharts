@@ -1,0 +1,5 @@
+dist/**
+dist/
+**/dist/**
+public/search_index.json
+node_modules/

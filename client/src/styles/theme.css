@@ -2,213 +2,223 @@
 
 /* Base Theme Configuration */
 :root {
-  color-scheme: light dark;
+	color-scheme: light dark;
 
-  --crimson-vfr: #e93d82; /* Radix crimson-9 — airports, Class C/E */
-  --glass-bg: rgba(25, 25, 30, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.15);
-  --glass-blur: 24px;
-  --map-ui-text: var(--gray-12);
+	--crimson-vfr: #e93d82; /* Radix crimson-9 — airports, Class C/E */
+	--glass-bg: rgba(25, 25, 30, 0.55);
+	--glass-border: rgba(255, 255, 255, 0.15);
+	--glass-blur: 24px;
+	--map-ui-text: var(--gray-12);
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  font-family: var(--default-font-family, system-ui, -apple-system, sans-serif);
-  background-color: var(--color-page-background, #111113);
-  color: var(--gray-12, #eeeeee);
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	font-family: var(--default-font-family, system-ui, -apple-system, sans-serif);
+	background-color: var(--color-page-background, #111113);
+	color: var(--gray-12, #eeeeee);
 }
 
 /* Override MapLibre Popup defaults for Glassmorphism Tooltips */
 .maplibregl-popup-content {
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  pointer-events: none; /* Tooltip shouldn't block map interactions */
+	background: transparent !important;
+	box-shadow: none !important;
+	padding: 0 !important;
+	pointer-events: none; /* Tooltip shouldn't block map interactions */
 }
 
 .maplibregl-popup-tip {
-  display: none !important;
+	display: none !important;
 }
 
 /* Base App Layout */
 .app-container {
-  display: flex;
-  flex-direction: column;
-  width: 100vw;
-  height: 100svh;
-  position: relative;
-  background-color: var(--color-page-background);
+	display: flex;
+	flex-direction: column;
+	width: 100vw;
+	height: 100svh;
+	position: relative;
+	background-color: var(--color-page-background);
 }
 
 /* Responsive Map Feature Panel */
 .map-feature-panel {
-  position: absolute;
-  z-index: 20;
-  background-color: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  box-shadow: 0 0 0 1px var(--glass-border);
+	position: absolute;
+	z-index: 20;
+	background-color: var(--glass-bg);
+	backdrop-filter: blur(var(--glass-blur));
+	box-shadow: 0 0 0 1px var(--glass-border);
 }
 
 /* Responsive Settings Panel */
 .settings-panel-container {
-  position: absolute;
-  z-index: 10;
+	position: absolute;
+	z-index: 10;
 }
 
 .settings-card-body {
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0; /* Important for flex child scrolling */
-  padding-bottom: var(--space-4);
+	overflow-y: auto;
+	flex: 1;
+	min-height: 0; /* Important for flex child scrolling */
+	padding-bottom: var(--space-4);
 }
 
 /* Responsive Visibility Utilities */
 .desktop-only {
-  display: block;
+	display: block;
 }
 
 .mobile-only {
-  display: none;
+	display: none;
 }
 
 /* Desktop Styles */
 @media (min-width: 769px) {
-  .map-feature-panel {
-    bottom: var(--space-4);
-    left: var(--space-4);
-    width: 320px;
-    max-height: calc(100vh - 48px);
-    border-radius: var(--radius-3);
-  }
+	.map-feature-panel {
+		bottom: var(--space-4);
+		left: var(--space-4);
+		width: 320px;
+		max-height: calc(100vh - 48px);
+		border-radius: var(--radius-3);
+	}
 
-  .settings-panel-container {
-    top: var(--space-4);
-    right: var(--space-4);
-    width: auto;
-  }
+	.settings-panel-container {
+		top: var(--space-4);
+		right: var(--space-4);
+		width: auto;
+	}
 
-  .settings-card {
-    width: 320px !important;
-    max-height: calc(100vh - 48px); /* Match feature panel height constraint */
-    display: flex;
-    flex-direction: column;
-    padding: 0 !important;
-  }
+	.settings-card {
+		width: 320px !important;
+		max-height: calc(100vh - 48px); /* Match feature panel height constraint */
+		display: flex;
+		flex-direction: column;
+		padding: 0 !important;
+	}
 }
 
 /* Mobile Styles */
 @media (max-width: 768px) {
-  .desktop-only {
-    display: none !important;
-  }
+	.desktop-only {
+		display: none !important;
+	}
 
-  .mobile-only {
-    display: block !important;
-  }
+	.mobile-only {
+		display: block !important;
+	}
 
-  .map-feature-panel {
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-height: 50vh;
-    border-radius: var(--radius-4) var(--radius-4) 0 0;
-    overflow-y: hidden;
-    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  }
+	.map-feature-panel {
+		bottom: 0;
+		left: 0;
+		right: 0;
+		width: 100%;
+		max-height: 50vh;
+		border-radius: var(--radius-4) var(--radius-4) 0 0;
+		overflow-y: hidden;
+		transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+	}
 
-  .map-feature-panel.is-collapsed {
-    transform: translateY(calc(100% - 44px)); /* 44px is the height of the tab row */
-  }
+	.map-feature-panel.is-collapsed {
+		transform: translateY(
+			calc(100% - 44px)
+		); /* 44px is the height of the tab row */
+	}
 
-  .settings-panel-container {
-    top: var(--space-2);
-    right: var(--space-2);
-    left: var(--space-2); /* Center horizontally or stretch */
-    display: flex;
-    justify-content: flex-end; /* Align icon to right, but card can be full width */
-  }
+	.settings-panel-container {
+		top: var(--space-2);
+		right: var(--space-2);
+		left: var(--space-2); /* Center horizontally or stretch */
+		display: flex;
+		justify-content: flex-end; /* Align icon to right, but card can be full width */
+	}
 
-  .settings-card {
-    width: 100% !important;
-    max-height: 70vh;
-    display: flex;
-    flex-direction: column;
-    padding: 0 !important;
-  }
+	.settings-card {
+		width: 100% !important;
+		max-height: 70vh;
+		display: flex;
+		flex-direction: column;
+		padding: 0 !important;
+	}
 
-  /* Hide Tooltip on Mobile (redundant with bottom sheet) */
-  .maplibregl-popup {
-    display: none !important;
-  }
+	/* Hide Tooltip on Mobile (redundant with bottom sheet) */
+	.maplibregl-popup {
+		display: none !important;
+	}
 }
 
 /* Accordion Styles */
 .accordion-item {
-  border-bottom: 1px solid var(--gray-6); /* Separator line */
+	border-bottom: 1px solid var(--gray-6); /* Separator line */
 }
 
 .accordion-item:last-child {
-  border-bottom: none;
+	border-bottom: none;
 }
 
 .accordion-header {
-  display: flex;
+	display: flex;
 }
 
 .accordion-trigger {
-  all: unset;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: var(--space-1) 0;
-  font-family: var(--default-font-family);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--gray-12);
-  cursor: pointer;
-  background-color: transparent;
-  transition: color 0.2s;
+	all: unset;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: var(--space-1) 0;
+	font-family: var(--default-font-family);
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--gray-12);
+	cursor: pointer;
+	background-color: transparent;
+	transition: color 0.2s;
 }
 
 .accordion-trigger:hover {
-  color: var(--accent-11);
+	color: var(--accent-11);
 }
 
 .accordion-chevron {
-  transition: transform 300ms cubic-bezier(0.87, 0, 0.13, 1);
-  color: var(--gray-11);
+	transition: transform 300ms cubic-bezier(0.87, 0, 0.13, 1);
+	color: var(--gray-11);
 }
 
-.accordion-trigger[data-state='open'] .accordion-chevron {
-  transform: rotate(180deg);
+.accordion-trigger[data-state="open"] .accordion-chevron {
+	transform: rotate(180deg);
 }
 
 .accordion-content {
-  overflow: hidden;
+	overflow: hidden;
 }
 
-.accordion-content[data-state='open'] {
-  animation: slideDown 300ms cubic-bezier(0.87, 0, 0.13, 1);
+.accordion-content[data-state="open"] {
+	animation: slideDown 300ms cubic-bezier(0.87, 0, 0.13, 1);
 }
 
-.accordion-content[data-state='closed'] {
-  animation: slideUp 300ms cubic-bezier(0.87, 0, 0.13, 1);
+.accordion-content[data-state="closed"] {
+	animation: slideUp 300ms cubic-bezier(0.87, 0, 0.13, 1);
 }
 
 .accordion-content-inner {
-  padding-bottom: var(--space-2);
+	padding-bottom: var(--space-2);
 }
 
 @keyframes slideDown {
-  from { height: 0; }
-  to { height: var(--radix-accordion-content-height); }
+	from {
+		height: 0;
+	}
+	to {
+		height: var(--radix-accordion-content-height);
+	}
 }
 
 @keyframes slideUp {
-  from { height: var(--radix-accordion-content-height); }
-  to { height: 0; }
+	from {
+		height: var(--radix-accordion-content-height);
+	}
+	to {
+		height: 0;
+	}
 }
