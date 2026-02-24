@@ -537,12 +537,13 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			() => ({
 				"text-field": [
 					"concat",
-											["case",
-											["==", ["get", "is_sua"], true],
-											["get", "name"],
-											["coalesce", ["get", "airspace_class"], ["get", "type"]],
-										],
-					
+					[
+						"case",
+						["==", ["get", "is_sua"], true],
+						["get", "name"],
+						["coalesce", ["get", "airspace_class"], ["get", "type"]],
+					],
+
 					"/",
 					["get", "lower_limit"],
 					"-",
@@ -781,91 +782,6 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 					}}
 				/>
 			</Source>
-
-			{/* Flight Plan */}
-			{flightPlan && (
-				<Source
-					id="flight-plan-source"
-					type="geojson"
-					data={flightPlan.geometry}
-				>
-					<Layer
-						id="flight-plan-line-casing"
-						type="line"
-						filter={["==", "$type", "LineString"]}
-						paint={{
-							"line-color": isDarkMap ? "#000000" : "#ffffff",
-							"line-width": 7,
-							"line-opacity": 0.8,
-						}}
-					/>
-					<Layer
-						id="flight-plan-line"
-						type="line"
-						filter={["==", "$type", "LineString"]}
-						paint={{
-							"line-color": cyan.cyan9,
-							"line-width": 4,
-							"line-opacity": 1,
-						}}
-					/>
-					<Layer
-						id="flight-plan-point"
-						type="symbol"
-						filter={["==", "$type", "Point"]}
-						layout={{
-							"icon-image": [
-								"match",
-								["get", "type"],
-								"compulsory",
-								"fix-compulsory-cyan",
-								"waypoint",
-								"fix-non-compulsory-cyan",
-								"vor",
-								"nav-vor-cyan",
-								"vortac",
-								"nav-vortac-cyan",
-								"vordme",
-								"nav-vordme-cyan",
-								"tacan",
-								"nav-tacan-cyan",
-								"dme",
-								"nav-dme-cyan",
-								"ndb",
-								"nav-ndb-cyan",
-								"airport",
-								"apt-ifr-civil-cyan",
-								"fix-non-compulsory-cyan", // default
-							] as unknown as maplibregl.ExpressionSpecification,
-							"icon-size": 0.8,
-							"icon-allow-overlap": true,
-							"icon-ignore-placement": true,
-						}}
-						paint={{
-							"icon-halo-color": isDarkMap ? "#000000" : "#ffffff",
-							"icon-halo-width": 1,
-						}}
-					/>
-					<Layer
-						id="flight-plan-label"
-						type="symbol"
-						filter={["==", "$type", "Point"]}
-						layout={{
-							"text-field": ["get", "id"],
-							"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
-							"text-size": 12,
-							"text-offset": [1.2, 0],
-							"text-anchor": "left",
-							"text-allow-overlap": false,
-						}}
-						paint={{
-							"text-color": cyanDark.cyan11,
-							"text-halo-color": haloColor,
-							"text-halo-width": 2,
-						}}
-					/>
-				</Source>
-			)}
 
 			{/* Aeronautical Data — separate PMTiles sources for optimal zoom ranges */}
 			{aeronauticalLayers.showAll && (
@@ -1387,7 +1303,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											] as unknown as maplibregl.ExpressionSpecification,
 											"line-opacity": 0.1,
 										}}
-                                    />
+									/>
 									{/* E2 (from surface)*/}
 									<Layer
 										id="airspaces-class-e-hairline"
@@ -1889,6 +1805,91 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						</>
 					)}
 				</>
+            )}
+
+			{/* Flight Plan */}
+			{flightPlan && (
+				<Source
+					id="flight-plan-source"
+					type="geojson"
+					data={flightPlan.geometry}
+				>
+					<Layer
+						id="flight-plan-line-casing"
+						type="line"
+						filter={["==", "$type", "LineString"]}
+						paint={{
+							"line-color": isDarkMap ? "#000000" : "#ffffff",
+							"line-width": 7,
+							"line-opacity": 0.8,
+						}}
+					/>
+					<Layer
+						id="flight-plan-line"
+						type="line"
+						filter={["==", "$type", "LineString"]}
+						paint={{
+							"line-color": cyan.cyan9,
+							"line-width": 4,
+							"line-opacity": 1,
+						}}
+					/>
+					<Layer
+						id="flight-plan-point"
+						type="symbol"
+						filter={["==", "$type", "Point"]}
+						layout={{
+							"icon-image": [
+								"match",
+								["get", "type"],
+								"compulsory",
+								"fix-compulsory-cyan",
+								"waypoint",
+								"fix-non-compulsory-cyan",
+								"vor",
+								"nav-vor-cyan",
+								"vortac",
+								"nav-vortac-cyan",
+								"vordme",
+								"nav-vordme-cyan",
+								"tacan",
+								"nav-tacan-cyan",
+								"dme",
+								"nav-dme-cyan",
+								"ndb",
+								"nav-ndb-cyan",
+								"airport",
+								"apt-ifr-civil-cyan",
+								"fix-non-compulsory-cyan", // default
+							] as unknown as maplibregl.ExpressionSpecification,
+							"icon-size": 0.8,
+							"icon-allow-overlap": true,
+							"icon-ignore-placement": true,
+						}}
+						paint={{
+							"icon-halo-color": isDarkMap ? "#000000" : "#ffffff",
+							"icon-halo-width": 1,
+						}}
+					/>
+					<Layer
+						id="flight-plan-label"
+						type="symbol"
+						filter={["==", "$type", "Point"]}
+						layout={{
+							"text-field": ["get", "id"],
+							"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+							"text-size": 12,
+							"text-offset": [1.2, 0],
+							"text-anchor": "left",
+							"text-allow-overlap": false,
+						}}
+						paint={{
+							"text-color": cyanDark.cyan11,
+							"text-halo-color": haloColor,
+							"text-halo-width": 2,
+						}}
+					/>
+				</Source>
 			)}
 
 			{/* Hover Tooltip */}
