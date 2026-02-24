@@ -929,17 +929,6 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											"fill-opacity": 0.7,
 										}}
 									/>
-									{/* <Layer
-                    id="am-taxiways-outline"
-                    type="line"
-                    source="src-diagrams"
-                    source-layer="am_taxiways"
-                    minzoom={9}
-                    paint={{
-                      'line-color': isDarkMap ? '#555566' : '#999999',
-                      'line-width': 0.5
-                    }}
-                  /> */}
 									<Layer
 										id="runways-fill"
 										type="fill"
@@ -1124,16 +1113,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											"line-color": indigo.indigo9,
 											"line-width": 1,
 											"line-dasharray": [4, 4],
-										}} // indigo-9
+										}}
 									/>
-									{/* <Layer
-                    id="airspaces-class-d"
-                    type="line"
-                    source="src-enroute"
-                    source-layer="airspaces"
-                    filter={['all', ['!=', ['get', 'type'], 'E'], ['==', ['get', 'airspace_class'], 'D']]}
-                    paint={{ 'line-color': indigo.indigo9, 'line-width': 8, 'line-dasharray': [4/8, 4/8], 'line-opacity': 0.2, "line-offset": 5 }} // indigo-9
-                  /> */}
 									<Layer
 										id="airspaces-class-d-fill"
 										type="fill"
