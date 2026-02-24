@@ -5,7 +5,6 @@ import {
 	grayDark,
 	indigo,
 	plum,
-	slate,
 } from "@radix-ui/colors";
 import { Box, Flex, Separator, Slider, Switch, Text } from "@radix-ui/themes";
 import React from "react";

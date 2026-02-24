@@ -12,10 +12,6 @@ import {
 	indigoDark,
 	purple,
 	purpleDark,
-	slate,
-	slateDark,
-	violet,
-	violetDark,
 } from "@radix-ui/colors";
 import {
 	Box,
@@ -541,12 +537,12 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			() => ({
 				"text-field": [
 					"concat",
-					[
-						"case",
-						["==", ["get", "is_sua"], true],
-						["get", "name"],
-						["get", "airspace_class"],
-					],
+											["case",
+											["==", ["get", "is_sua"], true],
+											["get", "name"],
+											["coalesce", ["get", "airspace_class"], ["get", "type"]],
+										],
+					
 					"/",
 					["get", "lower_limit"],
 					"-",
@@ -1421,6 +1417,28 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										source-layer="airspaces"
 										filter={["==", ["get", "type"], "E"]}
 										paint={{ "fill-opacity": 0 }}
+									/>
+									<Layer
+										id="airspaces-class-e-label"
+										type="symbol"
+										source="src-enroute"
+										source-layer="airspaces"
+										minzoom={8}
+										filter={[
+											"all",
+											["==", ["get", "type"], "E"],
+											[
+												"any",
+												["==", ["get", "lower_limit"], "0"],
+												["==", ["get", "lower_limit"], "SFC"],
+											],
+										]}
+										layout={airspaceLabelLayout}
+										paint={{
+											"text-color": getAirspaceTextColor("E", false, isDarkMap),
+											"text-halo-color": haloColor,
+											"text-halo-width": 1.5,
+										}}
 									/>
 								</>
 							)}
