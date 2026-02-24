@@ -23,6 +23,66 @@ export const parseRoute = (
 	for (let i = 0; i < parts.length; i++) {
 		const part = parts[i];
 
+		// Ignore Speed/Altitude blocks (e.g., N0450F350, M080F350, A080, F350)
+		if (/^([NMK]\d{4})?([AFSM]\d{3,4})$/.test(part)) {
+			continue;
+		}
+
+		// Ignore DCT (Direct)
+		if (part === "DCT") {
+			continue;
+		}
+
+		// Check for Raw Coordinates
+		// Format 1: Decimal Degrees (e.g. 37.25/-122.5 or 37.25,-122.5)
+		const decimalMatch = part.match(/^(-?\d+(\.\d+)?)[/,](-?\d+(\.\d+)?)$/);
+		if (decimalMatch) {
+			const lat = parseFloat(decimalMatch[1]);
+			const lon = parseFloat(decimalMatch[3]);
+			const id = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+			routePoints.push({
+				id,
+				lat,
+				lon,
+				type: "waypoint",
+				name: "COORD",
+			});
+			allCoords.push([lon, lat]);
+			lastFixId = id;
+			continue;
+		}
+
+		// Format 2: Degrees Minutes (ICAO-ish) (e.g. 3715N12230W or 3715N/12230W)
+		const dmsMatch = part.match(
+			/^(\d{2})(\d{2})([NS])[/-]?(\d{3})(\d{2})([EW])$/,
+		);
+		if (dmsMatch) {
+			const latDeg = parseInt(dmsMatch[1], 10);
+			const latMin = parseInt(dmsMatch[2], 10);
+			const latDir = dmsMatch[3];
+			const lonDeg = parseInt(dmsMatch[4], 10);
+			const lonMin = parseInt(dmsMatch[5], 10);
+			const lonDir = dmsMatch[6];
+
+			let lat = latDeg + latMin / 60;
+			if (latDir === "S") lat = -lat;
+
+			let lon = lonDeg + lonMin / 60;
+			if (lonDir === "W") lon = -lon;
+
+			const id = `${dmsMatch[1]}${dmsMatch[2]}${latDir}${dmsMatch[4]}${dmsMatch[5]}${lonDir}`;
+			routePoints.push({
+				id,
+				lat,
+				lon,
+				type: "waypoint",
+				name: "COORD",
+			});
+			allCoords.push([lon, lat]);
+			lastFixId = id;
+			continue;
+		}
+
 		// Check for Procedure (e.g., TECKY4.VLREE or just TECKY4)
 		// Heuristic: Has a dot OR is found in procedures index for the PREVIOUS airport
 
