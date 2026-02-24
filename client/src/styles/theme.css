@@ -9,6 +9,20 @@
 	--glass-border: rgba(255, 255, 255, 0.15);
 	--glass-blur: 24px;
 	--map-ui-text: var(--gray-12);
+
+	/* Airspace Colors */
+	--airspace-b-color: var(--violet-9);
+	--airspace-b-text: var(--violet-11);
+	--airspace-c-color: var(--crimson-9);
+	--airspace-c-text: var(--crimson-11);
+	--airspace-d-color: var(--indigo-9);
+	--airspace-d-text: var(--indigo-11);
+	--airspace-e-color: var(--crimson-9);
+	--airspace-e-text: var(--crimson-11);
+	--airspace-sua-color: var(--slate-8);
+	--airspace-sua-text: var(--slate-11);
+	--airspace-trsa-color: var(--slate-8);
+	--airspace-trsa-text: var(--slate-11);
 }
 
 body {

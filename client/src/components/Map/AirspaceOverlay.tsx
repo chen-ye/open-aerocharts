@@ -1,34 +1,17 @@
 import { Fp64Extension } from "@deck.gl/extensions";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { PMTilesSource } from "@loaders.gl/pmtiles";
-import { crimson, indigo, slateDark, violet } from "@radix-ui/colors";
 import { PathLayer, PolygonLayer, TileLayer } from "deck.gl";
 import type React from "react";
 import { useEffect, useMemo } from "react";
 import { useControl } from "react-map-gl/maplibre";
 import type { AeronauticalLayerState } from "../../types/AeronauticalLayerState";
+import { getAirspaceColorRgb } from "../../utils/airspaceColors";
 
 interface AirspaceOverlayProps {
 	visible: boolean;
 	layers: AeronauticalLayerState;
 }
-
-// Helper to convert hex to [r, g, b]
-const hexToRgb = (hex: string): [number, number, number] => {
-	const c = hex.substring(1);
-	const r = parseInt(c.substring(0, 2), 16);
-	const g = parseInt(c.substring(2, 4), 16);
-	const b = parseInt(c.substring(4, 6), 16);
-	return [r, g, b];
-};
-
-const COLORS = {
-	B: hexToRgb(violet.violet9),
-	C: hexToRgb(crimson.crimson9),
-	D: hexToRgb(indigo.indigo9),
-	SUA: hexToRgb(slateDark.slate8),
-	TRSA: hexToRgb(slateDark.slate8),
-};
 
 export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 	visible,
@@ -71,14 +54,7 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const getColor = (p: any) => {
-					const cls = p.airspace_class;
-					const isSua = p.is_sua;
-					if (isSua) return COLORS.SUA;
-					if (cls === "B") return COLORS.B;
-					if (cls === "C") return COLORS.C;
-					if (cls === "D") return COLORS.D;
-					if (cls === "TRSA") return COLORS.TRSA;
-					return [150, 150, 150];
+					return getAirspaceColorRgb(p.airspace_class, p.is_sua);
 				};
 
 				// Filter features based on layer state

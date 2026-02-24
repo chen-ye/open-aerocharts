@@ -6,7 +6,6 @@ import {
 	indigo,
 	plum,
 	slate,
-	violet,
 } from "@radix-ui/colors";
 import { Box, Flex, Separator, Slider, Switch, Text } from "@radix-ui/themes";
 import React from "react";
@@ -220,9 +219,9 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 								label="Controlled"
 								legend={
 									<Flex gap="1">
-										<LegendBadge label="B" color={violet.violet9} />
-										<LegendBadge label="C" color={crimson.crimson9} />
-										<LegendBadge label="D" color={indigo.indigo9} />
+										<LegendBadge label="B" color="var(--airspace-b-color)" />
+										<LegendBadge label="C" color="var(--airspace-c-color)" />
+										<LegendBadge label="D" color="var(--airspace-d-color)" />
 									</Flex>
 								}
 								checked={layers.controlledAirspace}
@@ -234,7 +233,7 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 								legend={
 									<LegendBadge
 										label="S"
-										color={slate.slate8}
+										color="var(--airspace-sua-color)"
 										textColor={grayDark.gray1}
 									/>
 								}
@@ -247,7 +246,7 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 								legend={
 									<LegendBadge
 										label="T"
-										color={slate.slate8}
+										color="var(--airspace-trsa-color)"
 										textColor={grayDark.gray1}
 									/>
 								}
@@ -260,7 +259,7 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 								legend={
 									<LegendBadge
 										label="E"
-										color={crimson.crimson7}
+										color="var(--airspace-e-color)"
 										textColor={grayDark.gray1}
 									/>
 								}

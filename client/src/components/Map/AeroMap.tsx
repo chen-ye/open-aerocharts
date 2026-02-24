@@ -4,7 +4,6 @@ import {
 	brown,
 	brownDark,
 	crimson,
-	crimsonDark,
 	cyan,
 	cyanDark,
 	gray,
@@ -42,6 +41,10 @@ import styles from "../../mapStyles";
 import type { AeronauticalLayerState } from "../../types/AeronauticalLayerState";
 import type { FlightPlan } from "../../types/FlightPlan";
 import { addAeroIcons } from "../../utils/aeroIcons.ts";
+import {
+	getAirspaceColor,
+	getAirspaceTextColor,
+} from "../../utils/airspaceColors.ts";
 import { AirspaceOverlay } from "./AirspaceOverlay";
 import { FeatureList } from "./FeatureList";
 
@@ -995,7 +998,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["!=", ["get", "type"], "E"],
 											["==", ["get", "airspace_class"], "B"],
 										]}
-										paint={{ "line-color": violet.violet9, "line-width": 1 }}
+										paint={{
+											"line-color": getAirspaceColor("B"),
+											"line-width": 1,
+										}}
 									/>
 									<Layer
 										id="airspaces-class-b"
@@ -1008,7 +1014,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["==", ["get", "airspace_class"], "B"],
 										]}
 										paint={{
-											"line-color": violet.violet9,
+											"line-color": getAirspaceColor("B"),
 											"line-width": [
 												"interpolate",
 												["linear"],
@@ -1052,7 +1058,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["!=", ["get", "type"], "E"],
 											["==", ["get", "airspace_class"], "C"],
 										]}
-										paint={{ "line-color": crimson.crimson9, "line-width": 1 }} // crimson-9
+										paint={{
+											"line-color": getAirspaceColor("C"),
+											"line-width": 1,
+										}} // crimson-9
 									/>
 									<Layer
 										id="airspaces-class-c"
@@ -1065,7 +1074,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["==", ["get", "airspace_class"], "C"],
 										]}
 										paint={{
-											"line-color": crimson.crimson9,
+											"line-color": getAirspaceColor("C"),
 											"line-width": [
 												"interpolate",
 												["linear"],
@@ -1110,7 +1119,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["==", ["get", "airspace_class"], "D"],
 										]}
 										paint={{
-											"line-color": indigo.indigo9,
+											"line-color": getAirspaceColor("D"),
 											"line-width": 1,
 											"line-dasharray": [4, 4],
 										}}
@@ -1140,9 +1149,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										]}
 										layout={airspaceLabelLayout}
 										paint={{
-											"text-color": isDarkMap
-												? violetDark.violet11
-												: violet.violet11,
+											"text-color": getAirspaceTextColor("B", false, isDarkMap),
 											"text-halo-color": haloColor,
 											"text-halo-width": 1.5,
 										}}
@@ -1160,9 +1167,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										]}
 										layout={airspaceLabelLayout}
 										paint={{
-											"text-color": isDarkMap
-												? crimsonDark.crimson11
-												: crimson.crimson11,
+											"text-color": getAirspaceTextColor("C", false, isDarkMap),
 											"text-halo-color": haloColor,
 											"text-halo-width": 1.5,
 										}}
@@ -1180,9 +1185,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										]}
 										layout={airspaceLabelLayout}
 										paint={{
-											"text-color": isDarkMap
-												? indigoDark.indigo11
-												: indigo.indigo11,
+											"text-color": getAirspaceTextColor("D", false, isDarkMap),
 											"text-halo-color": haloColor,
 											"text-halo-width": 1.5,
 										}}
@@ -1201,7 +1204,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["!=", ["get", "type"], "E"],
 											["==", ["get", "is_sua"], true],
 										]}
-										paint={{ "line-color": slateDark.slate8, "line-width": 1 }}
+										paint={{
+											"line-color": getAirspaceColor("SUA", true),
+											"line-width": 1,
+										}}
 									/>
 									<Layer
 										id="airspaces-sua"
@@ -1214,7 +1220,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["==", ["get", "is_sua"], true],
 										]}
 										paint={{
-											"line-color": slateDark.slate8,
+											"line-color": getAirspaceColor("SUA", true),
 											"line-width": [
 												"interpolate",
 												["linear"],
@@ -1261,9 +1267,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										]}
 										layout={airspaceLabelLayout}
 										paint={{
-											"text-color": isDarkMap
-												? slateDark.slate11
-												: slate.slate11,
+											"text-color": getAirspaceTextColor(
+												"SUA",
+												true,
+												isDarkMap,
+											),
 											"text-halo-color": haloColor,
 											"text-halo-width": 1.5,
 										}}
@@ -1282,7 +1290,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["!=", ["get", "type"], "E"],
 											["==", ["get", "airspace_class"], "TRSA"],
 										]}
-										paint={{ "line-color": slateDark.slate8, "line-width": 1 }}
+										paint={{
+											"line-color": getAirspaceColor("TRSA"),
+											"line-width": 1,
+										}}
 									/>
 									<Layer
 										id="airspaces-trsa"
@@ -1295,7 +1306,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["==", ["get", "airspace_class"], "TRSA"],
 										]}
 										paint={{
-											"line-color": slateDark.slate8,
+											"line-color": getAirspaceColor("TRSA"),
 											"line-width": [
 												"interpolate",
 												["linear"],
@@ -1342,9 +1353,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										]}
 										layout={airspaceLabelLayout}
 										paint={{
-											"text-color": isDarkMap
-												? slateDark.slate11
-												: slate.slate11,
+											"text-color": getAirspaceTextColor(
+												"TRSA",
+												false,
+												isDarkMap,
+											),
 											"text-halo-color": haloColor,
 											"text-halo-width": 1.5,
 										}}
@@ -1366,7 +1379,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["!=", ["get", "lower_limit"], "SFC"],
 										]}
 										paint={{
-											"line-color": crimson.crimson9, // crimson-9
+											"line-color": getAirspaceColor("E"), // crimson-9
 											"line-width": [
 												"interpolate",
 												["linear"],
@@ -1378,7 +1391,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											] as unknown as maplibregl.ExpressionSpecification,
 											"line-opacity": 0.1,
 										}}
-									/>
+                                    />
+									{/* E2 (from surface)*/}
 									<Layer
 										id="airspaces-class-e-hairline"
 										type="line"
@@ -1394,7 +1408,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											],
 										]}
 										paint={{
-											"line-color": crimson.crimson9, // crimson-9
+											"line-color": getAirspaceColor("E"), // crimson-9
 											"line-width": 1,
 											"line-offset": 1,
 											"line-dasharray": [8, 8],
