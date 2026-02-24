@@ -106,6 +106,42 @@ export const parseRoute = (
 			}
 		}
 
+		// Check for Airway (e.g., V68, J15)
+		if (/^[VJQT]\d+$/.test(part)) {
+			const airwayId = part;
+			const nextPart = parts[i + 1];
+
+			if (lastFixId && nextPart && index.airways) {
+				const airwayFixes = index.airways[airwayId];
+				if (airwayFixes) {
+					const startIdx = airwayFixes.indexOf(lastFixId);
+					const endIdx = airwayFixes.indexOf(nextPart);
+
+					if (startIdx !== -1 && endIdx !== -1) {
+						// Found segment.
+						const step = startIdx < endIdx ? 1 : -1;
+						// Extract intermediate fixes (exclusive of start and end)
+						for (let j = startIdx + step; j !== endIdx; j += step) {
+							const intermediateFixId = airwayFixes[j];
+							const fix = index.fixes[intermediateFixId];
+							if (fix) {
+								routePoints.push({
+									id: intermediateFixId,
+									lat: fix.lat,
+									lon: fix.lon,
+									type: fix.type,
+									name: fix.name,
+								});
+								allCoords.push([fix.lon, fix.lat]);
+							}
+						}
+						// No need to skip nextPart, the loop will handle it naturally.
+						continue;
+					}
+				}
+			}
+		}
+
 		// Direct Fix Lookup
 		const fix = index.fixes[part];
 		if (fix) {

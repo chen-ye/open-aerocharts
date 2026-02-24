@@ -1805,7 +1805,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						</>
 					)}
 				</>
-            )}
+			)}
 
 			{/* Flight Plan */}
 			{flightPlan && (

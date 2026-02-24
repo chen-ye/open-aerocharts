@@ -35,6 +35,7 @@ def main():
     c.parse_enroute_waypoints()
     c.parse_terminal_waypoints()
     c.parse_procedures()
+    c.parse_airway_points()
 
     fixes = {} # ident -> {lat, lon, type, name}
     
@@ -155,11 +156,31 @@ def main():
         for pid, data in procs.items():
             final_procs[apt][pid] = data
 
+    print("Indexing airways...", flush=True)
+    airway_data = defaultdict(list)
+    for ap in c.get_airway_points():
+        p = ap.to_dict()['primary']
+        airway_id = p.get('airway_id')
+        point_id = (p.get('point_id') or '').strip()
+        seq_no = p.get('seq_no') or 0
+        if airway_id and point_id:
+            airway_data[airway_id].append({
+                'id': point_id,
+                'seq': seq_no
+            })
+    
+    # Sort by sequence
+    final_airways = {}
+    for aid, pts in airway_data.items():
+        pts.sort(key=lambda x: x['seq'])
+        final_airways[aid] = [p['id'] for p in pts]
+
     print(f"Writing index to {output_path}...", flush=True)
     with open(output_path, 'w') as f:
         json.dump({
             "fixes": fixes,
-            "procedures": final_procs
+            "procedures": final_procs,
+            "airways": final_airways
         }, f)
     
     print(f"Done. Index size: {os.path.getsize(output_path) / 1024 / 1024:.2f} MB")

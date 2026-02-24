@@ -20,6 +20,7 @@ export interface ProcedureSegment {
 export interface SearchIndex {
 	fixes: Record<string, FixInfo>;
 	procedures: Record<string, Record<string, ProcedureSegment>>; // airport -> proc_name -> segment
+	airways: Record<string, string[]>; // airway_id -> ordered fix identifiers
 }
 
 export interface RoutePoint {
