@@ -6,12 +6,20 @@ import {
 	Flex,
 	Heading,
 	IconButton,
+	Popover,
 	ScrollArea,
 	Table,
 	Text,
 	TextArea,
 } from "@radix-ui/themes";
-import { Github, MessageSquare, Plane, X } from "lucide-react";
+import {
+	CircleHelp,
+	Github,
+	MessageSquare,
+	Plane,
+	Trash,
+	X,
+} from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { grayColor } from "../../App.tsx";
 import type { FlightPlan, SearchIndex } from "../../types/FlightPlan";
@@ -86,9 +94,45 @@ export const FlightPlanContent: React.FC<FlightPlanContentProps> = ({
 				>
 					{loading ? "Loading Data..." : "Plot Route"}
 				</Button>
-				<Button onClick={handleClear} variant="soft" color="gray">
-					Clear
-				</Button>
+
+				<Popover.Root>
+					<Popover.Trigger>
+						<IconButton variant="soft" color="gray" title="Syntax Help">
+							<CircleHelp size={18} />
+						</IconButton>
+					</Popover.Trigger>
+					<Popover.Content width="200px">
+						<Box p="1">
+							<Text as="div" size="1" weight="bold" mb="1">
+								Supported Formats
+							</Text>
+							<Text as="div" size="1">
+								Fixes: KSJC, SJC, WPT
+							</Text>
+							<Text as="div" size="1">
+								Airways: V68, J1, T200
+							</Text>
+							<Text as="div" size="1">
+								Procedures: TECKY4.VLREE
+							</Text>
+							<Text as="div" size="1">
+								Coords: 37.25/-122.5
+							</Text>
+							<Text as="div" size="1">
+								DMS: 3715N12230W
+							</Text>
+						</Box>
+					</Popover.Content>
+				</Popover.Root>
+
+				<IconButton
+					onClick={handleClear}
+					variant="soft"
+					color="crimson"
+					title="Clear Route"
+				>
+					<Trash size={18} />
+				</IconButton>
 			</Flex>
 
 			{activePlan && (
