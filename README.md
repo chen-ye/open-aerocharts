@@ -22,10 +22,12 @@ The project is split into two packages:
 
 ## References + Resources
 
-### Aeronautical Cartography
+### Aeronautical Cartography + Related Projects
 - [FAA Aeronautical Chart User's Guide](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/aero_guide)
 - [ForeFlight Web](https://plan.foreflight.com/)
 - [Garmin Pilot Web](https://pilotweb.garmin.com/)
+- [MSFS Flight Planner](https://planner.flightsimulator.com/landing.html)
+- [OpenAIP](https://www.openaip.net/)
 
 ### Datasources
 - [FAA Aeronautical Data Delivery System (ADDS) Portal](https://adds-faa.opendata.arcgis.com/search)
