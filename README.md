@@ -20,9 +20,17 @@ The project is split into two packages:
   information.
 - **Basemap**: CartoCDN-derived basemaps.
 
-## References
+## References + Resources
 
+### Aeronautical Cartography
 - [FAA Aeronautical Chart User's Guide](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/aero_guide)
+- [ForeFlight Web](https://plan.foreflight.com/)
+- [Garmin Pilot Web](https://pilotweb.garmin.com/)
+
+### Datasources
+- [FAA Aeronautical Data Delivery System (ADDS) Portal](https://adds-faa.opendata.arcgis.com/search)
+- [FAA ADDS ArcGIS Services endpoint](https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/ArcGIS/rest/services)
+- [Open Meteo Maps](https://maps.open-meteo.com/)
 
 ## Getting Started
 
@@ -57,7 +65,7 @@ The project is split into two packages:
 - [ ] Show Airport/Runway info
 - [ ] Custom Aeronautical basemap (light + dark)
 - [ ] Show VHF information
-- [ ] 3D Airspace Support
 - [ ] 3D Airway/Waypoint support
 - [ ] 3D Flight Plan Visualization
 - [ ] Handle overlapping airways better
+- [ ] 3D Airspace polish
