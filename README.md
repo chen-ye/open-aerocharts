@@ -28,6 +28,12 @@ The project is split into two packages:
 - [Garmin Pilot Web](https://pilotweb.garmin.com/)
 - [MSFS Flight Planner](https://planner.flightsimulator.com/landing.html)
 - [OpenAIP](https://www.openaip.net/)
+- [enhance-faa-cifp](https://github.com/wallaceicy06/enhance-faa-cifp)
+- [openaip-yaixm-to-geojson](https://github.com/openAIP/openaip-yaixm-to-geojson/tree/master)
+
+### General Resources
+- [Mapbox Maki Iconset](https://github.com/mapbox/maki)
+- [IBM Carbon Icons](https://carbondesignsystem.com/elements/icons/library/)
 
 ### Datasources
 - [FAA Aeronautical Data Delivery System (ADDS) Portal](https://adds-faa.opendata.arcgis.com/search)
