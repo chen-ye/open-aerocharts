@@ -34,6 +34,7 @@ The project is split into two packages:
 ### General Resources
 - [Mapbox Maki Iconset](https://github.com/mapbox/maki)
 - [IBM Carbon Icons](https://carbondesignsystem.com/elements/icons/library/)
+- [Tippecanoe](https://github.com/felt/tippecanoe)
 
 ### Datasources
 - [FAA Aeronautical Data Delivery System (ADDS) Portal](https://adds-faa.opendata.arcgis.com/search)
