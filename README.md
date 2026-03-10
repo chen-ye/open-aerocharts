@@ -30,11 +30,16 @@ The project is split into two packages:
 - [OpenAIP](https://www.openaip.net/)
 - [enhance-faa-cifp](https://github.com/wallaceicy06/enhance-faa-cifp)
 - [openaip-yaixm-to-geojson](https://github.com/openAIP/openaip-yaixm-to-geojson/tree/master)
+- [3D Airspace Visualizer](https://airspace.llew.net/san-francisco) ([GitHub](https://github.com/L13w/airspace/tree/main))
 
-### General Resources
+### Visuals
 - [Mapbox Maki Iconset](https://github.com/mapbox/maki)
 - [IBM Carbon Icons](https://carbondesignsystem.com/elements/icons/library/)
+
+### General Resources
 - [Tippecanoe](https://github.com/felt/tippecanoe)
+- [PMTiles Viewer](https://pmtiles.io/)
+- [Geoverse](https://geoverse.mikoding.com/)
 
 ### Datasources
 - [FAA Aeronautical Data Delivery System (ADDS) Portal](https://adds-faa.opendata.arcgis.com/search)
@@ -79,4 +84,5 @@ The project is split into two packages:
 - [ ] Handle overlapping airways better
 - [ ] 3D Airspace polish
 - [ ] More datasources
-    - [ ] https://geodata.bts.gov/datasets/usdot::aviation-facilities/explore?location=37.268336%2C-121.791650%2C11
+    - [ ] https://geodata.bts.gov/datasets/usdot::aviation-facilities/explore
+    - [ ] https://airplanes.live/api-guide/
