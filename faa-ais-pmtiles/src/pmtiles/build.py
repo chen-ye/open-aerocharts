@@ -1,3 +1,10 @@
+"""
+Orchestrates the entire PMTiles build pipeline.
+
+Coordinates the fetching of raw data (CIFP, ADDS, NASR), conversion to intermediate
+formats (FlatGeobuf/GeoJSON), and the compilation of final PMTiles archives using `tippecanoe`.
+"""
+
 import concurrent.futures
 import os
 import subprocess
