@@ -57,6 +57,7 @@ interface AeroMapProps {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	selectedFeatures?: { lngLat: [number, number]; features: any[] } | null;
 	showTooltip: boolean;
+	cycle?: string | null;
 }
 
 export const AeroMap: React.FC<AeroMapProps> = ({
@@ -68,6 +69,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 	onSelectFeatures,
 	selectedFeatures: propSelectedFeatures,
 	showTooltip,
+	cycle,
 }) => {
 	const mapStyle = useMemo<string | maplibregl.StyleSpecification>(() => {
 		// If the basemapUrlOrId is a URL, treat it as a style URL
@@ -790,37 +792,37 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						id="src-airspaces"
 						type="vector"
 						url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}airspaces.pmtiles`}
-						attribution="FAA NFDC CIFP/DOF"
+						attribution={`FAA NFDC CIFP/DOF${cycle ? ` (Cycle ${cycle})` : ""}`}
 					/>
 					<Source
 						id="src-enroute"
 						type="vector"
 						url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}enroute.pmtiles`}
-						attribution="FAA NFDC CIFP/DOF"
+						attribution={`FAA NFDC CIFP/DOF${cycle ? ` (Cycle ${cycle})` : ""}`}
 					/>
 					<Source
 						id="src-boundary"
 						type="vector"
 						url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}boundary.pmtiles`}
-						attribution="FAA NFDC CIFP/DOF"
+						attribution={`FAA NFDC CIFP/DOF${cycle ? ` (Cycle ${cycle})` : ""}`}
 					/>
 					<Source
 						id="src-airports-navaids"
 						type="vector"
 						url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}airports_navaids.pmtiles`}
-						attribution="FAA NFDC CIFP/DOF"
+						attribution={`FAA NFDC CIFP/DOF${cycle ? ` (Cycle ${cycle})` : ""}`}
 					/>
 					<Source
 						id="src-waypoints-obstacles"
 						type="vector"
 						url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}waypoints_obstacles.pmtiles`}
-						attribution="FAA NFDC CIFP/DOF"
+						attribution={`FAA NFDC CIFP/DOF${cycle ? ` (Cycle ${cycle})` : ""}`}
 					/>
 					<Source
 						id="src-diagrams"
 						type="vector"
 						url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}airport_diagrams.pmtiles`}
-						attribution="FAA NFDC CIFP/DOF"
+						attribution={`FAA NFDC CIFP/DOF${cycle ? ` (Cycle ${cycle})` : ""}`}
 					/>
 					<AirspaceOverlay visible={isTilted} layers={aeronauticalLayers} />
 				</>
