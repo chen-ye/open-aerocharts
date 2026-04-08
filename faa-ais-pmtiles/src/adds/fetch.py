@@ -4,7 +4,7 @@ import os
 import zipfile
 
 import requests
-from bs4 import BeautifulSoup
+from src.common.utils import get_cycle_dates
 
 NFDC_BASE = "https://nfdc.faa.gov/webContent/28DaySub/"
 SHAPEFILE_FILENAME = "class_airspace_shape_files.zip"
@@ -49,26 +49,24 @@ ADDS_DATASETS: dict[str, dict[str, str]] = {
 
 
 def find_latest_cycle() -> tuple[str, str]:
-    """Scrape the NFDC 28-day subscription page to find the latest cycle date and url."""
-    try:
-        resp = requests.get(NFDC_BASE, timeout=30)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "html.parser")
+    """Find the latest cycle date and url using deterministic dates."""
+    print("Finding latest FAA 28-day ADDS shapefile bundle...")
+    dates = get_cycle_dates()
 
-        dates: list[str] = []
-        for a in soup.find_all("a"):
-            href = a.get("href", "")
-            stripped = href.strip("/").split("/")[-1]
-            if len(stripped) == 10 and stripped[4] == "-" and stripped[7] == "-":
-                dates.append(stripped)
+    for cycle_date in dates:
+        folder_str = cycle_date.strftime("%Y-%m-%d")
+        url = f"{NFDC_BASE}{folder_str}/{SHAPEFILE_FILENAME}"
+        try:
+            print(f"Checking {url}...")
+            resp = requests.get(url, stream=True, timeout=10)
+            if resp.status_code == 200:
+                resp.close()
+                return folder_str, url
+            resp.close()
+        except requests.RequestException:
+            continue
 
-        if dates:
-            dates.sort(reverse=True)
-            return dates[0], f"{NFDC_BASE}{dates[0]}/{SHAPEFILE_FILENAME}"
-    except requests.RequestException:
-        pass
-
-    print("Could not scrape NFDC index; using known current cycle URL.")
+    print("Could not find current cycle shapefile; using fallback logic.")
     return "2026-03-19", f"{NFDC_BASE}2026-03-19/{SHAPEFILE_FILENAME}"
 
 

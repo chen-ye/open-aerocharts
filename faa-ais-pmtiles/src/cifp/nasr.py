@@ -9,42 +9,19 @@ import csv
 import io
 import zipfile
 import requests
+from src.common.utils import get_cycle_dates
 
 NFDC_BASE = "https://nfdc.faa.gov/webContent/28DaySub/"
 
-
-
-def get_cycle_dates() -> list[tuple[str, str]]:
-    """Return a list of (folder_date, file_date) for recent and upcoming cycles.
-    Known cycle anchor: 2024-03-21 -> 21_Mar_2024. Next is 2024-04-18, etc.
-    """
-    import datetime
-    # A known anchor date for the 28-day cycle
-    anchor = datetime.date(2024, 3, 21)
-    today = datetime.date.today()
-
-    # Calculate how many 28-day cycles have passed since the anchor
-    delta = today - anchor
-    cycles_passed = delta.days // 28
-
-    # Generate the current cycle and the next few cycles
-    dates = []
-    for offset in range(-1, 2):
-        cycle_date = anchor + datetime.timedelta(days=(cycles_passed + offset) * 28)
-        folder_str = cycle_date.strftime("%Y-%m-%d")
-        file_str = cycle_date.strftime("%d_%b_%Y")
-        dates.append((folder_str, file_str))
-
-    # Sort descending so we try the most recent current/future dates first
-    dates.sort(reverse=True)
-    return dates
-
-def find_latest_csv_zip_url() -> tuple[str, str, str]:
+def find_latest_csv_zip_url() -> tuple[str, str]:
     """Find the latest CSV zip by trying generated cycle dates. Returns (url, cycle_date)."""
     print("Finding latest FAA 28-day NASR CSV bundle...")
     dates = get_cycle_dates()
 
-    for folder_date, file_date in dates:
+    for cycle_date in dates:
+        folder_date = cycle_date.strftime("%Y-%m-%d")
+        file_date = cycle_date.strftime("%d_%b_%Y")
+
         # Try both the standard location and the 'extra' folder
         urls_to_try = [
             f"{NFDC_BASE}{folder_date}/28DaySubscription_CSV.zip",

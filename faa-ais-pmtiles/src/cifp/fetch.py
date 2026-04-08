@@ -6,32 +6,36 @@ import os
 import zipfile
 import requests
 import json
-import re
-from bs4 import BeautifulSoup
+from src.common.utils import get_cycle_dates
 
 def check_latest_cycle():
     url = "https://aeronav.faa.gov/Upload_313-d/cifp/"
-    response = requests.get(url)
-    response.raise_for_status()
 
-    soup = BeautifulSoup(response.text, 'html.parser')
+    dates = get_cycle_dates()
+    latest_zip = None
+    cycle = "unknown"
 
-    zip_links = []
-    for a in soup.find_all('a'):
-        href = a.get('href')
-        if href and 'CIFP_' in href and href.endswith('.zip'):
-            # href is likely /Upload_313-d/cifp/CIFP_250123.zip
-            zip_links.append(href.split('/')[-1])
+    for cycle_date in dates:
+        # CIFP zip format is CIFP_250123.zip (YYMMDD)
+        cycle_str = cycle_date.strftime("%y%m%d")
+        candidate_zip = f"CIFP_{cycle_str}.zip"
+        candidate_url = url + candidate_zip
+        try:
+            print(f"Checking {candidate_url}...")
+            # Use GET with stream=True to avoid Akamai 503s on HEAD requests
+            resp = requests.get(candidate_url, stream=True, timeout=10)
+            if resp.status_code == 200:
+                resp.close()
+                latest_zip = candidate_zip
+                cycle = cycle_str
+                break
+            resp.close()
+        except requests.RequestException:
+            continue
 
-    if not zip_links:
-        print("No CIFP zip files found on the page.")
+    if not latest_zip:
+        print("Could not find current cycle CIFP zip.")
         return None, False, None, None
-
-    zip_links.sort(reverse=True)
-    latest_zip = zip_links[0]
-
-    cycle_match = re.search(r'CIFP_(\d+)\.zip', latest_zip)
-    cycle = cycle_match.group(1) if cycle_match else "unknown"
 
     metadata_path = "output/metadata.json"
 
@@ -74,7 +78,8 @@ def download_cifp(download_url, zip_path):
 def fetch_latest_cifp():
     cycle, is_new, download_url, zip_path = check_latest_cycle()
     if not is_new:
-        print(f"Latest CIFP ({zip_path}) is already processed (cycle {cycle}). Skipping download.")
+        if zip_path:
+            print(f"Latest CIFP ({zip_path}) is already processed (cycle {cycle}). Skipping download.")
         return cycle, False
 
     download_cifp(download_url, zip_path)
