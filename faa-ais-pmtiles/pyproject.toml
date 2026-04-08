@@ -12,7 +12,6 @@ dependencies = [
     "pyogrio>=0.12.1",
     "pyshp>=2.3.1",
     "requests>=2.32.5",
-    "tippecanoe>=2.7.0",
 ]
 
 [project.scripts]
