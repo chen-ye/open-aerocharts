@@ -1,0 +1,10 @@
+--- faa-ais-pmtiles/src/pmtiles/build.py
++++ faa-ais-pmtiles/src/pmtiles/build.py
+@@ -107,6 +107,9 @@
+     run_cmd(
+         "ln -sf ../../faa-ais-pmtiles/output/airport_diagrams.pmtiles ../client/public/airport_diagrams.pmtiles"
+     )
++    run_cmd(
++        "ln -sf ../../faa-ais-pmtiles/output/metadata.json ../client/public/metadata.json"
++    )
+     print("Done.")

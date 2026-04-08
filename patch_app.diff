@@ -1,0 +1,10 @@
+--- client/src/App.tsx
++++ client/src/App.tsx
+@@ -256,6 +256,7 @@
+					selectedFeatures={selectedFeatures}
+					onSelectFeatures={setSelectedFeatures}
+					showTooltip={showTooltip}
++					cycle={cycle}
+				/>
+				<FlightPlanPanel
+					onFlightPlanChange={setFlightPlan}
