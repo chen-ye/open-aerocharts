@@ -5,7 +5,6 @@ Includes Haversine distance, altitude parsing, coordinate unwrapping (anti-merid
 and FlatGeobuf saving.
 """
 
-import datetime
 import math
 import geopandas as gpd
 
@@ -73,18 +72,3 @@ def save_fgb(features, output_path):
     gdf.geometry = gdf.geometry.force_2d()
     # Disable spatial index to ensure linear reading order by tippecanoe
     gdf.to_file(output_path, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
-
-def get_cycle_dates() -> list[datetime.date]:
-    """Return a list of datetime.date for the current and recent past 28-day cycles.
-    Known cycle anchor: 2024-03-21.
-    Does not return future subscriptions.
-    """
-    anchor = datetime.date(2024, 3, 21)
-    today = datetime.date.today()
-
-    delta = today - anchor
-    cycles_passed = delta.days // 28
-
-    # Return the current active cycle and the one before it as fallback
-    # offset=0 is current, offset=-1 is previous
-    return [anchor + datetime.timedelta(days=(cycles_passed + offset) * 28) for offset in (0, -1)]
