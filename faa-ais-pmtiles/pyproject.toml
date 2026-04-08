@@ -5,7 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "beautifulsoup4>=4.14.3",
     "cifparse>=2.0.9",
     "geojson>=3.2.0",
     "geopandas>=1.1.2",
