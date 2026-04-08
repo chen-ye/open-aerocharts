@@ -1,3 +1,7 @@
+"""
+Scrapes the FAA website for the latest 28-day cycle Coded Instrument Flight Procedures (CIFP) zip file and extracts it.
+"""
+
 import os
 import zipfile
 import requests
