@@ -11,7 +11,11 @@ import sys
 import os
 
 def run_decode(pmtiles_path, z, x, y):
-    cmd = f"tippecanoe-decode {pmtiles_path} {z} {x} {y}"
+    abs_path = os.path.abspath(pmtiles_path)
+    file_dir = os.path.dirname(abs_path)
+    file_name = os.path.basename(abs_path)
+
+    cmd = f"docker run --rm -v {file_dir}:/data -w /data --entrypoint tippecanoe-decode versatiles/versatiles-tippecanoe {file_name} {z} {x} {y}"
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     if result.returncode != 0:
         return None

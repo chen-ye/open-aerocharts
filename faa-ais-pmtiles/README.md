@@ -23,7 +23,7 @@ into intermediate bulk geodata formats (**FlatGeobuf** and **GeoJSON**).
 
 ### Phase 2: Tileization
 
-Normalized data is processed through `tippecanoe` to produce a collection of
+Normalized data is processed through the `versatiles-tippecanoe` Docker image to produce a collection of
 vector PMTiles.
 
 - **Semantic Split**: Archives are organized by data importance and information
@@ -237,7 +237,7 @@ Example:
 
 ## Running & Validating
 
-1. **Install Prerequisites**: `tippecanoe`, `uv`
+1. **Install Prerequisites**: Docker, `uv`
 2. **Execute Full Pipeline**:
 
    ```bash

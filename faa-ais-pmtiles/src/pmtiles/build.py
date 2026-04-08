@@ -83,37 +83,37 @@ def main():
     os.makedirs("output", exist_ok=True)
 
     cmd_airspaces = (
-        "uv run tippecanoe -Z0 -z8 -o output/airspaces.pmtiles "
+        "docker run --rm -v $(pwd):/data -w /data versatiles/versatiles-tippecanoe -Z0 -z8 -o output/airspaces.pmtiles "
         "--no-feature-limit --no-tile-size-limit --buffer=25 --no-clipping -f "
         "-l airspaces data/airspaces.fgb"
     )
     cmd_enroute = (
-        "uv run tippecanoe -Z0 -z8 -o output/enroute.pmtiles "
+        "docker run --rm -v $(pwd):/data -w /data versatiles/versatiles-tippecanoe -Z0 -z8 -o output/enroute.pmtiles "
         "--no-feature-limit --no-tile-size-limit -f "
         "-L airways:data/airways.fgb "
         "-L airspaces:data/airspaces_e.fgb"
     )
     cmd_boundary = (
-        "uv run tippecanoe -Z0 -z8 -o output/boundary.pmtiles "
+        "docker run --rm -v $(pwd):/data -w /data versatiles/versatiles-tippecanoe -Z0 -z8 -o output/boundary.pmtiles "
         "--no-feature-limit --no-tile-size-limit -f "
         "-l boundary_airspace data/boundary_airspace.fgb"
     )
     cmd_airports_navaids = (
-        "uv run tippecanoe -Z0 -z10 -o output/airports_navaids.pmtiles --no-feature-limit --no-tile-size-limit -f "
+        "docker run --rm -v $(pwd):/data -w /data versatiles/versatiles-tippecanoe -Z0 -z10 -o output/airports_navaids.pmtiles --no-feature-limit --no-tile-size-limit -f "
         "--order-by=rank --order-smallest-first "
         "-L airports:data/airports.geojson "
         "-L navaids:data/navaids.fgb "
         "-L localizers:data/localizers.fgb "
     )
     cmd_waypoints_obstacles = (
-        "uv run tippecanoe -Z0 -z10 -o output/waypoints_obstacles.pmtiles --drop-fraction-as-needed -f "
+        "docker run --rm -v $(pwd):/data -w /data versatiles/versatiles-tippecanoe -Z0 -z10 -o output/waypoints_obstacles.pmtiles --drop-fraction-as-needed -f "
         "--order-by=rank --order-smallest-first "
         "-L waypoints:data/waypoints.fgb "
         "-L holding_patterns:data/holding_patterns.fgb "
         "-L obstacles:data/obstacles.fgb"
     )
     cmd_airport_diagrams = (
-        "uv run tippecanoe -Z9 -z14 -o output/airport_diagrams.pmtiles "
+        "docker run --rm -v $(pwd):/data -w /data versatiles/versatiles-tippecanoe -Z9 -z14 -o output/airport_diagrams.pmtiles "
         "--no-feature-limit --no-tile-size-limit -f "
         "-L runways:data/runways.fgb "
         "-L am_taxiways:data/am_taxiways.fgb "
