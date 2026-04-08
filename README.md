@@ -1,5 +1,8 @@
 # open-aerocharts
 
+![open-aerocharts thumbnail](client/public/aero-thumbnail.png)
+
+
 open-aerocharts is vector-data driven reference aeronautical chart
 implementation in MapLibre. The aim is to build high quality vector charts
 equivalent to the official raster FAA charts for the US.
