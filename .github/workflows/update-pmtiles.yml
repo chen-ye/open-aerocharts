@@ -29,19 +29,21 @@ jobs:
           python-version-file: "faa-ais-pmtiles/pyproject.toml"
 
       - name: Run datagen pipeline
+        id: datagen
         run: |
           cd faa-ais-pmtiles
           uv run build-pmtiles
 
       - name: Create Pull Request
+        if: steps.datagen.outputs.is_new == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "chore(data): update FAA PMTiles"
-          title: "Automated FAA Data Cycle Update"
+          commit-message: "chore(data): update FAA PMTiles cycle ${{ steps.datagen.outputs.cycle }}"
+          title: "Automated FAA Data Cycle Update - Cycle ${{ steps.datagen.outputs.cycle }}"
           body: |
-            Automated pull request to update FAA aeronautical datasets to the latest 28-day cycle.
+            Automated pull request to update FAA aeronautical datasets to the latest 28-day cycle (${{ steps.datagen.outputs.cycle }}).
 
             The data pipeline has fetched the latest CIFP and generated new `.pmtiles`.
-          branch: "chore/update-faa-data"
+          branch: "chore/update-faa-data-${{ steps.datagen.outputs.cycle }}"
           base: "main"
           delete-branch: true

@@ -8,6 +8,8 @@ formats (FlatGeobuf/GeoJSON), and the compilation of final PMTiles archives usin
 import concurrent.futures
 import os
 import subprocess
+import sys
+import json
 
 from src.adds import convert as shp_to_fgb
 from src.adds import fetch as fetch_airspace_shp
@@ -37,9 +39,23 @@ def fetch_nasr_wrapper():
 
 
 def main():
-    print("Step 1: Fetching data concurrently...")
+    print("Step 1: Checking for new cycle...")
+
+    # Check if a new cycle is available without downloading anything yet
+    cycle, is_new, download_url, zip_path = fetch_cifp.check_latest_cycle()
+
+    if cycle is None:
+        print("No CIFP zip files found, aborting build.")
+        sys.exit(1)
+
+    print(f"Current cycle identified as: {cycle}")
+    if not is_new:
+        print(f"Cycle {cycle} is already the latest. Short-circuiting build pipeline.")
+        return
+
+    print("Step 1.5: Fetching data concurrently...")
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        f1 = executor.submit(fetch_cifp.main)
+        f1 = executor.submit(fetch_cifp.download_cifp, download_url, zip_path)
         f2 = executor.submit(fetch_airspace_shp.main)
         f3 = executor.submit(fetch_nasr_wrapper)
         concurrent.futures.wait([f1, f2, f3])
@@ -116,6 +132,12 @@ def main():
         concurrent.futures.wait(futures)
         for f in futures:
             f.result()
+
+    # Save the cycle metadata only when the entire pipeline succeeds
+    metadata_path = "output/metadata.json"
+    metadata = {"cycle": cycle}
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f)
 
     print("Pipeline complete!")
 
