@@ -160,6 +160,9 @@ def main():
     run_cmd(
         "ln -sf ../../faa-ais-pmtiles/output/airport_diagrams.pmtiles ../client/public/airport_diagrams.pmtiles"
     )
+    run_cmd(
+        "ln -sf ../../faa-ais-pmtiles/output/metadata.json ../client/public/metadata.json"
+    )
     print("Done.")
 
 

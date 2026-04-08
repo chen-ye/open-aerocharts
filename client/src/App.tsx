@@ -49,6 +49,14 @@ function App() {
 	} | null>(null);
 	const [index, setIndex] = useState<SearchIndex | null>(null);
 	const [indexLoading, setIndexLoading] = useState(false);
+	const [cycle, setCycle] = useState<string | null>(null);
+
+	useEffect(() => {
+		fetch("metadata.json")
+			.then((res) => res.json())
+			.then((data) => setCycle(data.cycle))
+			.catch((err) => console.error("Failed to load metadata", err));
+	}, []);
 
 	useEffect(() => {
 		if (index || indexLoading) return;
@@ -256,6 +264,7 @@ function App() {
 					selectedFeatures={selectedFeatures}
 					onSelectFeatures={setSelectedFeatures}
 					showTooltip={showTooltip}
+					cycle={cycle}
 				/>
 				<FlightPlanPanel
 					onFlightPlanChange={setFlightPlan}
