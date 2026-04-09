@@ -4,7 +4,7 @@ import os
 import zipfile
 
 import requests
-from common.utils import get_cycle_dates
+from src.common.utils import get_cycle_dates
 
 NFDC_BASE = "https://nfdc.faa.gov/webContent/28DaySub/"
 SHAPEFILE_FILENAME = "class_airspace_shape_files.zip"

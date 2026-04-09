@@ -6,7 +6,7 @@ import os
 import zipfile
 import requests
 import json
-from common.utils import get_cycle_dates
+from src.common.utils import get_cycle_dates
 
 def check_latest_cycle():
     url = "https://aeronav.faa.gov/Upload_313-d/cifp/"
