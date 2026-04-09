@@ -269,6 +269,7 @@ Example:
    
    - **`src/cifp/`**: Handling of FAA CIFP (ARINC 424) datasets.
    - **`src/adds/`**: Handling of ADDS ArcGIS and NFDC Shapefile datasets.
+   - **`src/nasr/`**: Handling of FAA NASR 28-day data (e.g. airport metadata).
    - **`src/runways/`**: Logic for generating runway polygons from threshold data.
    - **`src/pmtiles/`**: Orchestration of the build pipeline.
    - **`src/tools/`**: Utilities for inspection and validation.

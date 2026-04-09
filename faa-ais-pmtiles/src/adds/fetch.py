@@ -76,7 +76,9 @@ def fetch_class_airspace_shapefiles(cycle_date: str, url: str) -> None:
     if os.path.exists(cycle_file):
         with open(cycle_file, "r") as f:
             if f.read().strip() == cycle_date:
-                print(f"Shapefiles for cycle {cycle_date} already exist. Skipping download.")
+                print(
+                    f"Shapefiles for cycle {cycle_date} already exist. Skipping download."
+                )
                 return
 
     print(f"Downloading Class Airspace shapefiles from {url}...")
@@ -110,7 +112,9 @@ def fetch_adds_dataset(key: str, info: dict[str, str], cycle_date: str) -> None:
     if os.path.exists(output) and os.path.exists(cycle_file):
         with open(cycle_file, "r") as f:
             if f.read().strip() == cycle_date:
-                print(f"{label} for cycle {cycle_date} already exists. Skipping download.")
+                print(
+                    f"{label} for cycle {cycle_date} already exists. Skipping download."
+                )
                 return
 
     url = (
@@ -138,6 +142,7 @@ def fetch_adds_dataset(key: str, info: dict[str, str], cycle_date: str) -> None:
 
 def fetch_all_adds(cycle_date: str) -> None:
     import concurrent.futures
+
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
         for key, info in ADDS_DATASETS.items():
@@ -146,11 +151,13 @@ def fetch_all_adds(cycle_date: str) -> None:
         for f in futures:
             f.result()
 
+
 def main() -> None:
     cycle_date, url = find_latest_cycle()
     fetch_class_airspace_shapefiles(cycle_date, url)
     fetch_all_adds(cycle_date)
     print("All datasets fetched.")
+
 
 if __name__ == "__main__":
     main()

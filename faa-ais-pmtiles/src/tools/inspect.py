@@ -8,6 +8,7 @@ import geopandas as gpd
 import os
 import sys
 
+
 def check_fgb(path):
     if not os.path.exists(path):
         print(f"File not found: {path}")
@@ -19,10 +20,11 @@ def check_fgb(path):
     print(gdf.head(5))
     if "airspace_class" in gdf.columns:
         print("Airspace Class counts:")
-        print(gdf['airspace_class'].value_counts())
+        print(gdf["airspace_class"].value_counts())
     if "type" in gdf.columns:
         print("Type counts:")
-        print(gdf['type'].value_counts())
+        print(gdf["type"].value_counts())
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

@@ -106,6 +106,7 @@ def convert_class_airspace(shp_dir: str = "shapefiles") -> list[geojson.Feature]
 # SUA (ADDS GeoJSON)
 # ---------------------------------------------------------------------------
 
+
 def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]:
     """Read SUA GeoJSON and return features with mapped properties."""
     if not os.path.exists(sua_path):
@@ -128,20 +129,22 @@ def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]
         upper_val = raw_props.get("UPPER_VAL") or ""
         lower_val = raw_props.get("LOWER_VAL") or ""
 
-        features.append(geojson.Feature(
-            geometry=geom,
-            properties={
-                "name": name,
-                "type": type_code,
-                "airspace_class": type_code,
-                "is_sua": True,
-                "upper_limit": upper_val,
-                "lower_limit": lower_val,
-                "upper_m": parse_altitude(upper_val) * 0.3048,
-                "lower_m": parse_altitude(lower_val) * 0.3048,
-                "local_type": type_code,
-            },
-        ))
+        features.append(
+            geojson.Feature(
+                geometry=geom,
+                properties={
+                    "name": name,
+                    "type": type_code,
+                    "airspace_class": type_code,
+                    "is_sua": True,
+                    "upper_limit": upper_val,
+                    "lower_limit": lower_val,
+                    "upper_m": parse_altitude(upper_val) * 0.3048,
+                    "lower_m": parse_altitude(lower_val) * 0.3048,
+                    "local_type": type_code,
+                },
+            )
+        )
 
     print(f"  {len(features)} SUA features")
     return features
@@ -151,7 +154,10 @@ def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]
 # Airspaces (merged output)
 # ---------------------------------------------------------------------------
 
-def convert_airspaces(output_critical: str = "data/airspaces.fgb", output_e: str = "data/airspaces_e.fgb") -> None:
+
+def convert_airspaces(
+    output_critical: str = "data/airspaces.fgb", output_e: str = "data/airspaces_e.fgb"
+) -> None:
     """Merge controlled airspace + SUA into separate High-Priority and Class E files."""
     print("Processing controlled airspace (shapefiles)...")
     controlled = convert_class_airspace()
@@ -170,7 +176,17 @@ def convert_airspaces(output_critical: str = "data/airspaces.fgb", output_e: str
     e_non_surface = gdf["local_type"].isin(["CLASS_E5", "CLASS_E6", "CLASS_E7"])
     gdf.loc[e_non_surface, "name"] = ""
 
-    dissolution_cols = ["name", "type", "airspace_class", "is_sua", "upper_limit", "lower_limit", "local_type", "upper_m", "lower_m"]
+    dissolution_cols = [
+        "name",
+        "type",
+        "airspace_class",
+        "is_sua",
+        "upper_limit",
+        "lower_limit",
+        "local_type",
+        "upper_m",
+        "lower_m",
+    ]
     gdf[dissolution_cols] = gdf[dissolution_cols].fillna("")
 
     # Split: Class E goes to enroute, everything else (B, C, D, SUA) is critical
@@ -180,14 +196,24 @@ def convert_airspaces(output_critical: str = "data/airspaces.fgb", output_e: str
 
     print(f"Dissolving {len(gdf_critical)} critical airspace geometries...")
     gdf_critical = gdf_critical.dissolve(by=dissolution_cols, as_index=False)
-    gdf_critical.to_file(output_critical, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+    gdf_critical.to_file(
+        output_critical,
+        driver="FlatGeobuf",
+        engine="pyogrio",
+        layer_options={"SPATIAL_INDEX": "NO"},
+    )
 
     print(f"Dissolving {len(gdf_e)} Class E airspace geometries...")
     # For Class E, we ignore upper_limit and name/is_sua to merge sectors with same floor
     # This creates a cleaner "footprint" of the airspace tier (e.g. 700ft vs 1200ft)
     e_dissolve_cols = ["type", "airspace_class", "lower_limit", "local_type"]
     gdf_e = gdf_e.dissolve(by=e_dissolve_cols, as_index=False)
-    gdf_e.to_file(output_e, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+    gdf_e.to_file(
+        output_e,
+        driver="FlatGeobuf",
+        engine="pyogrio",
+        layer_options={"SPATIAL_INDEX": "NO"},
+    )
 
     print(f"Wrote airspaces to {output_critical} and {output_e}")
 
@@ -195,6 +221,7 @@ def convert_airspaces(output_critical: str = "data/airspaces.fgb", output_e: str
 # ---------------------------------------------------------------------------
 # Boundary Airspace (ARTCC/FIR)
 # ---------------------------------------------------------------------------
+
 
 def convert_boundary_airspace(
     raw_path: str = "data/boundary_airspace_raw.geojson",
@@ -219,23 +246,32 @@ def convert_boundary_airspace(
         type_code = (raw.get("TYPE_CODE") or "").strip().upper()
         name = (raw.get("NAME") or raw.get("IDENT") or "").strip()
 
-        features.append(geojson.Feature(
-            geometry=geom,
-            properties={
-                "name": name,
-                "type": type_code,
-                "ident": (raw.get("IDENT") or "").strip(),
-                "local_type": (raw.get("LOCAL_TYPE") or "").strip(),
-                "upper_limit": raw.get("UPPER_VAL") or "",
-                "lower_limit": raw.get("LOWER_VAL") or "",
-            },
-        ))
+        features.append(
+            geojson.Feature(
+                geometry=geom,
+                properties={
+                    "name": name,
+                    "type": type_code,
+                    "ident": (raw.get("IDENT") or "").strip(),
+                    "local_type": (raw.get("LOCAL_TYPE") or "").strip(),
+                    "upper_limit": raw.get("UPPER_VAL") or "",
+                    "lower_limit": raw.get("LOWER_VAL") or "",
+                },
+            )
+        )
 
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
-    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+    gdf.sort_values(
+        by="rank", ascending=True, inplace=True
+    ) if "rank" in gdf.columns else None
+    gdf.to_file(
+        output,
+        driver="FlatGeobuf",
+        engine="pyogrio",
+        layer_options={"SPATIAL_INDEX": "NO"},
+    )
 
     print(f"  Wrote {len(features)} boundary airspace features to {output}")
 
@@ -243,6 +279,7 @@ def convert_boundary_airspace(
 # ---------------------------------------------------------------------------
 # Holding Patterns
 # ---------------------------------------------------------------------------
+
 
 def convert_holding_patterns(
     raw_path: str = "data/holding_patterns_raw.geojson",
@@ -264,25 +301,34 @@ def convert_holding_patterns(
         if geom is None:
             continue
 
-        features.append(geojson.Feature(
-            geometry=geom,
-            properties={
-                "name": (raw.get("NAME") or "").strip(),
-                "ident": (raw.get("IDENT") or "").strip(),
-                "course_out": raw.get("CRSOUT"),
-                "course_in": raw.get("CRSIN"),
-                "turn_dir": (raw.get("DIRTURN") or "").strip(),
-                "structures": (raw.get("STRUCTURES") or "").strip(),
-                "speed_limit": raw.get("SPEEDLIMIT"),
-                "rank": 5,
-            },
-        ))
+        features.append(
+            geojson.Feature(
+                geometry=geom,
+                properties={
+                    "name": (raw.get("NAME") or "").strip(),
+                    "ident": (raw.get("IDENT") or "").strip(),
+                    "course_out": raw.get("CRSOUT"),
+                    "course_in": raw.get("CRSIN"),
+                    "turn_dir": (raw.get("DIRTURN") or "").strip(),
+                    "structures": (raw.get("STRUCTURES") or "").strip(),
+                    "speed_limit": raw.get("SPEEDLIMIT"),
+                    "rank": 5,
+                },
+            )
+        )
 
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
-    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+    gdf.sort_values(
+        by="rank", ascending=True, inplace=True
+    ) if "rank" in gdf.columns else None
+    gdf.to_file(
+        output,
+        driver="FlatGeobuf",
+        engine="pyogrio",
+        layer_options={"SPATIAL_INDEX": "NO"},
+    )
 
     print(f"  Wrote {len(features)} holding pattern features to {output}")
 
@@ -290,6 +336,7 @@ def convert_holding_patterns(
 # ---------------------------------------------------------------------------
 # Digital Obstacle File (DOF)
 # ---------------------------------------------------------------------------
+
 
 def convert_obstacles(
     raw_path: str = "data/dof_raw.geojson",
@@ -315,24 +362,33 @@ def convert_obstacles(
         agl = raw.get("AGL")
         amsl = raw.get("AMSL")
 
-        features.append(geojson.Feature(
-            geometry=geom,
-            properties={
-                "type": obstacle_type,
-                "agl": agl,
-                "amsl": amsl,
-                "lighting": (raw.get("Lighting") or "").strip(),
-                # "city": (raw.get("City") or "").strip(),
-                # "state": (raw.get("State") or "").strip(),
-                "rank": 6,
-            },
-        ))
+        features.append(
+            geojson.Feature(
+                geometry=geom,
+                properties={
+                    "type": obstacle_type,
+                    "agl": agl,
+                    "amsl": amsl,
+                    "lighting": (raw.get("Lighting") or "").strip(),
+                    # "city": (raw.get("City") or "").strip(),
+                    # "state": (raw.get("State") or "").strip(),
+                    "rank": 6,
+                },
+            )
+        )
 
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
-    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+    gdf.sort_values(
+        by="rank", ascending=True, inplace=True
+    ) if "rank" in gdf.columns else None
+    gdf.to_file(
+        output,
+        driver="FlatGeobuf",
+        engine="pyogrio",
+        layer_options={"SPATIAL_INDEX": "NO"},
+    )
 
     print(f"  Wrote {len(features)} obstacle features to {output}")
 
@@ -340,6 +396,7 @@ def convert_obstacles(
 # ---------------------------------------------------------------------------
 # Airport Diagram Runways (ADDS GeoJSON)
 # ---------------------------------------------------------------------------
+
 
 def convert_am_runways(
     raw_path: str = "data/am_runways_raw.geojson",
@@ -363,23 +420,32 @@ def convert_am_runways(
 
         # SURFACE: 1=paved, 2=unpaved, etc.
         # RWY_OPER: 1=closed, 2=open
-        features.append(geojson.Feature(
-            geometry=geom,
-            properties={
-                "faa_id": (raw.get("FAA_ID") or "").strip(),
-                "icao_id": (raw.get("ICAO_ID") or "").strip(),
-                "rwy_id": (raw.get("RWY_ID") or "").strip(),
-                "surface": (raw.get("SURFACE") or "").strip(),
-                "rwy_oper": (raw.get("RWY_OPER") or "").strip(),
-                "rank": 2,
-            },
-        ))
+        features.append(
+            geojson.Feature(
+                geometry=geom,
+                properties={
+                    "faa_id": (raw.get("FAA_ID") or "").strip(),
+                    "icao_id": (raw.get("ICAO_ID") or "").strip(),
+                    "rwy_id": (raw.get("RWY_ID") or "").strip(),
+                    "surface": (raw.get("SURFACE") or "").strip(),
+                    "rwy_oper": (raw.get("RWY_OPER") or "").strip(),
+                    "rank": 2,
+                },
+            )
+        )
 
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
-    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+    gdf.sort_values(
+        by="rank", ascending=True, inplace=True
+    ) if "rank" in gdf.columns else None
+    gdf.to_file(
+        output,
+        driver="FlatGeobuf",
+        engine="pyogrio",
+        layer_options={"SPATIAL_INDEX": "NO"},
+    )
 
     print(f"  Wrote {len(features)} runway features to {output}")
 
@@ -387,6 +453,7 @@ def convert_am_runways(
 # ---------------------------------------------------------------------------
 # Airport Diagram Taxiways (ADDS GeoJSON)
 # ---------------------------------------------------------------------------
+
 
 def convert_am_taxiways(
     raw_path: str = "data/am_taxiways_raw.geojson",
@@ -408,23 +475,32 @@ def convert_am_taxiways(
         if geom is None:
             continue
 
-        features.append(geojson.Feature(
-            geometry=geom,
-            properties={
-                "faa_id": (raw.get("FAA_ID") or "").strip(),
-                "icao_id": (raw.get("ICAO_ID") or "").strip(),
-                "designator": (raw.get("DESIGNATOR") or "").strip(),
-                "surface": (raw.get("SURFACE") or "").strip(),
-                "twy_oper": (raw.get("TWY_OPER") or "").strip(),
-                "rank": 3,
-            },
-        ))
+        features.append(
+            geojson.Feature(
+                geometry=geom,
+                properties={
+                    "faa_id": (raw.get("FAA_ID") or "").strip(),
+                    "icao_id": (raw.get("ICAO_ID") or "").strip(),
+                    "designator": (raw.get("DESIGNATOR") or "").strip(),
+                    "surface": (raw.get("SURFACE") or "").strip(),
+                    "twy_oper": (raw.get("TWY_OPER") or "").strip(),
+                    "rank": 3,
+                },
+            )
+        )
 
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.sort_values(by='rank', ascending=True, inplace=True) if 'rank' in gdf.columns else None
-    gdf.to_file(output, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+    gdf.sort_values(
+        by="rank", ascending=True, inplace=True
+    ) if "rank" in gdf.columns else None
+    gdf.to_file(
+        output,
+        driver="FlatGeobuf",
+        engine="pyogrio",
+        layer_options={"SPATIAL_INDEX": "NO"},
+    )
 
     print(f"  Wrote {len(features)} taxiway features to {output}")
 
@@ -432,6 +508,7 @@ def convert_am_taxiways(
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     convert_airspaces()
