@@ -23,14 +23,42 @@ async function run() {
     deviceScaleFactor: 2
   });
 
-  // DO NOT ABORT PMTILES! This was causing maplibre to render a blank/black map
-  // Let the files be requested (even if they fail, but they should be served by vite preview if symlinks work)
+  // PMTiles relies on HTTP Range requests.
+  // Playwright's `page.route` + `page.request.get` might not handle Range headers fully natively/efficiently
+  // for binary files like pmtiles. Since MapLibre uses fetch for Range, let's just use the prod URL in the
+  // browser directly so Range requests are native.
+
+  // Wait, actually `fetch` will hit CORS issues if we rewrite URLs in Mapbox.
+  // But wait, aerocharts.mikoding.com should have CORS enabled. Let's rewrite the initial MapLibre styles or just keep the proxy.
+  // The previous screenshot was 996572 bytes. Wait, let's check what a successful run file size looks like.
+
+  await page.route('**/*.pmtiles', async route => {
+      const url = route.request().url();
+      const filename = url.split('/').pop();
+      const prodUrl = `https://aerocharts.mikoding.com/${filename}`;
+
+      try {
+          // fetch it via node fetch or page.request to bypass things if we need.
+          // page.request.get supports headers like 'range' properly.
+          const response = await page.request.get(prodUrl, {
+              headers: route.request().headers()
+          });
+          route.fulfill({
+              response,
+              status: response.status(),
+              headers: response.headers(),
+              body: await response.body()
+          });
+      } catch (err) {
+          console.error(`Failed to proxy ${prodUrl}`, err);
+          route.abort();
+      }
+  });
 
   try {
     const url = 'http://localhost:4173/open-aerocharts/#11.5/37.4638/-122.0056';
     console.log(`Navigating to ${url}...`);
 
-    // We add an interceptor to the page to override preserveDrawingBuffer
     await page.addInitScript(() => {
         const getContext = HTMLCanvasElement.prototype.getContext;
         HTMLCanvasElement.prototype.getContext = function(type, options) {
@@ -67,8 +95,6 @@ async function run() {
     const outputPath = path.resolve(__dirname, '../public/aero-thumbnail.png');
     console.log(`Taking screenshot to canvas: ${outputPath}`);
 
-    // Some environments/headless browsers hang forever trying to use native screenshot
-    // Try doing it through canvas data URL.
     const dataURL = await page.evaluate(() => {
         const canvas = document.querySelector('.maplibregl-canvas');
         if (!canvas) return null;
