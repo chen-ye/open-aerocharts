@@ -15,7 +15,7 @@ from src.adds import convert as shp_to_fgb
 from src.adds import fetch as fetch_airspace_shp
 from src.cifp import convert as cifp_to_fgb
 from src.cifp import fetch as fetch_cifp
-from src.cifp import nasr as fetch_nasr
+from src.nasr import fetch as fetch_nasr
 from src.runways.merge import merge_runways
 
 # Each PMTiles file is served directly to the frontend — no tile-join needed.
@@ -136,7 +136,7 @@ def main():
     # Save the cycle metadata only when the entire pipeline succeeds
     metadata_path = "output/metadata.json"
     metadata = {"cycle": cycle}
-    with open(metadata_path, 'w') as f:
+    with open(metadata_path, "w") as f:
         json.dump(metadata, f)
 
     print("Pipeline complete!")

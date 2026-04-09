@@ -8,6 +8,7 @@ import geopandas as gpd
 import pandas as pd
 from pathlib import Path
 
+
 def list_enums(data_dir):
     data_path = Path(data_dir)
     if not data_path.exists():
@@ -60,8 +61,10 @@ def list_enums(data_dir):
         except Exception as e:
             print(f"  Error reading file: {e}")
 
+
 def main():
     list_enums("data")
+
 
 if __name__ == "__main__":
     main()

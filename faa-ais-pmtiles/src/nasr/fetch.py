@@ -13,6 +13,7 @@ from src.common.utils import get_cycle_dates
 
 NFDC_BASE = "https://nfdc.faa.gov/webContent/28DaySub/"
 
+
 def find_latest_csv_zip_url() -> tuple[str, str]:
     """Find the latest CSV zip by trying generated cycle dates. Returns (url, cycle_date)."""
     print("Finding latest FAA 28-day NASR CSV bundle...")
@@ -25,7 +26,7 @@ def find_latest_csv_zip_url() -> tuple[str, str]:
         # Try both the standard location and the 'extra' folder
         urls_to_try = [
             f"{NFDC_BASE}{folder_date}/28DaySubscription_CSV.zip",
-            f"{NFDC_BASE}extra/{file_date}_CSV.zip"
+            f"{NFDC_BASE}extra/{file_date}_CSV.zip",
         ]
 
         for url in urls_to_try:
@@ -42,13 +43,17 @@ def find_latest_csv_zip_url() -> tuple[str, str]:
 
     # Fallback to a hardcoded baseline if all else fails
     print("Could not find NASR bundle; using fallback logic.")
-    return "https://nfdc.faa.gov/webContent/28DaySub/2026-03-19/28DaySubscription_CSV.zip", "2026-03-19"
+    return (
+        "https://nfdc.faa.gov/webContent/28DaySub/2026-03-19/28DaySubscription_CSV.zip",
+        "2026-03-19",
+    )
 
 
 def get_airport_metadata() -> dict[str, dict]:
     """Download NASR CSV zip and return a dict of {airport_id: {has_fuel, has_tower, far_139}}."""
     import os
     import json
+
     url, cycle_date = find_latest_csv_zip_url()
 
     cache_path = "data/nasr_metadata.json"
@@ -57,7 +62,9 @@ def get_airport_metadata() -> dict[str, dict]:
     if os.path.exists(cache_path) and os.path.exists(cycle_path):
         with open(cycle_path, "r") as f:
             if f.read().strip() == cycle_date:
-                print(f"NASR airport metadata for cycle {cycle_date} already exists. Skipping download.")
+                print(
+                    f"NASR airport metadata for cycle {cycle_date} already exists. Skipping download."
+                )
                 with open(cache_path, "r") as cache_f:
                     return json.load(cache_f)
     print(f"Downloading NASR CSV bundle from {url}...")
@@ -68,7 +75,9 @@ def get_airport_metadata() -> dict[str, dict]:
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 503:
             # Hardcoded fallback for now if cycle dates fail
-            extra_url = "https://nfdc.faa.gov/webContent/28DaySub/extra/19_Mar_2026_CSV.zip"
+            extra_url = (
+                "https://nfdc.faa.gov/webContent/28DaySub/extra/19_Mar_2026_CSV.zip"
+            )
             print(f"HTTP 503 Error. Retrying with fallback URL: {extra_url}")
             r = requests.get(extra_url, timeout=120)
             r.raise_for_status()
@@ -105,7 +114,7 @@ def get_airport_metadata() -> dict[str, dict]:
                 metadata = {
                     "has_fuel": bool(fuel_types),
                     "has_tower": twr_type == "ATCT",
-                    "far_139": far_139
+                    "far_139": far_139,
                 }
                 metadata_lookup[arpt_id] = metadata
                 if icao_id:
@@ -126,6 +135,7 @@ def load_nasr_metadata() -> dict[str, dict]:
     """Fast check: returns the cached metadata if it exists, otherwise empty dict."""
     import os
     import json
+
     cache_path = "data/nasr_metadata.json"
     if os.path.exists(cache_path):
         with open(cache_path, "r") as f:

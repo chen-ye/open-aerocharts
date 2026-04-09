@@ -9,12 +9,18 @@ import sys
 import geojson
 from collections import defaultdict
 from cifparse import CIFP
-from src.cifp import nasr
+from src.nasr import fetch as nasr
 from src.common.utils import parse_altitude, unwrap_coordinates, haversine, save_fgb
-from src.runways.geometry import get_opposite_runway_id, calculate_destination, create_runway_poly
+from src.runways.geometry import (
+    get_opposite_runway_id,
+    calculate_destination,
+    create_runway_poly,
+)
+
 
 def load_nasr_metadata():
     return nasr.load_nasr_metadata()
+
 
 def build_pmtiles_fgb(cifp_path):
     print("Fetching NASR airport metadata...", flush=True)
@@ -30,7 +36,6 @@ def build_pmtiles_fgb(cifp_path):
     c.parse_enroute_waypoints()
     c.parse_terminal_waypoints()
 
-
     c.parse_procedures()
     c.parse_airway_points()
     c.parse_runways()
@@ -42,40 +47,40 @@ def build_pmtiles_fgb(cifp_path):
     print("Extracting Airports...", flush=True)
     airport_features_dict = {}
     for a in c.get_airports():
-        p = a.to_dict()['primary']
-        lat, lon = p.get('lat'), p.get('lon')
+        p = a.to_dict()["primary"]
+        lat, lon = p.get("lat"), p.get("lon")
         if lat is not None and lon is not None:
-            ident = p.get('airport_id', '').strip()
+            ident = p.get("airport_id", "").strip()
             if not ident:
                 continue
 
-            elev = float(p.get('elevation') or 0.0)
+            elev = float(p.get("elevation") or 0.0)
 
-            surface = p.get('longest_surface')
-            usage = p.get('usage')
+            surface = p.get("longest_surface")
+            usage = p.get("usage")
 
-            if surface == 'W':
-                fac_type = 'seaplane'
-            elif usage == 'M':
-                fac_type = 'military'
-            elif usage == 'P':
-                fac_type = 'private'
+            if surface == "W":
+                fac_type = "seaplane"
+            elif usage == "M":
+                fac_type = "military"
+            elif usage == "P":
+                fac_type = "private"
             else:
-                fac_type = 'civil_hard' if surface == 'H' else 'civil_soft'
+                fac_type = "civil_hard" if surface == "H" else "civil_soft"
 
-            ident = p.get('airport_id', '').strip()
+            ident = p.get("airport_id", "").strip()
             # Try direct lookup (now robust with ICAO_ID indexing)
             meta = airport_metadata.get(ident)
 
             # Fallback for continental US if ICAO_ID was missing from NASR but present in CIFP
-            if not meta and ident.startswith('K') and len(ident) == 4:
+            if not meta and ident.startswith("K") and len(ident) == 4:
                 meta = airport_metadata.get(ident[1:])
 
             meta = meta or {}
-            has_fuel = meta.get('has_fuel', False)
-            has_tower = meta.get('has_tower', False)
-            far_139 = meta.get('far_139', '')
-            longest_runway = int(p.get('longest') or 0)
+            has_fuel = meta.get("has_fuel", False)
+            has_tower = meta.get("has_tower", False)
+            far_139 = meta.get("far_139", "")
+            longest_runway = int(p.get("longest") or 0)
 
             # Determine facility rank for decluttering (lower is more important)
             # Tier 1: Major Hubs (FAR 139 Index D/E)
@@ -84,204 +89,231 @@ def build_pmtiles_fgb(cifp_path):
             # Tier 4: Minor / Private / Others
 
             # FAR 139 Index D or E are major commercial hubs
-            is_major_hub = any(idx in far_139 for idx in ['D', 'E'])
+            is_major_hub = any(idx in far_139 for idx in ["D", "E"])
             # FAR 139 Index A, B, or C are standard commercial
-            is_commercial = any(idx in far_139 for idx in ['A', 'B', 'C'])
+            is_commercial = any(idx in far_139 for idx in ["A", "B", "C"])
 
             if is_major_hub:
                 rank = 1
             elif is_commercial or has_tower or longest_runway >= 7500:
                 rank = 2
-            elif ident.startswith('K') and len(ident) == 4 or longest_runway >= 4000:
+            elif ident.startswith("K") and len(ident) == 4 or longest_runway >= 4000:
                 rank = 3
             else:
                 rank = 4
 
             # Ensure military bases with huge runways remain Rank 1 even if not FAR 139
-            if usage == 'M' and longest_runway >= 10000:
+            if usage == "M" and longest_runway >= 10000:
                 rank = 1
 
             properties = {
-                'id': ident,
-                'name': p.get('airport_name'),
-                'type': 'airport',
-                'facility_type': fac_type,
-                'surface': surface,
-                'is_military': usage == 'M',
-                'is_ifr': bool(p.get('is_ifr')),
-                'longest_runway': longest_runway,
-                'has_fuel': has_fuel,
-                'rank': rank
+                "id": ident,
+                "name": p.get("airport_name"),
+                "type": "airport",
+                "facility_type": fac_type,
+                "surface": surface,
+                "is_military": usage == "M",
+                "is_ifr": bool(p.get("is_ifr")),
+                "longest_runway": longest_runway,
+                "has_fuel": has_fuel,
+                "rank": rank,
             }
 
             feat = geojson.Feature(
                 geometry=geojson.Point((lon, lat, elev)),
                 properties=properties,
-                tippecanoe={ 'minzoom': 0 if rank == 1 else (rank + 1) } # Root-level control
+                tippecanoe={
+                    "minzoom": 0 if rank == 1 else (rank + 1)
+                },  # Root-level control
             )
 
             airport_features_dict[ident] = feat
             fixes[ident] = (lon, lat, elev)
 
-    with open('data/airports.geojson', 'w') as f:
+    with open("data/airports.geojson", "w") as f:
         geojson.dump(geojson.FeatureCollection(list(airport_features_dict.values())), f)
 
     print("Extracting Navaids...", flush=True)
     navaid_features = []
     for nav in c.get_vhf_navaids():
-        p = nav.to_dict()['primary']
-        lat = p.get('lat') or p.get('dme_lat')
-        lon = p.get('lon') or p.get('dme_lon')
+        p = nav.to_dict()["primary"]
+        lat = p.get("lat") or p.get("dme_lat")
+        lon = p.get("lon") or p.get("dme_lon")
         if lat is not None and lon is not None:
-            elev = float(p.get('dme_elevation') or p.get('elevation') or 0.0)
-            ident = (p.get('vhf_id') or p.get('dme_id') or '').strip()
+            elev = float(p.get("dme_elevation") or p.get("elevation") or 0.0)
+            ident = (p.get("vhf_id") or p.get("dme_id") or "").strip()
 
-            nav_class = p.get('nav_class') or '     '
-            alt_class = nav_class[1:2] if len(nav_class) > 1 else ' '
-            if alt_class == 'H':
+            nav_class = p.get("nav_class") or "     "
+            alt_class = nav_class[1:2] if len(nav_class) > 1 else " "
+            if alt_class == "H":
                 rank = 2
-            elif alt_class == 'L':
+            elif alt_class == "L":
                 rank = 3
-            elif alt_class == 'T':
+            elif alt_class == "T":
                 rank = 4
             else:
                 rank = 5
 
             # Parse NAVAID type from class (e.g., 'V' for VOR/VORTAC/VORDME, 'T' for TACAN, 'D' for DME)
-            nav_type = 'vhf'
-            if nav_class.startswith('V'):
-                if 'T' in nav_class:
-                    nav_type = 'vortac'
-                elif 'D' in nav_class:
-                    nav_type = 'vordme'
+            nav_type = "vhf"
+            if nav_class.startswith("V"):
+                if "T" in nav_class:
+                    nav_type = "vortac"
+                elif "D" in nav_class:
+                    nav_type = "vordme"
                 else:
-                    nav_type = 'vor'
-            elif nav_class.startswith('T') or nav_class.startswith('M'):
-                nav_type = 'tacan'
-            elif nav_class.startswith('D'):
-                nav_type = 'dme'
+                    nav_type = "vor"
+            elif nav_class.startswith("T") or nav_class.startswith("M"):
+                nav_type = "tacan"
+            elif nav_class.startswith("D"):
+                nav_type = "dme"
             # (Note: ILS/Localizers are handled separately)
 
-            navaid_features.append(geojson.Feature(
-                geometry=geojson.Point((lon, lat, elev)),
-                properties={'id': ident, 'name': p.get('vhf_name'), 'frequency': p.get('frequency'), 'type': nav_type, 'rank': rank}
-            ))
+            navaid_features.append(
+                geojson.Feature(
+                    geometry=geojson.Point((lon, lat, elev)),
+                    properties={
+                        "id": ident,
+                        "name": p.get("vhf_name"),
+                        "frequency": p.get("frequency"),
+                        "type": nav_type,
+                        "rank": rank,
+                    },
+                )
+            )
             if ident:
                 fixes[ident] = (lon, lat, elev)
 
     for nav in c.get_ndb_navaids():
-        p = nav.to_dict()['primary']
-        lat, lon = p.get('lat'), p.get('lon')
+        p = nav.to_dict()["primary"]
+        lat, lon = p.get("lat"), p.get("lon")
         if lat is not None and lon is not None:
-            elev = float(p.get('elevation') or 0.0)
-            ident = (p.get('ndb_id') or '').strip()
-            navaid_features.append(geojson.Feature(
-                geometry=geojson.Point((lon, lat, elev)),
-                properties={'id': ident, 'name': p.get('ndb_name'), 'frequency': p.get('frequency'), 'type': 'ndb', 'rank': 5}
-            ))
+            elev = float(p.get("elevation") or 0.0)
+            ident = (p.get("ndb_id") or "").strip()
+            navaid_features.append(
+                geojson.Feature(
+                    geometry=geojson.Point((lon, lat, elev)),
+                    properties={
+                        "id": ident,
+                        "name": p.get("ndb_name"),
+                        "frequency": p.get("frequency"),
+                        "type": "ndb",
+                        "rank": 5,
+                    },
+                )
+            )
             if ident:
                 fixes[ident] = (lon, lat, elev)
 
     print("Extracting Waypoints...", flush=True)
     waypoint_features = []
     for wp in c.get_enroute_waypoints() + c.get_terminal_waypoints():
-        p = wp.to_dict()['primary']
-        if p.get('lat') is not None and p.get('lon') is not None:
-            ident = (p.get('waypoint_id') or '').strip()
-            fixes[ident] = (p.get('lon'), p.get('lat'), 0.0)
+        p = wp.to_dict()["primary"]
+        if p.get("lat") is not None and p.get("lon") is not None:
+            ident = (p.get("waypoint_id") or "").strip()
+            fixes[ident] = (p.get("lon"), p.get("lat"), 0.0)
 
             # Classify waypoint type from ARINC 424
-            raw_type = (p.get('type') or '').strip()
-            if raw_type == 'C':
-                wpt_type = 'compulsory'
-            elif raw_type == 'R':
-                wpt_type = 'rnav'
+            raw_type = (p.get("type") or "").strip()
+            if raw_type == "C":
+                wpt_type = "compulsory"
+            elif raw_type == "R":
+                wpt_type = "rnav"
             else:
-                wpt_type = 'named'
+                wpt_type = "named"
 
             # Usage: H = high altitude, L = low altitude, B = both, blank = terminal/other
-            usage = (p.get('usage') or '').strip()
+            usage = (p.get("usage") or "").strip()
 
             base_rank = 5
-            if wpt_type == 'compulsory':
+            if wpt_type == "compulsory":
                 base_rank = 3
-            elif wpt_type == 'rnav':
+            elif wpt_type == "rnav":
                 base_rank = 4
 
-            if usage in ('H', 'B'):
+            if usage in ("H", "B"):
                 rank = base_rank
-            elif usage == 'L':
+            elif usage == "L":
                 rank = base_rank + 1
             else:
                 rank = base_rank + 2
 
             rank = min(rank, 6)
 
-            waypoint_features.append(geojson.Feature(
-                geometry=geojson.Point((p.get('lon'), p.get('lat'), 0.0)),
-                properties={
-                    'id': ident,
-                    'type': wpt_type,
-                    'usage': usage,
-                    'name': (p.get('name_description') or '').strip(),
-                    'rank': rank
-                }
-            ))
+            waypoint_features.append(
+                geojson.Feature(
+                    geometry=geojson.Point((p.get("lon"), p.get("lat"), 0.0)),
+                    properties={
+                        "id": ident,
+                        "type": wpt_type,
+                        "usage": usage,
+                        "name": (p.get("name_description") or "").strip(),
+                        "rank": rank,
+                    },
+                )
+            )
 
-    save_fgb(waypoint_features, 'data/waypoints.fgb')
+    save_fgb(waypoint_features, "data/waypoints.fgb")
 
-    save_fgb(navaid_features, 'data/navaids.fgb')
+    save_fgb(navaid_features, "data/navaids.fgb")
 
     print("Processing Procedures...", flush=True)
     proc_groups = defaultdict(list)
     for proc in c.get_procedures():
-        p = proc.to_dict()['primary']
-        key = (p.get('fac_id'), p.get('procedure_id'), p.get('transition_id'))
+        p = proc.to_dict()["primary"]
+        key = (p.get("fac_id"), p.get("procedure_id"), p.get("transition_id"))
         proc_groups[key].append(p)
 
     procedure_features = []
     for key, pts in proc_groups.items():
-        pts.sort(key=lambda x: x.get('seq_no') or 0)
+        pts.sort(key=lambda x: x.get("seq_no") or 0)
         coords = []
         for p in pts:
-            fix = (p.get('fix_id') or '').strip()
+            fix = (p.get("fix_id") or "").strip()
             if fix in fixes:
                 lon, lat, elev = fixes[fix]
-                proc_elev = parse_altitude(p.get('alt_1') or p.get('trans_alt'))
+                proc_elev = parse_altitude(p.get("alt_1") or p.get("trans_alt"))
                 coords.append((lon, lat, max(elev, proc_elev)))
-            elif p.get('lat') is not None and p.get('lon') is not None:
-                proc_elev = parse_altitude(p.get('alt_1') or p.get('trans_alt'))
-                coords.append((p.get('lon'), p.get('lat'), proc_elev))
+            elif p.get("lat") is not None and p.get("lon") is not None:
+                proc_elev = parse_altitude(p.get("alt_1") or p.get("trans_alt"))
+                coords.append((p.get("lon"), p.get("lat"), proc_elev))
 
         if len(coords) >= 2:
             coords = unwrap_coordinates(coords)
-            procedure_features.append(geojson.Feature(
-                geometry=geojson.LineString(coords),
-                properties={'airport': key[0], 'procedure': key[1], 'transition': key[2], 'rank': 5}
-            ))
+            procedure_features.append(
+                geojson.Feature(
+                    geometry=geojson.LineString(coords),
+                    properties={
+                        "airport": key[0],
+                        "procedure": key[1],
+                        "transition": key[2],
+                        "rank": 5,
+                    },
+                )
+            )
 
-    save_fgb(procedure_features, 'data/procedures.fgb')
+    save_fgb(procedure_features, "data/procedures.fgb")
 
     print("Processing Airways...", flush=True)
     airway_groups = defaultdict(list)
     for ap in c.get_airway_points():
-        p = ap.to_dict()['primary']
-        key = p.get('airway_id')
+        p = ap.to_dict()["primary"]
+        key = p.get("airway_id")
         if key:
             airway_groups[key].append(p)
 
     airway_features = []
     for key, pts in airway_groups.items():
-        pts.sort(key=lambda x: x.get('seq_no') or 0)
+        pts.sort(key=lambda x: x.get("seq_no") or 0)
         valid_pts = []
         for p in pts:
-            fix = (p.get('point_id') or '').strip()
+            fix = (p.get("point_id") or "").strip()
             if fix in fixes:
                 valid_pts.append((p, fixes[fix]))
 
         for i in range(len(valid_pts) - 1):
             p1, fix1 = valid_pts[i]
-            p2, fix2 = valid_pts[i+1]
+            p2, fix2 = valid_pts[i + 1]
             lon1, lat1, elev1 = fix1
             lon2, lat2, elev2 = fix2
 
@@ -294,7 +326,7 @@ def build_pmtiles_fgb(cifp_path):
                     continue
 
                 dist_nm = round(haversine(lon1, lat1, lon2, lat2))
-                min_alt = p1.get('min_alt_1')
+                min_alt = p1.get("min_alt_1")
                 if min_alt and str(min_alt).strip().isdigit():
                     mea_val = int(str(min_alt).strip())
                 else:
@@ -303,133 +335,146 @@ def build_pmtiles_fgb(cifp_path):
                     except (ValueError, TypeError):
                         mea_val = 0
 
-                route_type = p1.get('route_type') or p1.get('airway_type')
+                route_type = p1.get("route_type") or p1.get("airway_type")
                 if not route_type:
-                    if key.startswith('V'):
-                        route_type = 'Victor'
-                    elif key.startswith('Q') or key.startswith('T'):
-                        route_type = 'GPS'
-                    elif key.startswith('J'):
-                        route_type = 'Victor'
+                    if key.startswith("V"):
+                        route_type = "Victor"
+                    elif key.startswith("Q") or key.startswith("T"):
+                        route_type = "GPS"
+                    elif key.startswith("J"):
+                        route_type = "Victor"
                     else:
-                        route_type = 'Unknown'
+                        route_type = "Unknown"
 
                 coords = [
                     (ulon1, ulat1, max(elev1, parse_altitude(min_alt))),
-                    (ulon2, ulat2, max(elev2, parse_altitude(min_alt)))
+                    (ulon2, ulat2, max(elev2, parse_altitude(min_alt))),
                 ]
 
-                structure = 'High' if key.startswith('J') or key.startswith('Q') else 'Low'
+                structure = (
+                    "High" if key.startswith("J") or key.startswith("Q") else "Low"
+                )
 
-                airway_features.append(geojson.Feature(
-                    geometry=geojson.LineString(coords),
-                    properties={
-                        'airway': key,
-                        'mea': mea_val,
-                        'distance': dist_nm,
-                        'route_type': route_type,
-                        'structure': structure,
-                        'rank': 5
-                    }
-                ))
+                airway_features.append(
+                    geojson.Feature(
+                        geometry=geojson.LineString(coords),
+                        properties={
+                            "airway": key,
+                            "mea": mea_val,
+                            "distance": dist_nm,
+                            "route_type": route_type,
+                            "structure": structure,
+                            "rank": 5,
+                        },
+                    )
+                )
 
-    save_fgb(airway_features, 'data/airways.fgb')
+    save_fgb(airway_features, "data/airways.fgb")
 
     print("Extracting Runways...", flush=True)
     thresholds = []
     for rw in c.get_runways():
-        p = rw.to_dict()['primary']
-        lat, lon = p.get('lat'), p.get('lon')
+        p = rw.to_dict()["primary"]
+        lat, lon = p.get("lat"), p.get("lon")
         if lat is not None and lon is not None:
-            elev = float(p.get('threshold_elevation') or 0.0)
-            thresholds.append(geojson.Feature(
-                geometry=geojson.Point((lon, lat, elev)),
-                properties={
-                    'airport': p.get('airport_id'),
-                    'runway': p.get('runway_id'),
-                    'length': p.get('length'),
-                    'bearing': p.get('bearing'),
-                    'width': p.get('width'),
-                    'type': 'runway',
-                    'rank': 5
-                }
-            ))
+            elev = float(p.get("threshold_elevation") or 0.0)
+            thresholds.append(
+                geojson.Feature(
+                    geometry=geojson.Point((lon, lat, elev)),
+                    properties={
+                        "airport": p.get("airport_id"),
+                        "runway": p.get("runway_id"),
+                        "length": p.get("length"),
+                        "bearing": p.get("bearing"),
+                        "width": p.get("width"),
+                        "type": "runway",
+                        "rank": 5,
+                    },
+                )
+            )
 
     # Post-process thresholds into polygons and labels
     runway_features = []
     label_features = []
     by_airport = defaultdict(list)
     for t in thresholds:
-        by_airport[t.properties['airport']].append(t)
+        by_airport[t.properties["airport"]].append(t)
 
     for airport_id, airport_thresholds in by_airport.items():
         processed = set()
         for t1 in airport_thresholds:
-            id1 = t1.properties['runway']
+            id1 = t1.properties["runway"]
             if id1 in processed:
                 continue
 
             id2 = get_opposite_runway_id(id1)
-            t2 = next((t for t in airport_thresholds if t.properties['runway'] == id2), None)
+            t2 = next(
+                (t for t in airport_thresholds if t.properties["runway"] == id2), None
+            )
 
-            width_ft = float(t1.properties.get('width') or 100.0)
-            length_ft = float(t1.properties.get('length') or 0.0)
+            width_ft = float(t1.properties.get("width") or 100.0)
+            length_ft = float(t1.properties.get("length") or 0.0)
 
             if t2:
                 # Two ends matched!
                 p1 = t1.geometry.coordinates
                 p2 = t2.geometry.coordinates
                 poly = create_runway_poly(p1, p2, width_ft)
-                
+
                 # Sort bearings
-                b1 = float(t1.properties.get('bearing') or 0.0)
-                b2 = float(t2.properties.get('bearing') or 0.0)
+                b1 = float(t1.properties.get("bearing") or 0.0)
+                b2 = float(t2.properties.get("bearing") or 0.0)
                 bearings = sorted([b1, b2])
-                
+
                 combined_id = f"{id1.replace('RW', '')}/{id2.replace('RW', '')}"
 
                 if poly:
                     props = t1.properties.copy()
-                    props.update({
-                        'runway': combined_id,
-                        'bearing_1': bearings[0],
-                        'bearing_2': bearings[1]
-                    })
-                    props.pop('bearing', None)
-                    
-                    runway_features.append(geojson.Feature(
-                        geometry=poly,
-                        properties=props
-                    ))
-                
+                    props.update(
+                        {
+                            "runway": combined_id,
+                            "bearing_1": bearings[0],
+                            "bearing_2": bearings[1],
+                        }
+                    )
+                    props.pop("bearing", None)
+
+                    runway_features.append(
+                        geojson.Feature(geometry=poly, properties=props)
+                    )
+
                 # Create label features for both ends
                 # t1
                 l1_props = {
-                    'label': id1.replace('RW', ''),
-                    'runway_id': combined_id,
-                    'airport_id': airport_id,
-                    'bearing': b1,
-                    'type': 'runway_label'
+                    "label": id1.replace("RW", ""),
+                    "runway_id": combined_id,
+                    "airport_id": airport_id,
+                    "bearing": b1,
+                    "type": "runway_label",
                 }
-                label_features.append(geojson.Feature(geometry=t1.geometry, properties=l1_props))
-                
+                label_features.append(
+                    geojson.Feature(geometry=t1.geometry, properties=l1_props)
+                )
+
                 # t2
                 l2_props = {
-                    'label': id2.replace('RW', ''),
-                    'runway_id': combined_id,
-                    'airport_id': airport_id,
-                    'bearing': b2,
-                    'type': 'runway_label'
+                    "label": id2.replace("RW", ""),
+                    "runway_id": combined_id,
+                    "airport_id": airport_id,
+                    "bearing": b2,
+                    "type": "runway_label",
                 }
-                label_features.append(geojson.Feature(geometry=t2.geometry, properties=l2_props))
+                label_features.append(
+                    geojson.Feature(geometry=t2.geometry, properties=l2_props)
+                )
 
                 processed.add(id1)
                 processed.add(id2)
             else:
                 # One end only, use bearing and length if available
                 p1 = t1.geometry.coordinates
-                bearing = t1.properties.get('bearing')
-                
+                bearing = t1.properties.get("bearing")
+
                 if bearing is not None and length_ft > 0:
                     try:
                         b_val = float(bearing)
@@ -437,27 +482,29 @@ def build_pmtiles_fgb(cifp_path):
                         poly = create_runway_poly(p1, p2, width_ft)
                         if poly:
                             props = t1.properties.copy()
-                            props.update({
-                                'bearing_1': b_val,
-                                'bearing_2': None
-                            })
-                            props.pop('bearing', None)
-                            
-                            runway_features.append(geojson.Feature(
-                                geometry=poly,
-                                properties=props
-                            ))
-                            
+                            props.update({"bearing_1": b_val, "bearing_2": None})
+                            props.pop("bearing", None)
+
+                            runway_features.append(
+                                geojson.Feature(geometry=poly, properties=props)
+                            )
+
                             # Label for the known end
                             l1_props = {
-                                'label': id1.replace('RW', ''),
-                                'runway_id': t1.properties.get('runway'), # No combined ID if single
-                                'airport_id': airport_id,
-                                'bearing': b_val,
-                                'type': 'runway_label'
+                                "label": id1.replace("RW", ""),
+                                "runway_id": t1.properties.get(
+                                    "runway"
+                                ),  # No combined ID if single
+                                "airport_id": airport_id,
+                                "bearing": b_val,
+                                "type": "runway_label",
                             }
-                            label_features.append(geojson.Feature(geometry=t1.geometry, properties=l1_props))
-                            
+                            label_features.append(
+                                geojson.Feature(
+                                    geometry=t1.geometry, properties=l1_props
+                                )
+                            )
+
                     except (ValueError, TypeError):
                         # Fallback to point if bearing invalid
                         runway_features.append(t1)
@@ -466,38 +513,42 @@ def build_pmtiles_fgb(cifp_path):
                     runway_features.append(t1)
                 processed.add(id1)
 
-    save_fgb(runway_features, 'data/cifp_runways.fgb')
-    save_fgb(label_features, 'data/cifp_runway_labels.fgb')
+    save_fgb(runway_features, "data/cifp_runways.fgb")
+    save_fgb(label_features, "data/cifp_runway_labels.fgb")
 
     print("Extracting Localizers...", flush=True)
     loc_features = []
     for loc in c.get_loc_gss():
-        p = loc.to_dict()['primary']
-        lat, lon = p.get('loc_lat'), p.get('loc_lon')
+        p = loc.to_dict()["primary"]
+        lat, lon = p.get("loc_lat"), p.get("loc_lon")
         if lat is not None and lon is not None:
-            elev = float(p.get('gs_elevation') or 0.0)
-            loc_features.append(geojson.Feature(
-                geometry=geojson.Point((lon, lat, elev)),
-                properties={
-                    'airport': p.get('airport_id'),
-                    'runway': p.get('runway_id'),
-                    'ident': p.get('loc_id'),
-                    'frequency': p.get('frequency'),
-                    'bearing': p.get('loc_bearing'),
-                    'type': 'localizer',
-                    'rank': 5
-                }
-            ))
+            elev = float(p.get("gs_elevation") or 0.0)
+            loc_features.append(
+                geojson.Feature(
+                    geometry=geojson.Point((lon, lat, elev)),
+                    properties={
+                        "airport": p.get("airport_id"),
+                        "runway": p.get("runway_id"),
+                        "ident": p.get("loc_id"),
+                        "frequency": p.get("frequency"),
+                        "bearing": p.get("loc_bearing"),
+                        "type": "localizer",
+                        "rank": 5,
+                    },
+                )
+            )
 
-    save_fgb(loc_features, 'data/localizers.fgb')
+    save_fgb(loc_features, "data/localizers.fgb")
 
     print("FlatGeobuf generation complete.", flush=True)
+
 
 def main():
     if len(sys.argv) < 2:
         print("Usage: <command> <FAACIFP18_file>")
         sys.exit(1)
     build_pmtiles_fgb(sys.argv[1])
+
 
 if __name__ == "__main__":
     main()

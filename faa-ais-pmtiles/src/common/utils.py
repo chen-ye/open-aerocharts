@@ -9,34 +9,37 @@ import datetime
 import math
 import geopandas as gpd
 
+
 def haversine(lon1, lat1, lon2, lat2):
-    R = 3440.065 # Earth radius in NM
+    R = 3440.065  # Earth radius in NM
     dLat = math.radians(lat2 - lat1)
     dLon = math.radians(lon2 - lon1)
-    a = (math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-        math.sin(dLon / 2) * math.sin(dLon / 2))
+    a = math.sin(dLat / 2) * math.sin(dLat / 2) + math.cos(
+        math.radians(lat1)
+    ) * math.cos(math.radians(lat2)) * math.sin(dLon / 2) * math.sin(dLon / 2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
+
 
 def parse_altitude(alt_str):
     if not alt_str:
         return 0.0
     alt_str = str(alt_str).strip()
-    if alt_str == 'GND':
+    if alt_str == "GND":
         return 0.0
-    if alt_str == 'UNL':
+    if alt_str == "UNL":
         return 60000.0
     try:
         val = float(alt_str)
         return val
     except ValueError:
-        if alt_str.startswith('FL'):
+        if alt_str.startswith("FL"):
             try:
                 return float(alt_str[2:]) * 100
             except Exception:
                 pass
         return 0.0
+
 
 def unwrap_coordinates(coords):
     if not coords:
@@ -54,6 +57,7 @@ def unwrap_coordinates(coords):
         unwrapped.append((curr_lon, lat, elev))
     return unwrapped
 
+
 def save_fgb(features, output_path):
     if isinstance(features, gpd.GeoDataFrame):
         if features.empty:
@@ -68,11 +72,17 @@ def save_fgb(features, output_path):
             return
         gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
 
-    if 'rank' in gdf.columns:
-        gdf.sort_values(by='rank', ascending=True, inplace=True)
+    if "rank" in gdf.columns:
+        gdf.sort_values(by="rank", ascending=True, inplace=True)
     gdf.geometry = gdf.geometry.force_2d()
     # Disable spatial index to ensure linear reading order by tippecanoe
-    gdf.to_file(output_path, driver="FlatGeobuf", engine="pyogrio", layer_options={'SPATIAL_INDEX': 'NO'})
+    gdf.to_file(
+        output_path,
+        driver="FlatGeobuf",
+        engine="pyogrio",
+        layer_options={"SPATIAL_INDEX": "NO"},
+    )
+
 
 def get_cycle_dates() -> list[datetime.date]:
     """Return a list of datetime.date for the current and recent past 28-day cycles.
@@ -87,4 +97,7 @@ def get_cycle_dates() -> list[datetime.date]:
 
     # Return the current active cycle and the one before it as fallback
     # offset=0 is current, offset=-1 is previous
-    return [anchor + datetime.timedelta(days=(cycles_passed + offset) * 28) for offset in (0, -1)]
+    return [
+        anchor + datetime.timedelta(days=(cycles_passed + offset) * 28)
+        for offset in (0, -1)
+    ]

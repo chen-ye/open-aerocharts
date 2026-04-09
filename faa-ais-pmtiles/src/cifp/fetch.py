@@ -8,6 +8,7 @@ import requests
 import json
 from src.common.utils import get_cycle_dates
 
+
 def check_latest_cycle():
     url = "https://aeronav.faa.gov/Upload_313-d/cifp/"
 
@@ -41,7 +42,7 @@ def check_latest_cycle():
 
     current_cycle = None
     if os.path.exists(metadata_path):
-        with open(metadata_path, 'r') as f:
+        with open(metadata_path, "r") as f:
             try:
                 metadata = json.load(f)
                 current_cycle = metadata.get("cycle")
@@ -51,8 +52,8 @@ def check_latest_cycle():
     is_new = current_cycle != cycle
 
     # Output for GitHub Actions
-    if os.environ.get('GITHUB_OUTPUT'):
-        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
             f.write(f"cycle={cycle}\n")
             f.write(f"is_new={str(is_new).lower()}\n")
 
@@ -61,25 +62,29 @@ def check_latest_cycle():
 
     return cycle, is_new, download_url, zip_path
 
+
 def download_cifp(download_url, zip_path):
     print(f"Downloading {download_url}...")
     with requests.get(download_url, stream=True) as r:
         r.raise_for_status()
-        with open(zip_path, 'wb') as f:
+        with open(zip_path, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
 
     print(f"Extracting {zip_path}...")
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
         zip_ref.extractall(".")
 
     print("Done. Extracted contents.")
+
 
 def fetch_latest_cifp():
     cycle, is_new, download_url, zip_path = check_latest_cycle()
     if not is_new:
         if zip_path:
-            print(f"Latest CIFP ({zip_path}) is already processed (cycle {cycle}). Skipping download.")
+            print(
+                f"Latest CIFP ({zip_path}) is already processed (cycle {cycle}). Skipping download."
+            )
         return cycle, False
 
     download_cifp(download_url, zip_path)
@@ -88,13 +93,15 @@ def fetch_latest_cifp():
     metadata_path = "output/metadata.json"
     os.makedirs("output", exist_ok=True)
     metadata = {"cycle": cycle}
-    with open(metadata_path, 'w') as f:
+    with open(metadata_path, "w") as f:
         json.dump(metadata, f)
 
     return cycle, True
 
+
 def main():
     fetch_latest_cifp()
+
 
 if __name__ == "__main__":
     main()
