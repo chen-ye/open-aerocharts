@@ -6,10 +6,10 @@ formats (FlatGeobuf/GeoJSON), and the compilation of final PMTiles archives usin
 """
 
 import concurrent.futures
+import json
 import os
 import subprocess
 import sys
-import json
 
 from src.adds import convert as shp_to_fgb
 from src.adds import fetch as fetch_airspace_shp
@@ -142,27 +142,13 @@ def main():
     print("Pipeline complete!")
 
     print("Symlinking output to client/public/...")
-    run_cmd(
-        "ln -sf ../../faa-ais-pmtiles/output/airspaces.pmtiles ../client/public/airspaces.pmtiles"
-    )
-    run_cmd(
-        "ln -sf ../../faa-ais-pmtiles/output/enroute.pmtiles ../client/public/enroute.pmtiles"
-    )
-    run_cmd(
-        "ln -sf ../../faa-ais-pmtiles/output/boundary.pmtiles ../client/public/boundary.pmtiles"
-    )
-    run_cmd(
-        "ln -sf ../../faa-ais-pmtiles/output/airports_navaids.pmtiles ../client/public/airports_navaids.pmtiles"
-    )
-    run_cmd(
-        "ln -sf ../../faa-ais-pmtiles/output/waypoints_obstacles.pmtiles ../client/public/waypoints_obstacles.pmtiles"
-    )
-    run_cmd(
-        "ln -sf ../../faa-ais-pmtiles/output/airport_diagrams.pmtiles ../client/public/airport_diagrams.pmtiles"
-    )
-    run_cmd(
-        "ln -sf ../../faa-ais-pmtiles/output/metadata.json ../client/public/metadata.json"
-    )
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/airspaces.pmtiles ../client/public/airspaces.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/enroute.pmtiles ../client/public/enroute.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/boundary.pmtiles ../client/public/boundary.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/airports_navaids.pmtiles ../client/public/airports_navaids.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/waypoints_obstacles.pmtiles ../client/public/waypoints_obstacles.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/airport_diagrams.pmtiles ../client/public/airport_diagrams.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/metadata.json ../client/public/metadata.json")
     print("Done.")
 
 

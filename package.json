@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "npm run dev -w client",
     "build": "npm run build -w client",
-    "lint": "npm run lint -w client",
+    "lint": "npm run lint -w client && cd faa-ais-pmtiles && uv run ruff check src",
     "preview": "npm run preview -w client"
   }
 }

@@ -5,10 +5,11 @@ Generates a JSON file mapping identifiers to their coordinates and metadata,
 optimized for client-side search.
 """
 
-import sys
 import json
 import os
+import sys
 from collections import defaultdict
+
 from cifparse import CIFP
 
 
@@ -97,9 +98,7 @@ def main():
 
     print("Indexing procedures...", flush=True)
     # Structure: procedures[airport_id][proc_name] = { transitions: { trans_id: [points] }, body: [points] }
-    procedures = defaultdict(
-        lambda: defaultdict(lambda: {"transitions": defaultdict(list), "body": []})
-    )
+    procedures = defaultdict(lambda: defaultdict(lambda: {"transitions": defaultdict(list), "body": []}))
 
     proc_list = c.get_procedures()
     grouped = defaultdict(list)
@@ -174,9 +173,7 @@ def main():
 
     print(f"Writing index to {output_path}...", flush=True)
     with open(output_path, "w") as f:
-        json.dump(
-            {"fixes": fixes, "procedures": final_procs, "airways": final_airways}, f
-        )
+        json.dump({"fixes": fixes, "procedures": final_procs, "airways": final_airways}, f)
 
     print(f"Done. Index size: {os.path.getsize(output_path) / 1024 / 1024:.2f} MB")
 

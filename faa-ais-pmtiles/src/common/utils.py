@@ -7,6 +7,7 @@ and FlatGeobuf saving.
 
 import datetime
 import math
+
 import geopandas as gpd
 
 
@@ -14,9 +15,9 @@ def haversine(lon1, lat1, lon2, lat2):
     R = 3440.065  # Earth radius in NM
     dLat = math.radians(lat2 - lat1)
     dLon = math.radians(lon2 - lon1)
-    a = math.sin(dLat / 2) * math.sin(dLat / 2) + math.cos(
-        math.radians(lat1)
-    ) * math.cos(math.radians(lat2)) * math.sin(dLon / 2) * math.sin(dLon / 2)
+    a = math.sin(dLat / 2) * math.sin(dLat / 2) + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(
+        dLon / 2
+    ) * math.sin(dLon / 2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
@@ -97,7 +98,4 @@ def get_cycle_dates() -> list[datetime.date]:
 
     # Return the current active cycle and the one before it as fallback
     # offset=0 is current, offset=-1 is previous
-    return [
-        anchor + datetime.timedelta(days=(cycles_passed + offset) * 28)
-        for offset in (0, -1)
-    ]
+    return [anchor + datetime.timedelta(days=(cycles_passed + offset) * 28) for offset in (0, -1)]

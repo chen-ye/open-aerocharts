@@ -4,9 +4,10 @@ Utility script to inspect FlatGeobuf files using GeoPandas.
 Prints column names, sample data, and value counts for 'airspace_class' and 'type' columns.
 """
 
-import geopandas as gpd
 import os
 import sys
+
+import geopandas as gpd
 
 
 def check_fgb(path):

@@ -1,0 +1,31 @@
+name: Lint Python
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  lint-python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "faa-ais-pmtiles/pyproject.toml"
+
+      - name: Lint with Ruff
+        run: |
+          cd faa-ais-pmtiles
+          uv run ruff check src
+
+      - name: Format Check with Ruff
+        run: |
+          cd faa-ais-pmtiles
+          uv run ruff format --check src

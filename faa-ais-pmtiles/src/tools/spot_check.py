@@ -5,10 +5,10 @@ Decodes specific tiles at given zoom levels to verify the presence and propertie
 of key features (e.g., major airports, specific waypoints).
 """
 
-import subprocess
 import json
-import sys
 import os
+import subprocess
+import sys
 
 
 def run_decode(pmtiles_path, z, x, y):
@@ -124,9 +124,7 @@ def main():
         if check_feature_in_tile(tile_json, check["layer"], check["matches"]):
             print(f"PASSED: {check['name']}")
         else:
-            print(
-                f"FAILED: {check['name']} - Feature matching {check['matches']} not found in tile {check['z']}/{check['x']}/{check['y']}"
-            )
+            print(f"FAILED: {check['name']} - Feature matching {check['matches']} not found in tile {check['z']}/{check['x']}/{check['y']}")
             failed = True
 
     if failed:
