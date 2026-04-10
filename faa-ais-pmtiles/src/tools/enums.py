@@ -4,9 +4,10 @@ Scans a data directory for GeoJSON and FlatGeobuf files and lists unique values 
 Useful for discovering enumeration values in undocumented datasets.
 """
 
+from pathlib import Path
+
 import geopandas as gpd
 import pandas as pd
-from pathlib import Path
 
 
 def list_enums(data_dir):

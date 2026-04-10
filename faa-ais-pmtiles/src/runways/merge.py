@@ -5,13 +5,14 @@ Prioritizes AM runways (high-fidelity polygons) over CIFP runways (derived polyg
 Normalizes runway identifiers to ensure accurate matching.
 """
 
+import os
+import re
+from collections import defaultdict
+
 import geopandas as gpd
 import pandas as pd
-import re
-import os
-from src.common.utils import save_fgb
 
-from collections import defaultdict
+from src.common.utils import save_fgb
 
 
 def normalize_runway_id(rid):
@@ -155,9 +156,7 @@ def merge_runways(
                         to_keep.append(idx)
 
                 cifp_filtered = cifp_gdf.loc[to_keep]
-                print(
-                    f"  Kept {len(cifp_filtered)} CIFP runways (enriched {len(cifp_gdf) - len(cifp_filtered)} AM matches)."
-                )
+                print(f"  Kept {len(cifp_filtered)} CIFP runways (enriched {len(cifp_gdf) - len(cifp_filtered)} AM matches).")
                 gdfs.append(cifp_filtered)
 
         except Exception as e:
@@ -223,9 +222,7 @@ def merge_runways(
                 to_keep_labels = []
                 for idx, row in labels_gdf.iterrows():
                     apt = row.get("airport_id")
-                    rwy = row.get(
-                        "runway_id"
-                    )  # This is the combined ID e.g. 01/19 from CIFP
+                    rwy = row.get("runway_id")  # This is the combined ID e.g. 01/19 from CIFP
 
                     if apt and rwy:
                         norm = normalize_runway_id(rwy)
@@ -247,9 +244,7 @@ def merge_runways(
                     final_labels["rank"] = 5
 
                 save_fgb(final_labels, output_labels_path)
-                print(
-                    f"Saved {len(final_labels)} runway labels to {output_labels_path}"
-                )
+                print(f"Saved {len(final_labels)} runway labels to {output_labels_path}")
 
         except Exception as e:
             print(f"Error processing labels: {e}")

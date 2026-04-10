@@ -4,6 +4,7 @@ import os
 import zipfile
 
 import requests
+
 from src.common.utils import get_cycle_dates
 
 NFDC_BASE = "https://nfdc.faa.gov/webContent/28DaySub/"
@@ -74,11 +75,9 @@ def fetch_class_airspace_shapefiles(cycle_date: str, url: str) -> None:
     """Download and extract FAA Class Airspace shapefiles."""
     cycle_file = os.path.join(SHAPEFILE_EXTRACT_DIR, ".cycle")
     if os.path.exists(cycle_file):
-        with open(cycle_file, "r") as f:
+        with open(cycle_file) as f:
             if f.read().strip() == cycle_date:
-                print(
-                    f"Shapefiles for cycle {cycle_date} already exist. Skipping download."
-                )
+                print(f"Shapefiles for cycle {cycle_date} already exist. Skipping download.")
                 return
 
     print(f"Downloading Class Airspace shapefiles from {url}...")
@@ -110,17 +109,12 @@ def fetch_adds_dataset(key: str, info: dict[str, str], cycle_date: str) -> None:
     cycle_file = f"{output}.cycle"
 
     if os.path.exists(output) and os.path.exists(cycle_file):
-        with open(cycle_file, "r") as f:
+        with open(cycle_file) as f:
             if f.read().strip() == cycle_date:
-                print(
-                    f"{label} for cycle {cycle_date} already exists. Skipping download."
-                )
+                print(f"{label} for cycle {cycle_date} already exists. Skipping download.")
                 return
 
-    url = (
-        f"{ADDS_BASE}/{info['item_id']}_0/downloads/data"
-        f"?format=geojson&spatialRefId=4326"
-    )
+    url = f"{ADDS_BASE}/{info['item_id']}_0/downloads/data?format=geojson&spatialRefId=4326"
 
     print(f"Downloading {label}...")
     os.makedirs(os.path.dirname(output), exist_ok=True)

@@ -6,8 +6,9 @@ destination points based on bearing and distance, and generate rectangular polyg
 representing runway surfaces.
 """
 
-import re
 import math
+import re
+
 import geojson
 
 
@@ -51,10 +52,7 @@ def calculate_destination(p1, bearing, distance_ft):
 
     d_over_R = distance_ft / R_ft
 
-    lat2 = math.asin(
-        math.sin(lat_rad) * math.cos(d_over_R)
-        + math.cos(lat_rad) * math.sin(d_over_R) * math.cos(bearing_rad)
-    )
+    lat2 = math.asin(math.sin(lat_rad) * math.cos(d_over_R) + math.cos(lat_rad) * math.sin(d_over_R) * math.cos(bearing_rad))
     lon2 = lon_rad + math.atan2(
         math.sin(bearing_rad) * math.sin(d_over_R) * math.cos(lat_rad),
         math.cos(d_over_R) - math.sin(lat_rad) * math.sin(lat2),

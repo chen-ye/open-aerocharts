@@ -155,9 +155,7 @@ def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]
 # ---------------------------------------------------------------------------
 
 
-def convert_airspaces(
-    output_critical: str = "data/airspaces.fgb", output_e: str = "data/airspaces_e.fgb"
-) -> None:
+def convert_airspaces(output_critical: str = "data/airspaces.fgb", output_e: str = "data/airspaces_e.fgb") -> None:
     """Merge controlled airspace + SUA into separate High-Priority and Class E files."""
     print("Processing controlled airspace (shapefiles)...")
     controlled = convert_class_airspace()
@@ -263,9 +261,7 @@ def convert_boundary_airspace(
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.sort_values(
-        by="rank", ascending=True, inplace=True
-    ) if "rank" in gdf.columns else None
+    gdf.sort_values(by="rank", ascending=True, inplace=True) if "rank" in gdf.columns else None
     gdf.to_file(
         output,
         driver="FlatGeobuf",
@@ -320,9 +316,7 @@ def convert_holding_patterns(
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.sort_values(
-        by="rank", ascending=True, inplace=True
-    ) if "rank" in gdf.columns else None
+    gdf.sort_values(by="rank", ascending=True, inplace=True) if "rank" in gdf.columns else None
     gdf.to_file(
         output,
         driver="FlatGeobuf",
@@ -380,9 +374,7 @@ def convert_obstacles(
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.sort_values(
-        by="rank", ascending=True, inplace=True
-    ) if "rank" in gdf.columns else None
+    gdf.sort_values(by="rank", ascending=True, inplace=True) if "rank" in gdf.columns else None
     gdf.to_file(
         output,
         driver="FlatGeobuf",
@@ -437,9 +429,7 @@ def convert_am_runways(
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.sort_values(
-        by="rank", ascending=True, inplace=True
-    ) if "rank" in gdf.columns else None
+    gdf.sort_values(by="rank", ascending=True, inplace=True) if "rank" in gdf.columns else None
     gdf.to_file(
         output,
         driver="FlatGeobuf",
@@ -492,9 +482,7 @@ def convert_am_taxiways(
     os.makedirs(os.path.dirname(output), exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
-    gdf.sort_values(
-        by="rank", ascending=True, inplace=True
-    ) if "rank" in gdf.columns else None
+    gdf.sort_values(by="rank", ascending=True, inplace=True) if "rank" in gdf.columns else None
     gdf.to_file(
         output,
         driver="FlatGeobuf",

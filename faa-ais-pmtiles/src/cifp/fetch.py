@@ -2,10 +2,12 @@
 Scrapes the FAA website for the latest 28-day cycle Coded Instrument Flight Procedures (CIFP) zip file and extracts it.
 """
 
+import json
 import os
 import zipfile
+
 import requests
-import json
+
 from src.common.utils import get_cycle_dates
 
 
@@ -42,7 +44,7 @@ def check_latest_cycle():
 
     current_cycle = None
     if os.path.exists(metadata_path):
-        with open(metadata_path, "r") as f:
+        with open(metadata_path) as f:
             try:
                 metadata = json.load(f)
                 current_cycle = metadata.get("cycle")
@@ -82,9 +84,7 @@ def fetch_latest_cifp():
     cycle, is_new, download_url, zip_path = check_latest_cycle()
     if not is_new:
         if zip_path:
-            print(
-                f"Latest CIFP ({zip_path}) is already processed (cycle {cycle}). Skipping download."
-            )
+            print(f"Latest CIFP ({zip_path}) is already processed (cycle {cycle}). Skipping download.")
         return cycle, False
 
     download_cifp(download_url, zip_path)
