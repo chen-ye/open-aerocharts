@@ -7,7 +7,7 @@ import {
 	plum,
 } from "@radix-ui/colors";
 import { Box, Flex, Separator, Slider, Switch, Text } from "@radix-ui/themes";
-import React from "react";
+import type React from "react";
 import { grayColor } from "../../App.tsx";
 import type { AeronauticalLayerState } from "../../types/AeronauticalLayerState";
 

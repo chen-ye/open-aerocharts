@@ -10,7 +10,8 @@ import {
 	Text,
 } from "@radix-ui/themes";
 import { Layers, X } from "lucide-react";
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 import { grayColor } from "../../App.tsx";
 import type { AeronauticalLayerState } from "../../types/AeronauticalLayerState";
 import { AeronauticalSettings } from "./AeronauticalSettings";
