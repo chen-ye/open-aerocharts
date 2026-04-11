@@ -84,7 +84,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 	// Derive light/dark mode from basemap identifier
 	const isDarkMap = useMemo(() => {
 		const id = basemapUrlOrId.toLowerCase();
-		return id.includes("dark") || id.includes("faa-");
+		return id.includes("dark") || id.includes("black");
 	}, [basemapUrlOrId]);
 
 	// Theme-dependent colors
