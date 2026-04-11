@@ -19,11 +19,13 @@ export interface AeronauticalLayerState {
 	parachuteArea: boolean;
 	modeC: boolean;
 
-	// Airways & Waypoints
+	// Airways
 	showAirwaysMaster: boolean;
 	enrouteLow: boolean;
 	enrouteHigh: boolean;
-	airways: boolean;
+
+	// Waypoints
+	showWaypointsMaster: boolean;
 	navaids: boolean;
 	waypoints: boolean;
 
@@ -60,7 +62,8 @@ export const defaultAeronauticalState: AeronauticalLayerState = {
 	showAirwaysMaster: true,
 	enrouteLow: true,
 	enrouteHigh: false,
-	airways: true,
+
+	showWaypointsMaster: true,
 	navaids: true,
 	waypoints: true,
 
