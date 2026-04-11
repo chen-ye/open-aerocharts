@@ -646,7 +646,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			hash={true}
 			mapLib={maplibregl}
 			terrain={
-				showTerrain ? { source: "aws-terrain", exaggeration: 1.2 } : undefined
+				showTerrain ? { source: "terrain", exaggeration: 1.2 } : undefined
 			}
 		>
 			<NavigationControl position="bottom-right" visualizePitch={true} />
@@ -706,7 +706,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				<Layer
 					id="hillshade-layer"
 					type="hillshade"
-					source="aws-terrain"
+					source="terrain"
 					paint={{
 						"hillshade-exaggeration": 0.8,
 						"hillshade-shadow-color": isDarkMap
