@@ -99,21 +99,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 									>
 										Basemap
 									</Text>
-									<Text size="2">Basemap Style</Text>
 									<Select.Root value={basemap} onValueChange={setBasemap}>
 										<Select.Trigger />
 										<Select.Content>
 											<Select.Group>
-												<Select.Label>Vector Basemaps</Select.Label>
-												<Select.Item value="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json">
-													CartoCDN Voyager
-												</Select.Item>
-												<Select.Item value="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json">
-													CartoCDN Positron (Light)
-												</Select.Item>
-												<Select.Item value="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json">
-													CartoCDN Dark Matter
-												</Select.Item>
+												<Select.Label>MapTiler</Select.Label>
 												<Select.Item value="https://api.maptiler.com/maps/outdoor-v4-dark/style.json?key=e5LIPC3PNWM1DYcxpSLL">
 													MapTiler Outdoor Dark
 												</Select.Item>
@@ -126,22 +116,37 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 												<Select.Item value="https://api.maptiler.com/maps/dataviz-v4-light/style.json?key=e5LIPC3PNWM1DYcxpSLL">
 													MapTiler Dataviz Light
 												</Select.Item>
-												<Select.Separator />
-												<Select.Label>Protomaps Vector</Select.Label>
+											</Select.Group>
+											<Select.Separator />
+											<Select.Group>
+												<Select.Label>Protomaps</Select.Label>
 												<Select.Item value="https://api.protomaps.com/styles/v5/black/en.json?key=6f6306dcba238cd5">
-													Protomaps Black
+													Protomaps Dataviz Black
+												</Select.Item>
+												<Select.Item value="https://api.protomaps.com/styles/v5/grayscale/en.json?key=6f6306dcba238cd5">
+													Protomaps Dataviz Grayscale
+												</Select.Item>
+												<Select.Item value="https://api.protomaps.com/styles/v5/white/en.json?key=6f6306dcba238cd5">
+													Protomaps Dataviz White
 												</Select.Item>
 												<Select.Item value="https://api.protomaps.com/styles/v5/dark/en.json?key=6f6306dcba238cd5">
 													Protomaps Dark
 												</Select.Item>
-												<Select.Item value="https://api.protomaps.com/styles/v5/grayscale/en.json?key=6f6306dcba238cd5">
-													Protomaps Grayscale
-												</Select.Item>
 												<Select.Item value="https://api.protomaps.com/styles/v5/light/en.json?key=6f6306dcba238cd5">
 													Protomaps Light
 												</Select.Item>
-												<Select.Item value="https://api.protomaps.com/styles/v5/white/en.json?key=6f6306dcba238cd5">
-													Protomaps White
+											</Select.Group>
+											<Select.Separator />
+											<Select.Group>
+												<Select.Label>CartoCDN</Select.Label>
+												<Select.Item value="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json">
+													CartoCDN Voyager
+												</Select.Item>
+												<Select.Item value="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json">
+													CartoCDN Positron (Light)
+												</Select.Item>
+												<Select.Item value="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json">
+													CartoCDN Dark Matter
 												</Select.Item>
 											</Select.Group>
 											<Select.Separator />
@@ -163,7 +168,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
 								<Flex direction="column" gap="2">
 									<Text as="label" size="2">
-										Basemap Brightness
+										Brightness
 									</Text>
 									<Slider
 										value={[basemapBrightness]}
