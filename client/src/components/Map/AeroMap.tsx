@@ -693,14 +693,13 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			{/* 3D Terrain */}
 			{showTerrain && (
 				<Source
-					id="aws-terrain"
+					id="terrain"
 					type="raster-dem"
 					tiles={[
-						"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+						"https://tiles.mapterhorn.com/{z}/{x}/{y}.webp",
 					]}
-					tileSize={256}
+					tileSize={512}
 					encoding="terrarium"
-					maxzoom={14}
 				/>
 			)}
 
