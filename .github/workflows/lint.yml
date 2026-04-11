@@ -1,4 +1,4 @@
-name: Lint Python
+name: Lint
 
 on:
   push:
@@ -29,3 +29,21 @@ jobs:
         run: |
           cd faa-ais-pmtiles
           uv run ruff format --check src
+
+  lint-js:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint with Biome
+        run: npm run lint -w client
