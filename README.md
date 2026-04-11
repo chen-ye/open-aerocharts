@@ -21,7 +21,7 @@ The project is split into two packages:
 - **Aeronautical Data**: FAA AIS-derived vector tiles providing airspaces,
   airways, navaids, and airports. See the [`faa ais pmtiles` README.md](faa-ais-pmtiles/README.md) for more
   information.
-- **Basemap**: CartoCDN-derived basemaps.
+- **Basemap**: Tilelized FAA Chart Rasters + general vector basemaps from CartoCDN, MapTiler, and Protomaps.
 
 ## References + Resources
 
