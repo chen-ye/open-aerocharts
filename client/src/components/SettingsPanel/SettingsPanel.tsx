@@ -126,6 +126,23 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 												<Select.Item value="https://api.maptiler.com/maps/dataviz-v4-light/style.json?key=e5LIPC3PNWM1DYcxpSLL">
 													MapTiler Dataviz Light
 												</Select.Item>
+												<Select.Separator />
+												<Select.Label>Protomaps Vector</Select.Label>
+												<Select.Item value="https://api.protomaps.com/styles/v5/black/en.json?key=6f6306dcba238cd5">
+													Protomaps Black
+												</Select.Item>
+												<Select.Item value="https://api.protomaps.com/styles/v5/dark/en.json?key=6f6306dcba238cd5">
+													Protomaps Dark
+												</Select.Item>
+												<Select.Item value="https://api.protomaps.com/styles/v5/grayscale/en.json?key=6f6306dcba238cd5">
+													Protomaps Grayscale
+												</Select.Item>
+												<Select.Item value="https://api.protomaps.com/styles/v5/light/en.json?key=6f6306dcba238cd5">
+													Protomaps Light
+												</Select.Item>
+												<Select.Item value="https://api.protomaps.com/styles/v5/white/en.json?key=6f6306dcba238cd5">
+													Protomaps White
+												</Select.Item>
 											</Select.Group>
 											<Select.Separator />
 											<Select.Group>
