@@ -36,6 +36,9 @@ def run_cmd(cmd):
 def fetch_nasr_wrapper():
     # Fetch NASR metadata (caching is handled within fetch_nasr.py)
     fetch_nasr.get_airport_metadata()
+    import src.nasr.pja as pja
+
+    pja.extract_pja_data()
 
 
 def main():
@@ -72,9 +75,13 @@ def main():
     with concurrent.futures.ProcessPoolExecutor() as executor:
         f1 = executor.submit(shp_to_fgb.main)
         f2 = executor.submit(cifp_to_fgb.build_pmtiles_fgb, "FAACIFP18")
-        concurrent.futures.wait([f1, f2])
+        import src.nasr.pja as pja
+
+        f3 = executor.submit(pja.convert_pja)
+        concurrent.futures.wait([f1, f2, f3])
         f1.result()
         f2.result()
+        f3.result()
 
     print("Step 2.5: Merging Runways...")
     merge_runways()
@@ -110,7 +117,8 @@ def main():
         "--order-by=rank --order-smallest-first "
         "-L waypoints:data/waypoints.fgb "
         "-L holding_patterns:data/holding_patterns.fgb "
-        "-L obstacles:data/obstacles.fgb"
+        "-L obstacles:data/obstacles.fgb "
+        "-L parachute_areas:data/parachute_areas.fgb"
     )
     cmd_airport_diagrams = (
         "uv run tippecanoe -Z9 -z14 -o output/airport_diagrams.pmtiles "

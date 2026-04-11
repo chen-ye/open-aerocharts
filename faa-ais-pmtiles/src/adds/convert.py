@@ -494,6 +494,48 @@ def convert_am_taxiways(
 
 
 # ---------------------------------------------------------------------------
+# Parachute Jump Areas (PJA)
+# ---------------------------------------------------------------------------
+
+
+def convert_pja(
+    raw_path: str = "data/pja_raw.geojson",
+    output: str = "data/parachute_areas.fgb",
+) -> None:
+    """Convert Parachute Jump Areas GeoJSON to FlatGeobuf."""
+    import geopandas as gpd
+
+    if not os.path.exists(raw_path):
+        print(f"  PJA file not found at {raw_path}")
+        return
+
+    print("Processing Parachute Jump Areas (PJA)...")
+    gdf = gpd.read_file(raw_path)
+
+    if len(gdf) == 0:
+        print("  No PJA features found.")
+        return
+
+    # Reproject to a metric CRS (e.g. Web Mercator EPSG:3857) to buffer in meters
+    gdf_metric = gdf.to_crs("EPSG:3857")
+
+    # 1 Nautical Mile = 1852 meters
+    gdf_metric.geometry = gdf_metric.geometry.buffer(gdf_metric["radius_nm"] * 1852)
+
+    # Reproject back to WGS84 (EPSG:4326)
+    gdf_wgs84 = gdf_metric.to_crs("EPSG:4326")
+
+    os.makedirs(os.path.dirname(output), exist_ok=True)
+    gdf_wgs84.to_file(
+        output,
+        driver="FlatGeobuf",
+        engine="pyogrio",
+        layer_options={"SPATIAL_INDEX": "NO"},
+    )
+    print(f"  Wrote {len(gdf)} PJA features to {output}")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -505,6 +547,7 @@ def main() -> None:
     convert_obstacles()
     convert_am_runways()
     convert_am_taxiways()
+    convert_pja()
 
 
 if __name__ == "__main__":
