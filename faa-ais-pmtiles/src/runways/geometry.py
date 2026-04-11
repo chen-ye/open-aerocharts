@@ -21,7 +21,7 @@ def get_opposite_runway_id(rw_id):
         prefix = "RW"
         rw_id = rw_id[2:]
 
-    match = re.match(r"(\d+)([LRC]?)", rw_id)
+    match = re.match(r"(\d+)([a-zA-Z]*)", rw_id)
     if not match:
         return None
 
@@ -32,13 +32,11 @@ def get_opposite_runway_id(rw_id):
     if opp_num > 36:
         opp_num -= 36
 
-    opp_suffix = ""
+    opp_suffix = suffix
     if suffix == "L":
         opp_suffix = "R"
     elif suffix == "R":
         opp_suffix = "L"
-    elif suffix == "C":
-        opp_suffix = "C"
 
     return f"{prefix}{opp_num:02d}{opp_suffix}"
 
