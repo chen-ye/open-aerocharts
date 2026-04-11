@@ -87,7 +87,7 @@ function App() {
 
 			if (densityParam) {
 				const density = parseInt(densityParam, 10);
-				if (!isNaN(density)) {
+				if (!Number.isNaN(density)) {
 					initialState.declutterLevel = density;
 				}
 			}

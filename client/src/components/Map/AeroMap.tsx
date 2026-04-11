@@ -695,9 +695,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				<Source
 					id="terrain"
 					type="raster-dem"
-					tiles={[
-						"https://tiles.mapterhorn.com/{z}/{x}/{y}.webp",
-					]}
+					tiles={["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]}
 					tileSize={512}
 					encoding="terrarium"
 				/>
@@ -1376,50 +1374,48 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											filter={["==", ["get", "structure"], "Low"]}
 											paint={airwayLinePaint}
 										/>
-										<>
-											{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-											<Layer
-												id="airways-low-symbol"
-												type="symbol"
-												source="src-enroute"
-												source-layer="airways"
-												minzoom={getZoom(6)}
-												filter={["==", ["get", "structure"], "Low"]}
-												layout={
-													{
-														...airwaySymbolLayout,
-														"symbol-sort-key": 20,
-													} as any
-												}
-												paint={airwaySymbolPaint}
-											/>
-											{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-											<Layer
-												id="airways-low-mea"
-												type="symbol"
-												source="src-enroute"
-												source-layer="airways"
-												minzoom={getZoom(6)}
-												filter={["==", ["get", "structure"], "Low"]}
-												layout={
-													{ ...airwayMeaLayout, "symbol-sort-key": 21 } as any
-												}
-												paint={airwayDetailPaint}
-											/>
-											{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-											<Layer
-												id="airways-low-dist"
-												type="symbol"
-												source="src-enroute"
-												source-layer="airways"
-												minzoom={getZoom(6)}
-												filter={["==", ["get", "structure"], "Low"]}
-												layout={
-													{ ...airwayDistLayout, "symbol-sort-key": 21 } as any
-												}
-												paint={airwayDetailPaint}
-											/>
-										</>
+										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+										<Layer
+											id="airways-low-symbol"
+											type="symbol"
+											source="src-enroute"
+											source-layer="airways"
+											minzoom={getZoom(6)}
+											filter={["==", ["get", "structure"], "Low"]}
+											layout={
+												{
+													...airwaySymbolLayout,
+													"symbol-sort-key": 20,
+												} as any
+											}
+											paint={airwaySymbolPaint}
+										/>
+										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+										<Layer
+											id="airways-low-mea"
+											type="symbol"
+											source="src-enroute"
+											source-layer="airways"
+											minzoom={getZoom(6)}
+											filter={["==", ["get", "structure"], "Low"]}
+											layout={
+												{ ...airwayMeaLayout, "symbol-sort-key": 21 } as any
+											}
+											paint={airwayDetailPaint}
+										/>
+										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+										<Layer
+											id="airways-low-dist"
+											type="symbol"
+											source="src-enroute"
+											source-layer="airways"
+											minzoom={getZoom(6)}
+											filter={["==", ["get", "structure"], "Low"]}
+											layout={
+												{ ...airwayDistLayout, "symbol-sort-key": 21 } as any
+											}
+											paint={airwayDetailPaint}
+										/>
 									</>
 								)}
 								{aeronauticalLayers.enrouteHigh && (
@@ -1432,50 +1428,48 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											filter={["==", ["get", "structure"], "High"]}
 											paint={airwayLinePaint}
 										/>
-										<>
-											{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-											<Layer
-												id="airways-high-symbol"
-												type="symbol"
-												source="src-enroute"
-												source-layer="airways"
-												minzoom={getZoom(6)}
-												filter={["==", ["get", "structure"], "High"]}
-												layout={
-													{
-														...airwaySymbolLayout,
-														"symbol-sort-key": 20,
-													} as any
-												}
-												paint={airwaySymbolPaint}
-											/>
-											{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-											<Layer
-												id="airways-high-mea"
-												type="symbol"
-												source="src-enroute"
-												source-layer="airways"
-												minzoom={getZoom(6)}
-												filter={["==", ["get", "structure"], "High"]}
-												layout={
-													{ ...airwayMeaLayout, "symbol-sort-key": 21 } as any
-												}
-												paint={airwayDetailPaint}
-											/>
-											{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-											<Layer
-												id="airways-high-dist"
-												type="symbol"
-												source="src-enroute"
-												source-layer="airways"
-												minzoom={getZoom(6)}
-												filter={["==", ["get", "structure"], "High"]}
-												layout={
-													{ ...airwayDistLayout, "symbol-sort-key": 21 } as any
-												}
-												paint={airwayDetailPaint}
-											/>
-										</>
+										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+										<Layer
+											id="airways-high-symbol"
+											type="symbol"
+											source="src-enroute"
+											source-layer="airways"
+											minzoom={getZoom(6)}
+											filter={["==", ["get", "structure"], "High"]}
+											layout={
+												{
+													...airwaySymbolLayout,
+													"symbol-sort-key": 20,
+												} as any
+											}
+											paint={airwaySymbolPaint}
+										/>
+										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+										<Layer
+											id="airways-high-mea"
+											type="symbol"
+											source="src-enroute"
+											source-layer="airways"
+											minzoom={getZoom(6)}
+											filter={["==", ["get", "structure"], "High"]}
+											layout={
+												{ ...airwayMeaLayout, "symbol-sort-key": 21 } as any
+											}
+											paint={airwayDetailPaint}
+										/>
+										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+										<Layer
+											id="airways-high-dist"
+											type="symbol"
+											source="src-enroute"
+											source-layer="airways"
+											minzoom={getZoom(6)}
+											filter={["==", ["get", "structure"], "High"]}
+											layout={
+												{ ...airwayDistLayout, "symbol-sort-key": 21 } as any
+											}
+											paint={airwayDetailPaint}
+										/>
 									</>
 								)}
 							</>
