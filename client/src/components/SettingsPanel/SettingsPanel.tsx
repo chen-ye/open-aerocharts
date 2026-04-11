@@ -129,11 +129,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 												<Select.Item value="https://api.protomaps.com/styles/v5/white/en.json?key=6f6306dcba238cd5">
 													Protomaps Dataviz White
 												</Select.Item>
-												<Select.Item value="https://api.protomaps.com/styles/v5/dark/en.json?key=6f6306dcba238cd5">
-													Protomaps Dark
-												</Select.Item>
 												<Select.Item value="https://api.protomaps.com/styles/v5/light/en.json?key=6f6306dcba238cd5">
 													Protomaps Light
+												</Select.Item>
+												<Select.Item value="https://api.protomaps.com/styles/v5/dark/en.json?key=6f6306dcba238cd5">
+													Protomaps Dark
 												</Select.Item>
 											</Select.Group>
 											<Select.Separator />
