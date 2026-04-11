@@ -16,7 +16,7 @@ function App() {
 		const params = new URLSearchParams(window.location.search);
 		return (
 			params.get("basemap") ||
-			"https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+			"https://api.protomaps.com/styles/v5/black/en.json?key=6f6306dcba238cd5"
 		);
 	});
 
