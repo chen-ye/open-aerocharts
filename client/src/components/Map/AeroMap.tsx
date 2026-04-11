@@ -1361,119 +1361,118 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 					)}
 
 					{/* Airways */}
-					{aeronauticalLayers.showAirwaysMaster &&
-						aeronauticalLayers.airways && (
-							<>
-								{aeronauticalLayers.enrouteLow && (
-									<>
-										<Layer
-											id="airways-low-line"
-											type="line"
-											source="src-enroute"
-											source-layer="airways"
-											filter={["==", ["get", "structure"], "Low"]}
-											paint={airwayLinePaint}
-										/>
-										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-										<Layer
-											id="airways-low-symbol"
-											type="symbol"
-											source="src-enroute"
-											source-layer="airways"
-											minzoom={getZoom(6)}
-											filter={["==", ["get", "structure"], "Low"]}
-											layout={
-												{
-													...airwaySymbolLayout,
-													"symbol-sort-key": 20,
-												} as any
-											}
-											paint={airwaySymbolPaint}
-										/>
-										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-										<Layer
-											id="airways-low-mea"
-											type="symbol"
-											source="src-enroute"
-											source-layer="airways"
-											minzoom={getZoom(6)}
-											filter={["==", ["get", "structure"], "Low"]}
-											layout={
-												{ ...airwayMeaLayout, "symbol-sort-key": 21 } as any
-											}
-											paint={airwayDetailPaint}
-										/>
-										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-										<Layer
-											id="airways-low-dist"
-											type="symbol"
-											source="src-enroute"
-											source-layer="airways"
-											minzoom={getZoom(6)}
-											filter={["==", ["get", "structure"], "Low"]}
-											layout={
-												{ ...airwayDistLayout, "symbol-sort-key": 21 } as any
-											}
-											paint={airwayDetailPaint}
-										/>
-									</>
-								)}
-								{aeronauticalLayers.enrouteHigh && (
-									<>
-										<Layer
-											id="airways-high-line"
-											type="line"
-											source="src-enroute"
-											source-layer="airways"
-											filter={["==", ["get", "structure"], "High"]}
-											paint={airwayLinePaint}
-										/>
-										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-										<Layer
-											id="airways-high-symbol"
-											type="symbol"
-											source="src-enroute"
-											source-layer="airways"
-											minzoom={getZoom(6)}
-											filter={["==", ["get", "structure"], "High"]}
-											layout={
-												{
-													...airwaySymbolLayout,
-													"symbol-sort-key": 20,
-												} as any
-											}
-											paint={airwaySymbolPaint}
-										/>
-										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-										<Layer
-											id="airways-high-mea"
-											type="symbol"
-											source="src-enroute"
-											source-layer="airways"
-											minzoom={getZoom(6)}
-											filter={["==", ["get", "structure"], "High"]}
-											layout={
-												{ ...airwayMeaLayout, "symbol-sort-key": 21 } as any
-											}
-											paint={airwayDetailPaint}
-										/>
-										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-										<Layer
-											id="airways-high-dist"
-											type="symbol"
-											source="src-enroute"
-											source-layer="airways"
-											minzoom={getZoom(6)}
-											filter={["==", ["get", "structure"], "High"]}
-											layout={
-												{ ...airwayDistLayout, "symbol-sort-key": 21 } as any
-											}
-											paint={airwayDetailPaint}
-										/>
-									</>
-								)}
-							</>
-						)}
+					{aeronauticalLayers.showAirwaysMaster && (
+						<>
+							{aeronauticalLayers.enrouteLow && (
+								<>
+									<Layer
+										id="airways-low-line"
+										type="line"
+										source="src-enroute"
+										source-layer="airways"
+										filter={["==", ["get", "structure"], "Low"]}
+										paint={airwayLinePaint}
+									/>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									<Layer
+										id="airways-low-symbol"
+										type="symbol"
+										source="src-enroute"
+										source-layer="airways"
+										minzoom={getZoom(6)}
+										filter={["==", ["get", "structure"], "Low"]}
+										layout={
+											{
+												...airwaySymbolLayout,
+												"symbol-sort-key": 20,
+											} as any
+										}
+										paint={airwaySymbolPaint}
+									/>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									<Layer
+										id="airways-low-mea"
+										type="symbol"
+										source="src-enroute"
+										source-layer="airways"
+										minzoom={getZoom(6)}
+										filter={["==", ["get", "structure"], "Low"]}
+										layout={
+											{ ...airwayMeaLayout, "symbol-sort-key": 21 } as any
+										}
+										paint={airwayDetailPaint}
+									/>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									<Layer
+										id="airways-low-dist"
+										type="symbol"
+										source="src-enroute"
+										source-layer="airways"
+										minzoom={getZoom(6)}
+										filter={["==", ["get", "structure"], "Low"]}
+										layout={
+											{ ...airwayDistLayout, "symbol-sort-key": 21 } as any
+										}
+										paint={airwayDetailPaint}
+									/>
+								</>
+							)}
+							{aeronauticalLayers.enrouteHigh && (
+								<>
+									<Layer
+										id="airways-high-line"
+										type="line"
+										source="src-enroute"
+										source-layer="airways"
+										filter={["==", ["get", "structure"], "High"]}
+										paint={airwayLinePaint}
+									/>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									<Layer
+										id="airways-high-symbol"
+										type="symbol"
+										source="src-enroute"
+										source-layer="airways"
+										minzoom={getZoom(6)}
+										filter={["==", ["get", "structure"], "High"]}
+										layout={
+											{
+												...airwaySymbolLayout,
+												"symbol-sort-key": 20,
+											} as any
+										}
+										paint={airwaySymbolPaint}
+									/>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									<Layer
+										id="airways-high-mea"
+										type="symbol"
+										source="src-enroute"
+										source-layer="airways"
+										minzoom={getZoom(6)}
+										filter={["==", ["get", "structure"], "High"]}
+										layout={
+											{ ...airwayMeaLayout, "symbol-sort-key": 21 } as any
+										}
+										paint={airwayDetailPaint}
+									/>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									<Layer
+										id="airways-high-dist"
+										type="symbol"
+										source="src-enroute"
+										source-layer="airways"
+										minzoom={getZoom(6)}
+										filter={["==", ["get", "structure"], "High"]}
+										layout={
+											{ ...airwayDistLayout, "symbol-sort-key": 21 } as any
+										}
+										paint={airwayDetailPaint}
+									/>
+								</>
+							)}
+						</>
+					)}
 
 					{/* Obstacles (DOF) */}
 					{aeronauticalLayers.obstacles && (
@@ -1565,7 +1564,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
           )} */}
 
 					{/* Waypoints */}
-					{aeronauticalLayers.showAirwaysMaster &&
+					{aeronauticalLayers.showWaypointsMaster &&
 						aeronauticalLayers.waypoints && (
 							<Layer
 								id="waypoints-symbol"
@@ -1616,7 +1615,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						)}
 
 					{/* Navaids Points */}
-					{aeronauticalLayers.showAirwaysMaster &&
+					{aeronauticalLayers.showWaypointsMaster &&
 						aeronauticalLayers.navaids && (
 							<Layer
 								id="navaids-symbol"

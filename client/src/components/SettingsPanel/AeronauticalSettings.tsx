@@ -282,11 +282,11 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 					</Box>
 					<Separator size="4" />
 
-					{/* Airways & Waypoints */}
+					{/* Airways */}
 					<Box>
 						<Flex align="center" justify="between" mb="2">
 							<Text size="2" weight="bold">
-								Airways & Waypoints
+								Airways
 							</Text>
 							<Switch
 								size="1"
@@ -337,17 +337,30 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 								disabled={!layers.showAirwaysMaster}
 								onChange={(c: boolean) => updateLayer("enrouteLow", c)}
 							/>
-							<ToggleRow
-								label="Airways"
-								checked={layers.airways}
-								disabled={!layers.showAirwaysMaster}
-								onChange={(c: boolean) => updateLayer("airways", c)}
+						</Flex>
+					</Box>
+					<Separator size="4" />
+
+					{/* Waypoints */}
+					<Box>
+						<Flex align="center" justify="between" mb="2">
+							<Text size="2" weight="bold">
+								Waypoints
+							</Text>
+							<Switch
+								size="1"
+								checked={layers.showWaypointsMaster}
+								onCheckedChange={(c: boolean) =>
+									updateMasterGroup("showWaypointsMaster", c)
+								}
 							/>
+						</Flex>
+						<Flex direction="column" gap="2">
 							<ToggleRow
 								label="Navaids"
 								legend={<IconBadge icon={navaidIcon} color={indigo.indigo9} />}
 								checked={layers.navaids}
-								disabled={!layers.showAirwaysMaster}
+								disabled={!layers.showWaypointsMaster}
 								onChange={(c: boolean) => updateLayer("navaids", c)}
 							/>
 							<ToggleRow
@@ -356,7 +369,7 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 									<IconBadge icon={waypointIcon} color={indigo.indigo9} />
 								}
 								checked={layers.waypoints}
-								disabled={!layers.showAirwaysMaster}
+								disabled={!layers.showWaypointsMaster}
 								onChange={(c: boolean) => updateLayer("waypoints", c)}
 							/>
 						</Flex>
