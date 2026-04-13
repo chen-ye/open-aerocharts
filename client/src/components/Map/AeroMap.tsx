@@ -1474,9 +1474,308 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						</>
 					)}
 
+					{/* Anchors to enforce z-index rendering order */}
+					<Layer
+						id="anchor-airports"
+						type="background"
+						paint={{ "background-opacity": 0 }}
+					/>
+					<Layer
+						id="anchor-navaids"
+						type="background"
+						paint={{ "background-opacity": 0 }}
+					/>
+					<Layer
+						id="anchor-waypoints"
+						type="background"
+						paint={{ "background-opacity": 0 }}
+					/>
+					<Layer
+						id="anchor-dof"
+						type="background"
+						paint={{ "background-opacity": 0 }}
+					/>
+					<Layer
+						id="anchor-top"
+						type="background"
+						paint={{ "background-opacity": 0 }}
+					/>
+
+					{/* Airports */}
+					{aeronauticalLayers.showAirportsMaster && (
+						<>
+							{/* Fuel Ticks Underlay */}
+							{/* Fuel Ticks Underlay - disabled per request for IFR style */}
+							{/* <Layer
+                id="airports-fuel-ticks"
+                type="symbol"
+                source="src-airports-navaids"
+                source-layer="airports"
+                filter={["all", ["==", ["get", "has_fuel"], true], getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 })] as maplibregl.ExpressionSpecification}
+                layout={{
+                  'icon-image': 'apt-fuel-ticks',
+                  'icon-size': 0.8,
+                  'icon-allow-overlap': true,
+                  'icon-ignore-placement': true,
+                  'symbol-sort-key': 1
+                }}
+              /> */}
+							{aeronauticalLayers.publicAirports && (
+								<>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									<Layer
+										beforeId="anchor-navaids"
+										id="airports-public"
+										type="symbol"
+										source="src-airports-navaids"
+										source-layer="airports"
+										filter={
+											[
+												"all",
+												[
+													"in",
+													["get", "facility_type"],
+													[
+														"literal",
+														[
+															"civil_hard",
+															"civil_soft",
+															"seaplane",
+															"military",
+														],
+													],
+												],
+												getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 }),
+											] as maplibregl.ExpressionSpecification
+										}
+										layout={
+											{ ...airportSymbolLayout, "symbol-sort-key": 1 } as any
+										}
+										paint={airportSymbolPaint}
+									/>
+								</>
+							)}
+							{aeronauticalLayers.privateAirports && (
+								<>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									<Layer
+										beforeId="anchor-navaids"
+										id="airports-private"
+										type="symbol"
+										source="src-airports-navaids"
+										source-layer="airports"
+										filter={
+											[
+												"all",
+												["==", ["get", "facility_type"], "private"],
+												getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 }),
+											] as maplibregl.ExpressionSpecification
+										}
+										layout={
+											{ ...airportSymbolLayout, "symbol-sort-key": 2 } as any
+										}
+										paint={airportSymbolPaint}
+									/>
+								</>
+							)}
+							{aeronauticalLayers.heliports && (
+								<>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									<Layer
+										beforeId="anchor-navaids"
+										id="airports-heliport"
+										type="symbol"
+										source="src-airports-navaids"
+										source-layer="airports"
+										filter={
+											[
+												"all",
+												["==", ["get", "facility_type"], "heliport"],
+												getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 }),
+											] as maplibregl.ExpressionSpecification
+										}
+										layout={
+											{ ...airportSymbolLayout, "symbol-sort-key": 3 } as any
+										}
+										paint={airportSymbolPaint}
+									/>
+								</>
+							)}
+							{aeronauticalLayers.otherAirports && (
+								<>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									<Layer
+										beforeId="anchor-navaids"
+										id="airports-other"
+										type="symbol"
+										source="src-airports-navaids"
+										source-layer="airports"
+										filter={
+											[
+												"all",
+												[
+													"!",
+													[
+														"in",
+														["get", "facility_type"],
+														[
+															"literal",
+															[
+																"civil_hard",
+																"civil_soft",
+																"seaplane",
+																"military",
+																"private",
+																"heliport",
+															],
+														],
+													],
+												],
+												getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 }),
+											] as maplibregl.ExpressionSpecification
+										}
+										layout={
+											{ ...airportSymbolLayout, "symbol-sort-key": 4 } as any
+										}
+										paint={airportSymbolPaint}
+									/>
+								</>
+							)}
+						</>
+					)}
+					{/* Localizers */}
+					{/* {aeronauticalLayers.showAirportsMaster && aeronauticalLayers.publicAirports && (
+            <Layer
+              id="localizers-symbol"
+              type="symbol"
+              source="src-airports-navaids"
+              source-layer="localizers"
+              minzoom={9}
+              layout={{
+                'icon-image': 'nav-vor',
+                'icon-size': 0.5,
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true,
+                'text-field': ['get', 'ident'],
+                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                'text-size': 9,
+                'text-offset': [1, 0],
+                'text-anchor': 'left',
+                'text-allow-overlap': false,
+                'text-ignore-placement': false,
+                'symbol-sort-key': 30
+              }}
+              paint={{
+                'text-color': textColor,
+                'text-halo-color': haloColor,
+                'text-halo-width': 1
+              }}
+            />
+          )} */}
+
+					{/* Navaids Points */}
+					{aeronauticalLayers.showWaypointsMaster &&
+						aeronauticalLayers.navaids && (
+							<Layer
+								beforeId="anchor-waypoints"
+								id="navaids-symbol"
+								type="symbol"
+								source="src-airports-navaids"
+								source-layer="navaids"
+								filter={getZoomRankFilter({ 0: 1, 5: 2, 6: 3, 7: 4, 8: 6 })}
+								layout={{
+									"icon-image": [
+										"match",
+										["get", "type"],
+										"ndb",
+										"nav-ndb",
+										"vor",
+										"nav-vor",
+										"vordme",
+										"nav-vordme",
+										"vortac",
+										"nav-vortac",
+										"tacan",
+										"nav-tacan",
+										"nav-vor",
+									],
+									"icon-size": 0.8,
+									"icon-allow-overlap": true,
+									"icon-ignore-placement": true,
+									"text-field": ["get", "id"],
+									"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+									"text-size": 11,
+									"text-offset": [0, 1.2],
+									"text-anchor": "top",
+									"text-allow-overlap": false,
+									"text-ignore-placement": false,
+									"text-padding": 2,
+									"symbol-sort-key": 10,
+								}}
+								paint={{
+									"text-color": accentTextColor,
+									"text-halo-color": haloColor,
+									"text-halo-width": 1.5,
+								}}
+							/>
+						)}
+
+					{/* Waypoints */}
+					{aeronauticalLayers.showWaypointsMaster &&
+						aeronauticalLayers.waypoints && (
+							<Layer
+								beforeId="anchor-dof"
+								id="waypoints-symbol"
+								type="symbol"
+								source="src-waypoints-obstacles"
+								source-layer="waypoints"
+								minzoom={getZoom(4)}
+								filter={getZoomRankFilter({ 0: 2, 5: 3, 7: 4, 9: 6 })}
+								layout={{
+									"icon-image": [
+										"match",
+										["get", "type"],
+										"compulsory",
+										"fix-compulsory",
+										"rnav",
+										"wpt-rnav-open",
+										"fix-non-compulsory",
+									] as unknown as maplibregl.ExpressionSpecification,
+									"icon-size": 0.7,
+									"icon-allow-overlap": false,
+									"icon-ignore-placement": false,
+									"text-field": ["get", "id"],
+									"text-font": [
+										"Open Sans Regular",
+										"Arial Unicode MS Regular",
+									],
+									"text-size": 9,
+									"text-offset": [0, 1.2],
+									"text-anchor": "top",
+									"text-allow-overlap": false,
+									"text-ignore-placement": false,
+									"symbol-sort-key": [
+										"match",
+										["get", "type"],
+										"compulsory",
+										10,
+										"named",
+										15,
+										20,
+									] as unknown as maplibregl.ExpressionSpecification,
+								}}
+								paint={{
+									"text-color": waypointTextColor,
+									"text-halo-color": haloColor,
+									"text-halo-width": 1.5,
+								}}
+							/>
+						)}
+
 					{/* Obstacles (DOF) */}
 					{aeronauticalLayers.obstacles && (
 						<Layer
+							beforeId="anchor-top"
 							id="obstacles-symbol"
 							type="symbol"
 							source="src-waypoints-obstacles"
@@ -1531,272 +1830,6 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 								"text-halo-width": 1,
 							}}
 						/>
-					)}
-
-					{/* Localizers */}
-					{/* {aeronauticalLayers.showAirportsMaster && aeronauticalLayers.publicAirports && (
-            <Layer
-              id="localizers-symbol"
-              type="symbol"
-              source="src-airports-navaids"
-              source-layer="localizers"
-              minzoom={9}
-              layout={{
-                'icon-image': 'nav-vor',
-                'icon-size': 0.5,
-                'icon-allow-overlap': true,
-                'icon-ignore-placement': true,
-                'text-field': ['get', 'ident'],
-                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-                'text-size': 9,
-                'text-offset': [1, 0],
-                'text-anchor': 'left',
-                'text-allow-overlap': false,
-                'text-ignore-placement': false,
-                'symbol-sort-key': 30
-              }}
-              paint={{
-                'text-color': textColor,
-                'text-halo-color': haloColor,
-                'text-halo-width': 1
-              }}
-            />
-          )} */}
-
-					{/* Waypoints */}
-					{aeronauticalLayers.showWaypointsMaster &&
-						aeronauticalLayers.waypoints && (
-							<Layer
-								id="waypoints-symbol"
-								type="symbol"
-								source="src-waypoints-obstacles"
-								source-layer="waypoints"
-								minzoom={getZoom(4)}
-								filter={getZoomRankFilter({ 0: 2, 5: 3, 7: 4, 9: 6 })}
-								layout={{
-									"icon-image": [
-										"match",
-										["get", "type"],
-										"compulsory",
-										"fix-compulsory",
-										"rnav",
-										"wpt-rnav-open",
-										"fix-non-compulsory",
-									] as unknown as maplibregl.ExpressionSpecification,
-									"icon-size": 0.7,
-									"icon-allow-overlap": false,
-									"icon-ignore-placement": false,
-									"text-field": ["get", "id"],
-									"text-font": [
-										"Open Sans Regular",
-										"Arial Unicode MS Regular",
-									],
-									"text-size": 9,
-									"text-offset": [0, 1.2],
-									"text-anchor": "top",
-									"text-allow-overlap": false,
-									"text-ignore-placement": false,
-									"symbol-sort-key": [
-										"match",
-										["get", "type"],
-										"compulsory",
-										10,
-										"named",
-										15,
-										20,
-									] as unknown as maplibregl.ExpressionSpecification,
-								}}
-								paint={{
-									"text-color": waypointTextColor,
-									"text-halo-color": haloColor,
-									"text-halo-width": 1.5,
-								}}
-							/>
-						)}
-
-					{/* Navaids Points */}
-					{aeronauticalLayers.showWaypointsMaster &&
-						aeronauticalLayers.navaids && (
-							<Layer
-								id="navaids-symbol"
-								type="symbol"
-								source="src-airports-navaids"
-								source-layer="navaids"
-								filter={getZoomRankFilter({ 0: 1, 5: 2, 6: 3, 7: 4, 8: 6 })}
-								layout={{
-									"icon-image": [
-										"match",
-										["get", "type"],
-										"ndb",
-										"nav-ndb",
-										"vor",
-										"nav-vor",
-										"vordme",
-										"nav-vordme",
-										"vortac",
-										"nav-vortac",
-										"tacan",
-										"nav-tacan",
-										"nav-vor",
-									],
-									"icon-size": 0.8,
-									"icon-allow-overlap": true,
-									"icon-ignore-placement": true,
-									"text-field": ["get", "id"],
-									"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
-									"text-size": 11,
-									"text-offset": [0, 1.2],
-									"text-anchor": "top",
-									"text-allow-overlap": false,
-									"text-ignore-placement": false,
-									"text-padding": 2,
-									"symbol-sort-key": 10,
-								}}
-								paint={{
-									"text-color": accentTextColor,
-									"text-halo-color": haloColor,
-									"text-halo-width": 1.5,
-								}}
-							/>
-						)}
-
-					{/* Airports */}
-					{aeronauticalLayers.showAirportsMaster && (
-						<>
-							{/* Fuel Ticks Underlay */}
-							{/* Fuel Ticks Underlay - disabled per request for IFR style */}
-							{/* <Layer
-                id="airports-fuel-ticks"
-                type="symbol"
-                source="src-airports-navaids"
-                source-layer="airports"
-                filter={["all", ["==", ["get", "has_fuel"], true], getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 })] as maplibregl.ExpressionSpecification}
-                layout={{
-                  'icon-image': 'apt-fuel-ticks',
-                  'icon-size': 0.8,
-                  'icon-allow-overlap': true,
-                  'icon-ignore-placement': true,
-                  'symbol-sort-key': 1
-                }}
-              /> */}
-							{aeronauticalLayers.publicAirports && (
-								<>
-									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-									<Layer
-										id="airports-public"
-										type="symbol"
-										source="src-airports-navaids"
-										source-layer="airports"
-										filter={
-											[
-												"all",
-												[
-													"in",
-													["get", "facility_type"],
-													[
-														"literal",
-														[
-															"civil_hard",
-															"civil_soft",
-															"seaplane",
-															"military",
-														],
-													],
-												],
-												getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 }),
-											] as maplibregl.ExpressionSpecification
-										}
-										layout={
-											{ ...airportSymbolLayout, "symbol-sort-key": 1 } as any
-										}
-										paint={airportSymbolPaint}
-									/>
-								</>
-							)}
-							{aeronauticalLayers.privateAirports && (
-								<>
-									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-									<Layer
-										id="airports-private"
-										type="symbol"
-										source="src-airports-navaids"
-										source-layer="airports"
-										filter={
-											[
-												"all",
-												["==", ["get", "facility_type"], "private"],
-												getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 }),
-											] as maplibregl.ExpressionSpecification
-										}
-										layout={
-											{ ...airportSymbolLayout, "symbol-sort-key": 2 } as any
-										}
-										paint={airportSymbolPaint}
-									/>
-								</>
-							)}
-							{aeronauticalLayers.heliports && (
-								<>
-									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-									<Layer
-										id="airports-heliport"
-										type="symbol"
-										source="src-airports-navaids"
-										source-layer="airports"
-										filter={
-											[
-												"all",
-												["==", ["get", "facility_type"], "heliport"],
-												getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 }),
-											] as maplibregl.ExpressionSpecification
-										}
-										layout={
-											{ ...airportSymbolLayout, "symbol-sort-key": 3 } as any
-										}
-										paint={airportSymbolPaint}
-									/>
-								</>
-							)}
-							{aeronauticalLayers.otherAirports && (
-								<>
-									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-									<Layer
-										id="airports-other"
-										type="symbol"
-										source="src-airports-navaids"
-										source-layer="airports"
-										filter={
-											[
-												"all",
-												[
-													"!",
-													[
-														"in",
-														["get", "facility_type"],
-														[
-															"literal",
-															[
-																"civil_hard",
-																"civil_soft",
-																"seaplane",
-																"military",
-																"private",
-																"heliport",
-															],
-														],
-													],
-												],
-												getZoomRankFilter({ 0: 1, 7: 2, 9: 3, 11: 6 }),
-											] as maplibregl.ExpressionSpecification
-										}
-										layout={
-											{ ...airportSymbolLayout, "symbol-sort-key": 4 } as any
-										}
-										paint={airportSymbolPaint}
-									/>
-								</>
-							)}
-						</>
 					)}
 				</>
 			)}
