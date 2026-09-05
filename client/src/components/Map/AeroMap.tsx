@@ -1192,28 +1192,27 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 							{aeronauticalLayers.trsa && (
 								<>
 									<Layer
+										source-layer="airspaces"
 										id="airspaces-trsa-hairline"
 										type="line"
-										source="src-airspaces"
-										source-layer="airspaces"
 										filter={[
 											"all",
-											["!=", ["get", "type"], "E"],
+											["==", ["geometry-type"], "Polygon"],
 											["==", ["get", "airspace_class"], "TRSA"],
 										]}
 										paint={{
 											"line-color": getAirspaceColor("TRSA"),
 											"line-width": 1,
+											"line-opacity": 0.5,
 										}}
 									/>
 									<Layer
+										source-layer="airspaces"
 										id="airspaces-trsa"
 										type="line"
-										source="src-airspaces"
-										source-layer="airspaces"
 										filter={[
 											"all",
-											["!=", ["get", "type"], "E"],
+											["==", ["geometry-type"], "Polygon"],
 											["==", ["get", "airspace_class"], "TRSA"],
 										]}
 										paint={{
@@ -1223,53 +1222,102 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 												["linear"],
 												["zoom"],
 												4,
-												4,
-												10,
+												3,
 												8,
-											] as unknown as maplibregl.ExpressionSpecification,
-											"line-opacity": 0.2,
-											"line-offset": [
-												"interpolate",
-												["linear"],
-												["zoom"],
 												4,
-												2,
 												10,
-												4,
-											] as unknown as maplibregl.ExpressionSpecification,
+												6,
+											],
+											"line-opacity": 0.3,
 										}}
 									/>
 									<Layer
+										source-layer="airspaces"
 										id="airspaces-trsa-fill"
 										type="fill"
-										source="src-airspaces"
-										source-layer="airspaces"
 										filter={[
 											"all",
-											["!=", ["get", "type"], "E"],
+											["==", ["geometry-type"], "Polygon"],
 											["==", ["get", "airspace_class"], "TRSA"],
 										]}
-										paint={{ "fill-opacity": 0 }}
+										paint={{
+											"fill-color": isDarkMap ? "#2a2a2a" : "#ffffff",
+											"fill-opacity": 0.05,
+										}}
 									/>
 									<Layer
+										source-layer="airspaces"
 										id="airspaces-trsa-label"
 										type="symbol"
-										source="src-airspaces"
-										source-layer="airspaces"
-										minzoom={8}
 										filter={[
 											"all",
-											["!=", ["get", "type"], "E"],
+											["==", ["geometry-type"], "Polygon"],
 											["==", ["get", "airspace_class"], "TRSA"],
 										]}
-										layout={airspaceLabelLayout}
-										paint={{
-											"text-color": getAirspaceTextColor(
+										layout={{
+											...airspaceLabelLayout,
+											"text-field": [
+												"format",
+												["get", "name"],
+												{ "font-scale": 1.2 },
+												"\n",
+												{},
 												"TRSA",
-												false,
-												isDarkMap,
-											),
-											"text-halo-color": haloColor,
+												{ "font-scale": 0.8 },
+											],
+										}}
+										paint={airspaceLabelPaint}
+									/>
+								</>
+							)}
+							{aeronauticalLayers.parachuteArea && (
+								<>
+									<Layer
+										source-layer="parachute_areas"
+										source="waypoints_obstacles"
+										id="parachute-areas"
+										type="line"
+										paint={{
+											"line-color": "#5b21b6",
+											"line-width": 1.5,
+											"line-dasharray": [2, 2],
+										}}
+									/>
+									<Layer
+										source-layer="parachute_areas"
+										source="waypoints_obstacles"
+										id="parachute-areas-fill"
+										type="fill"
+										paint={{
+											"fill-color": "#8b5cf6",
+											"fill-opacity": 0.05,
+										}}
+									/>
+									<Layer
+										source-layer="parachute_areas"
+										source="waypoints_obstacles"
+										id="parachute-areas-label"
+										type="symbol"
+										layout={{
+											"text-field": [
+												"format",
+												"PJA (parachute)\n",
+												{},
+												["get", "name"],
+												{},
+												"\nAlt: ",
+												{},
+												["get", "max_alt"],
+												{},
+											],
+											"text-font": ["Noto Sans Medium"],
+											"text-size": 10,
+											"text-anchor": "center",
+											"symbol-placement": "point",
+										}}
+										paint={{
+											"text-color": "#5b21b6",
+											"text-halo-color": isDarkMap ? "#1a1a1a" : "#ffffff",
 											"text-halo-width": 1.5,
 										}}
 									/>

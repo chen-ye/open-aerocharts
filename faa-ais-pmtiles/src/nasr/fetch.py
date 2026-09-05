@@ -118,6 +118,53 @@ def get_airport_metadata() -> dict[str, dict]:
                 if icao_id:
                     metadata_lookup[icao_id] = metadata
 
+        print(f"Parsing {apt_filename} for airport metadata...")
+
+        # Now extract PJA
+        pja_filename = None
+        for name in z.namelist():
+            if name.upper().endswith("PJA_BASE.CSV"):
+                pja_filename = name
+                break
+
+        if pja_filename:
+            print(f"Parsing {pja_filename} for parachute jump areas...")
+            features = []
+            with z.open(pja_filename) as f:
+                reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
+                for row in reader:
+                    lat = row.get("LAT_DECIMAL")
+                    lon = row.get("LONG_DECIMAL")
+                    radius_nm = row.get("PJA_RADIUS")
+
+                    if not lat or not lon:
+                        continue
+
+                    try:
+                        lat = float(lat)
+                        lon = float(lon)
+                        radius_nm = float(radius_nm) if radius_nm else 1.5
+                    except ValueError:
+                        continue
+
+                    feature = {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                        "properties": {
+                            "name": (row.get("DROP_ZONE_NAME") or row.get("CITY") or row.get("ARPT_ID") or "").strip(),
+                            "ident": (row.get("PJA_ID") or "").strip(),
+                            "radius_nm": radius_nm,
+                            "max_alt": (row.get("MAX_ALTITUDE") or "").strip(),
+                            "time_of_use": (row.get("TIME_OF_USE") or "").strip(),
+                        },
+                    }
+                    features.append(feature)
+
+            raw_path = "data/pja_raw.geojson"
+            with open(raw_path, "w") as f:
+                json.dump({"type": "FeatureCollection", "features": features}, f)
+            print(f"Saved {len(features)} PJAs to {raw_path}")
+
     print(f"Found metadata for {len(metadata_lookup)} airports.")
 
     os.makedirs("data", exist_ok=True)
