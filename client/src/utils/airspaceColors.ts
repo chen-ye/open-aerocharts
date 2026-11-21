@@ -1,6 +1,6 @@
 import {
-	blue,
-	blueDark,
+	amber,
+	amberDark,
 	crimson,
 	crimsonDark,
 	indigo,
@@ -68,10 +68,10 @@ export const AIRSPACE_COLORS = {
 		},
 	},
 	CTA: {
-		main: blue.blue9,
+		main: amber.amber9,
 		text: {
-			light: blue.blue11,
-			dark: blueDark.blue11,
+			light: amber.amber11,
+			dark: amberDark.amber11,
 		},
 	},
 	SPECIAL_RULES: {

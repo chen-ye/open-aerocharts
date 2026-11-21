@@ -56,6 +56,63 @@ const IconBadge = ({ icon, color }: { icon: string; color: string }) => (
 	/>
 );
 
+const CircleSwatch = ({
+	color,
+	dashArray,
+	fillOpacity = 0,
+}: {
+	color: string;
+	dashArray?: string;
+	fillOpacity?: number;
+}) => (
+	<svg
+		width="14"
+		height="14"
+		viewBox="0 0 14 14"
+		aria-hidden="true"
+		style={{ display: "block", flexShrink: 0 }}
+	>
+		<circle
+			cx="7"
+			cy="7"
+			r="5.5"
+			fill={fillOpacity > 0 ? color : "none"}
+			fillOpacity={fillOpacity > 0 ? fillOpacity : undefined}
+			stroke={color}
+			strokeWidth="1.6"
+			strokeDasharray={dashArray}
+		/>
+	</svg>
+);
+
+const LineSwatch = ({
+	color,
+	dashArray,
+	strokeWidth = 2,
+}: {
+	color: string;
+	dashArray?: string;
+	strokeWidth?: number;
+}) => (
+	<svg
+		width="22"
+		height="14"
+		viewBox="0 0 22 14"
+		aria-hidden="true"
+		style={{ display: "block", flexShrink: 0 }}
+	>
+		<line
+			x1="1"
+			y1="7"
+			x2="21"
+			y2="7"
+			stroke={color}
+			strokeWidth={strokeWidth}
+			strokeDasharray={dashArray}
+		/>
+	</svg>
+);
+
 import heliportIcon from "../../assets/icons/carbon/apt-helipad.svg?url";
 import aptCivilIcon from "../../assets/icons/carbon/apt-ifr-civil.svg?url";
 import privateIcon from "../../assets/icons/carbon/apt-private.svg?url";
@@ -268,12 +325,25 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 							/>
 							<ToggleRow
 								label="Parachute Area"
+								legend={
+									<CircleSwatch
+										color="var(--airspace-parachute-color)"
+										fillOpacity={0.28}
+										dashArray="2.5 2"
+									/>
+								}
 								checked={layers.parachuteArea}
 								disabled={!layers.showAirspaceMaster}
 								onChange={(c: boolean) => updateLayer("parachuteArea", c)}
 							/>
 							<ToggleRow
 								label="Mode C"
+								legend={
+									<CircleSwatch
+										color="var(--airspace-mode-c-color)"
+										dashArray="3.5 2"
+									/>
+								}
 								checked={layers.modeC}
 								disabled={!layers.showAirspaceMaster}
 								onChange={(c: boolean) => updateLayer("modeC", c)}
@@ -393,18 +463,37 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 						<Flex direction="column" gap="2">
 							<ToggleRow
 								label="ARTCC / FIRs"
+								legend={
+									<LineSwatch
+										color="var(--airspace-artcc-color)"
+										dashArray="8 4"
+									/>
+								}
 								checked={layers.artccFirs}
 								disabled={!layers.showArtccMaster}
 								onChange={(c: boolean) => updateLayer("artccFirs", c)}
 							/>
 							<ToggleRow
 								label="CTA / ACC"
+								legend={
+									<LineSwatch
+										color="var(--airspace-cta-color)"
+										dashArray="4 4"
+									/>
+								}
 								checked={layers.ctaAcc}
 								disabled={!layers.showArtccMaster}
 								onChange={(c: boolean) => updateLayer("ctaAcc", c)}
 							/>
 							<ToggleRow
 								label="Special Rules / ADIZ"
+								legend={
+									<LineSwatch
+										color="var(--airspace-special-rules-color)"
+										dashArray="6.5 2.5 2 2.5 6.5"
+										strokeWidth={2.2}
+									/>
+								}
 								checked={layers.specialRules}
 								disabled={!layers.showArtccMaster}
 								onChange={(c: boolean) => updateLayer("specialRules", c)}

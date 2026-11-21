@@ -1148,7 +1148,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											["!=", ["get", "local_type"], "ARTCC"],
 										]}
 										paint={{
-											"line-color": getAirspaceColor("CTA"),
+											"line-color": isDarkMap
+												? getAirspaceColor("CTA")
+												: getAirspaceTextColor("CTA", false, false),
 											"line-width": 1.2,
 											"line-dasharray": [4, 4],
 											"line-opacity": 0.75,

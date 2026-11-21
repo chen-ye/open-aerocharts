@@ -23,6 +23,16 @@
 	--airspace-sua-text: var(--slate-11);
 	--airspace-trsa-color: var(--slate-8);
 	--airspace-trsa-text: var(--slate-11);
+	--airspace-parachute-color: var(--purple-9);
+	--airspace-parachute-text: var(--purple-11);
+	--airspace-mode-c-color: var(--crimson-9);
+	--airspace-mode-c-text: var(--crimson-11);
+	--airspace-artcc-color: var(--teal-9);
+	--airspace-artcc-text: var(--teal-11);
+	--airspace-cta-color: var(--amber-9);
+	--airspace-cta-text: var(--amber-11);
+	--airspace-special-rules-color: var(--orange-9);
+	--airspace-special-rules-text: var(--orange-11);
 }
 
 body {
