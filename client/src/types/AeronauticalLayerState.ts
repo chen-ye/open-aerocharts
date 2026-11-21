@@ -29,11 +29,11 @@ export interface AeronauticalLayerState {
 	navaids: boolean;
 	waypoints: boolean;
 
-	// ARTCC/FIR
+	// Boundaries (ARTCC/FIR/CTA/Special Rules)
 	showArtccMaster: boolean;
 	artccFirs: boolean;
-	fisas: boolean;
-	atcSectors: boolean;
+	ctaAcc: boolean;
+	specialRules: boolean;
 
 	// Standalone
 	vfrElements: boolean;
@@ -68,9 +68,9 @@ export const defaultAeronauticalState: AeronauticalLayerState = {
 	waypoints: true,
 
 	showArtccMaster: false,
-	artccFirs: false,
-	fisas: false,
-	atcSectors: false,
+	artccFirs: true,
+	ctaAcc: false,
+	specialRules: false,
 
 	vfrElements: true,
 	gridMora: false,

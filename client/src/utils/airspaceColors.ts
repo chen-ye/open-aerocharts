@@ -1,10 +1,18 @@
 import {
+	blue,
+	blueDark,
 	crimson,
 	crimsonDark,
 	indigo,
 	indigoDark,
+	orange,
+	orangeDark,
+	purple,
+	purpleDark,
 	slate,
 	slateDark,
+	teal,
+	tealDark,
 	violet,
 	violetDark,
 } from "@radix-ui/colors";
@@ -50,6 +58,34 @@ export const AIRSPACE_COLORS = {
 		text: {
 			light: slate.slate11,
 			dark: slateDark.slate11,
+		},
+	},
+	ARTCC: {
+		main: teal.teal9,
+		text: {
+			light: teal.teal11,
+			dark: tealDark.teal11,
+		},
+	},
+	CTA: {
+		main: blue.blue9,
+		text: {
+			light: blue.blue11,
+			dark: blueDark.blue11,
+		},
+	},
+	SPECIAL_RULES: {
+		main: orange.orange9,
+		text: {
+			light: orange.orange11,
+			dark: orangeDark.orange11,
+		},
+	},
+	PARACHUTE: {
+		main: purple.purple9,
+		text: {
+			light: purple.purple11,
+			dark: purpleDark.purple11,
 		},
 	},
 } as const;

@@ -376,11 +376,11 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 					</Box>
 					<Separator size="4" />
 
-					{/* ARTCC/FIR */}
+					{/* Boundaries (ARTCC/FIR/CTA/Special Rules) */}
 					<Box>
 						<Flex align="center" justify="between" mb="2">
 							<Text size="2" weight="bold">
-								ARTCC / FIR
+								Boundaries
 							</Text>
 							<Switch
 								size="1"
@@ -398,16 +398,16 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 								onChange={(c: boolean) => updateLayer("artccFirs", c)}
 							/>
 							<ToggleRow
-								label="FISAs"
-								checked={layers.fisas}
+								label="CTA / ACC"
+								checked={layers.ctaAcc}
 								disabled={!layers.showArtccMaster}
-								onChange={(c: boolean) => updateLayer("fisas", c)}
+								onChange={(c: boolean) => updateLayer("ctaAcc", c)}
 							/>
 							<ToggleRow
-								label="ATC Sectors"
-								checked={layers.atcSectors}
+								label="Special Rules / ADIZ"
+								checked={layers.specialRules}
 								disabled={!layers.showArtccMaster}
-								onChange={(c: boolean) => updateLayer("atcSectors", c)}
+								onChange={(c: boolean) => updateLayer("specialRules", c)}
 							/>
 						</Flex>
 					</Box>

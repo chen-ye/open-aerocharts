@@ -242,6 +242,12 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
 	const interactiveLayerIds = useMemo(
 		() => [
+			"boundary-artcc-line",
+			"boundary-artcc-fill",
+			"boundary-cta-line",
+			"boundary-cta-fill",
+			"boundary-special-rules-line",
+			"boundary-special-rules-fill",
 			"airspaces-class-b",
 			"airspaces-class-b-fill",
 			"airspaces-class-c",
@@ -253,6 +259,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			"airspaces-trsa",
 			"airspaces-trsa-fill",
 			"airspaces-class-e-fill",
+			"parachute-areas",
+			"parachute-areas-fill",
 			"airways-low-line",
 			"airways-high-line",
 			"airports-public",
@@ -564,6 +572,95 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			[],
 		);
 
+	const boundaryLabelLayout: maplibregl.SymbolLayerSpecification["layout"] =
+		useMemo(
+			() => ({
+				"text-field": [
+					"concat",
+					[
+						"case",
+						["!=", ["coalesce", ["get", "name"], ""], ""],
+						["get", "name"],
+						["!=", ["coalesce", ["get", "ident"], ""], ""],
+						["get", "ident"],
+						["coalesce", ["get", "type"], ""],
+					],
+					[
+						"case",
+						[
+							"all",
+							[
+								"!=",
+								["to-string", ["coalesce", ["get", "lower_limit"], ""]],
+								"",
+							],
+							[
+								"!=",
+								["to-string", ["coalesce", ["get", "lower_limit"], ""]],
+								"-9998",
+							],
+							[
+								"!=",
+								["to-string", ["coalesce", ["get", "upper_limit"], ""]],
+								"",
+							],
+							[
+								"!=",
+								["to-string", ["coalesce", ["get", "upper_limit"], ""]],
+								"-9998",
+							],
+						],
+						[
+							"concat",
+							"/",
+							["to-string", ["get", "lower_limit"]],
+							"-",
+							["to-string", ["get", "upper_limit"]],
+						],
+						[
+							"all",
+							[
+								"!=",
+								["to-string", ["coalesce", ["get", "lower_limit"], ""]],
+								"",
+							],
+							[
+								"!=",
+								["to-string", ["coalesce", ["get", "lower_limit"], ""]],
+								"-9998",
+							],
+						],
+						["concat", "/", ["to-string", ["get", "lower_limit"]]],
+						[
+							"all",
+							[
+								"!=",
+								["to-string", ["coalesce", ["get", "upper_limit"], ""]],
+								"",
+							],
+							[
+								"!=",
+								["to-string", ["coalesce", ["get", "upper_limit"], ""]],
+								"-9998",
+							],
+						],
+						["concat", "/", ["to-string", ["get", "upper_limit"]]],
+						"",
+					],
+				] as unknown as maplibregl.ExpressionSpecification,
+				"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+				"text-size": 11,
+				"symbol-placement": "line",
+				"text-keep-upright": true,
+				"text-max-angle": 30,
+				"text-allow-overlap": false,
+				"text-ignore-placement": false,
+				"symbol-spacing": 400,
+				"text-offset": [0, 1],
+			}),
+			[],
+		);
+
 	const getZoomRankFilter = (
 		baseZooms: Record<number, number>,
 	): maplibregl.ExpressionSpecification => {
@@ -690,34 +787,91 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				</Box>
 			)}
 
-			{/* 3D Terrain */}
-			{showTerrain && (
-				<Source
-					id="terrain"
-					type="raster-dem"
-					tiles={["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]}
-					tileSize={512}
-					encoding="terrarium"
-				/>
-			)}
+			{/* Permanent Invisible Anchor Layers for Deterministic Z-Order & Symbol Collision Priority */}
+			<Layer
+				id="anchor-dimmer"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-highlight"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-boundaries"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-diagrams"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-airspaces"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-airways"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-obstacles"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-waypoints"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-navaids"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-airports"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-airports-public"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-flight-plan"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-top"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
 
-			{/* 3D Terrain Shading Material */}
+			{/* 3D Terrain & Hillshade (separate raster-dem sources) */}
 			{showTerrain && (
-				<Layer
-					id="hillshade-layer"
-					type="hillshade"
-					source="terrain"
-					paint={{
-						"hillshade-exaggeration": 0.8,
-						"hillshade-shadow-color": isDarkMap
-							? "rgba(0, 0, 0, 0.6)"
-							: "rgba(0, 0, 0, 0.2)",
-						"hillshade-highlight-color": isDarkMap
-							? "rgba(255, 255, 255, 0.15)"
-							: "rgba(255, 255, 255, 0.4)",
-						"hillshade-accent-color": "rgba(0, 0, 0, 0.3)",
-					}}
-				/>
+				<>
+					<Source
+						id="terrain"
+						type="raster-dem"
+						tiles={["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]}
+						tileSize={512}
+						encoding="terrarium"
+					/>
+					<Source
+						id="terrain-hillshade"
+						type="raster-dem"
+						tiles={["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]}
+						tileSize={512}
+						encoding="terrarium"
+					/>
+				</>
 			)}
 
 			{/* Basemap Dimmer */}
@@ -749,6 +903,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				<Layer
 					id="basemap-dimmer-layer"
 					type="fill"
+					beforeId="anchor-highlight"
 					paint={{
 						"fill-color": "#000000",
 						"fill-opacity": 1 - basemapBrightness / 100,
@@ -756,11 +911,32 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				/>
 			</Source>
 
+			{/* 3D Terrain Shading Material */}
+			{showTerrain && (
+				<Layer
+					id="hillshade-layer"
+					type="hillshade"
+					source="terrain-hillshade"
+					beforeId="anchor-dimmer"
+					paint={{
+						"hillshade-exaggeration": 0.8,
+						"hillshade-shadow-color": isDarkMap
+							? "rgba(0, 0, 0, 0.6)"
+							: "rgba(0, 0, 0, 0.2)",
+						"hillshade-highlight-color": isDarkMap
+							? "rgba(255, 255, 255, 0.15)"
+							: "rgba(255, 255, 255, 0.4)",
+						"hillshade-accent-color": "rgba(0, 0, 0, 0.3)",
+					}}
+				/>
+			)}
+
 			{/* Selected Feature Highlight */}
 			<Source id="highlight-source" type="geojson" data={highlightData}>
 				<Layer
 					id="highlight-point"
 					type="circle"
+					beforeId="anchor-boundaries"
 					filter={["==", "$type", "Point"]}
 					paint={{
 						"circle-radius": 18,
@@ -772,6 +948,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				<Layer
 					id="highlight-line"
 					type="line"
+					beforeId="anchor-boundaries"
 					filter={["in", "$type", "LineString", "Polygon"]}
 					paint={{
 						"line-color": "#ffffff",
@@ -826,6 +1003,240 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			)}
 			{aeronauticalLayers.showAll && (
 				<>
+					{/* Boundaries (ARTCC / FIR, CTA / ACC, Special Rules / ADIZ) */}
+					{aeronauticalLayers.showArtccMaster && (
+						<>
+							{aeronauticalLayers.artccFirs && (
+								<>
+									<Layer
+										id="boundary-artcc-fill"
+										type="fill"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										filter={[
+											"all",
+											["!=", ["get", "local_type"], "ARTCC_H"],
+											["!=", ["get", "type"], "TRSA"],
+											["!=", ["get", "type"], "CLASS"],
+											[
+												"any",
+												[
+													"in",
+													["get", "type"],
+													["literal", ["ARTCC", "FIR", "OCA", "UTA"]],
+												],
+												[
+													"all",
+													["==", ["get", "type"], "CTA"],
+													["==", ["get", "local_type"], "ARTCC"],
+												],
+											],
+										]}
+										paint={{ "fill-opacity": 0 }}
+									/>
+									<Layer
+										id="boundary-artcc-line"
+										type="line"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										filter={[
+											"all",
+											["!=", ["get", "local_type"], "ARTCC_H"],
+											["!=", ["get", "type"], "TRSA"],
+											["!=", ["get", "type"], "CLASS"],
+											[
+												"any",
+												[
+													"in",
+													["get", "type"],
+													["literal", ["ARTCC", "FIR", "OCA", "UTA"]],
+												],
+												[
+													"all",
+													["==", ["get", "type"], "CTA"],
+													["==", ["get", "local_type"], "ARTCC"],
+												],
+											],
+										]}
+										paint={{
+											"line-color": getAirspaceColor("ARTCC"),
+											"line-width": 1.2,
+											"line-dasharray": [6, 3],
+											"line-opacity": 0.75,
+										}}
+									/>
+									<Layer
+										id="boundary-artcc-label"
+										type="symbol"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										minzoom={4}
+										filter={[
+											"all",
+											["!=", ["get", "local_type"], "ARTCC_H"],
+											["!=", ["get", "type"], "TRSA"],
+											["!=", ["get", "type"], "CLASS"],
+											[
+												"any",
+												[
+													"in",
+													["get", "type"],
+													["literal", ["ARTCC", "FIR", "OCA", "UTA"]],
+												],
+												[
+													"all",
+													["==", ["get", "type"], "CTA"],
+													["==", ["get", "local_type"], "ARTCC"],
+												],
+											],
+										]}
+										layout={boundaryLabelLayout}
+										paint={{
+											"text-color": getAirspaceTextColor(
+												"ARTCC",
+												false,
+												isDarkMap,
+											),
+											"text-halo-color": haloColor,
+											"text-halo-width": 1.5,
+										}}
+									/>
+								</>
+							)}
+							{aeronauticalLayers.ctaAcc && (
+								<>
+									<Layer
+										id="boundary-cta-fill"
+										type="fill"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										filter={[
+											"all",
+											[
+												"in",
+												["get", "type"],
+												["literal", ["CTA", "CTA-P", "ACC"]],
+											],
+											["!=", ["get", "local_type"], "ARTCC"],
+										]}
+										paint={{ "fill-opacity": 0 }}
+									/>
+									<Layer
+										id="boundary-cta-line"
+										type="line"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										filter={[
+											"all",
+											[
+												"in",
+												["get", "type"],
+												["literal", ["CTA", "CTA-P", "ACC"]],
+											],
+											["!=", ["get", "local_type"], "ARTCC"],
+										]}
+										paint={{
+											"line-color": getAirspaceColor("CTA"),
+											"line-width": 1.2,
+											"line-dasharray": [4, 4],
+											"line-opacity": 0.75,
+										}}
+									/>
+									<Layer
+										id="boundary-cta-label"
+										type="symbol"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										minzoom={4}
+										filter={[
+											"all",
+											[
+												"in",
+												["get", "type"],
+												["literal", ["CTA", "CTA-P", "ACC"]],
+											],
+											["!=", ["get", "local_type"], "ARTCC"],
+										]}
+										layout={boundaryLabelLayout}
+										paint={{
+											"text-color": getAirspaceTextColor(
+												"CTA",
+												false,
+												isDarkMap,
+											),
+											"text-halo-color": haloColor,
+											"text-halo-width": 1.5,
+										}}
+									/>
+								</>
+							)}
+							{aeronauticalLayers.specialRules && (
+								<>
+									<Layer
+										id="boundary-special-rules-fill"
+										type="fill"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										filter={[
+											"in",
+											["get", "type"],
+											["literal", ["SATA", "ADIZ", "NSA", "DEF"]],
+										]}
+										paint={{ "fill-opacity": 0 }}
+									/>
+									<Layer
+										id="boundary-special-rules-line"
+										type="line"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										filter={[
+											"in",
+											["get", "type"],
+											["literal", ["SATA", "ADIZ", "NSA", "DEF"]],
+										]}
+										paint={{
+											"line-color": getAirspaceColor("SPECIAL_RULES"),
+											"line-width": 1.5,
+											"line-dasharray": [6, 2, 2, 2],
+											"line-opacity": 0.85,
+										}}
+									/>
+									<Layer
+										id="boundary-special-rules-label"
+										type="symbol"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										minzoom={4}
+										filter={[
+											"in",
+											["get", "type"],
+											["literal", ["SATA", "ADIZ", "NSA", "DEF"]],
+										]}
+										layout={boundaryLabelLayout}
+										paint={{
+											"text-color": getAirspaceTextColor(
+												"SPECIAL_RULES",
+												false,
+												isDarkMap,
+											),
+											"text-halo-color": haloColor,
+											"text-halo-width": 1.5,
+										}}
+									/>
+								</>
+							)}
+						</>
+					)}
+
 					{/* Airports Base */}
 					{aeronauticalLayers.showAirportsMaster && (
 						<>
@@ -837,6 +1248,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-diagrams"
 										source-layer="am_taxiways"
+										beforeId="anchor-airspaces"
 										minzoom={9}
 										paint={{
 											"fill-color": isDarkMap ? "#3a3a4a" : "#bbbbbb",
@@ -848,6 +1260,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-diagrams"
 										source-layer="runways"
+										beforeId="anchor-airspaces"
 										minzoom={9}
 										paint={{
 											"fill-color": isDarkMap ? "#555566" : "#666666",
@@ -859,6 +1272,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-diagrams"
 										source-layer="runways"
+										beforeId="anchor-airspaces"
 										minzoom={9}
 										paint={{
 											"line-color": isDarkMap ? "#777788" : "#444444",
@@ -870,6 +1284,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-diagrams"
 										source-layer="runway_labels"
+										beforeId="anchor-airspaces"
 										minzoom={12}
 										layout={{
 											"text-field": ["get", "label"],
@@ -904,6 +1319,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -919,6 +1335,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -952,6 +1369,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -964,6 +1382,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -979,6 +1398,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1012,6 +1432,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1024,6 +1445,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1040,6 +1462,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1052,6 +1475,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1070,6 +1494,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1088,6 +1513,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1110,6 +1536,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1125,6 +1552,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1158,6 +1586,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1170,6 +1599,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1196,6 +1626,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1211,6 +1642,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1244,6 +1676,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1256,6 +1689,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1283,6 +1717,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-enroute"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["==", ["get", "type"], "E"],
@@ -1309,6 +1744,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-enroute"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={[
 											"all",
 											["==", ["get", "type"], "E"],
@@ -1330,6 +1766,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-enroute"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										filter={["==", ["get", "type"], "E"]}
 										paint={{ "fill-opacity": 0 }}
 									/>
@@ -1338,6 +1775,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-enroute"
 										source-layer="airspaces"
+										beforeId="anchor-airways"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1357,6 +1795,70 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 									/>
 								</>
 							)}
+							{/* Parachute Jump Areas */}
+							{aeronauticalLayers.parachuteArea && (
+								<>
+									<Layer
+										id="parachute-areas-fill"
+										type="fill"
+										source="src-waypoints-obstacles"
+										source-layer="parachute_areas"
+										beforeId="anchor-airways"
+										paint={{
+											"fill-color": getAirspaceColor("PARACHUTE"),
+											"fill-opacity": isDarkMap ? 0.12 : 0.08,
+										}}
+									/>
+									<Layer
+										id="parachute-areas"
+										type="line"
+										source="src-waypoints-obstacles"
+										source-layer="parachute_areas"
+										beforeId="anchor-airways"
+										paint={{
+											"line-color": getAirspaceColor("PARACHUTE"),
+											"line-width": 1.5,
+											"line-dasharray": [4, 3],
+										}}
+									/>
+									<Layer
+										id="parachute-areas-label"
+										type="symbol"
+										source="src-waypoints-obstacles"
+										source-layer="parachute_areas"
+										beforeId="anchor-airways"
+										minzoom={8}
+										layout={{
+											"text-field": [
+												"case",
+												["!=", ["coalesce", ["get", "name"], ""], ""],
+												["get", "name"],
+												["!=", ["coalesce", ["get", "ident"], ""], ""],
+												["get", "ident"],
+												"PARACHUTE",
+											] as unknown as maplibregl.ExpressionSpecification,
+											"text-font": [
+												"Open Sans Bold",
+												"Arial Unicode MS Regular",
+											],
+											"text-size": 11,
+											"symbol-placement": "point",
+											"text-allow-overlap": false,
+											"text-ignore-placement": false,
+											"text-padding": 2,
+										}}
+										paint={{
+											"text-color": getAirspaceTextColor(
+												"PARACHUTE",
+												false,
+												isDarkMap,
+											),
+											"text-halo-color": haloColor,
+											"text-halo-width": 1.5,
+										}}
+									/>
+								</>
+							)}
 						</>
 					)}
 
@@ -1370,6 +1872,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-enroute"
 										source-layer="airways"
+										beforeId="anchor-obstacles"
 										filter={["==", ["get", "structure"], "Low"]}
 										paint={airwayLinePaint}
 									/>
@@ -1379,6 +1882,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-enroute"
 										source-layer="airways"
+										beforeId="anchor-obstacles"
 										minzoom={getZoom(6)}
 										filter={["==", ["get", "structure"], "Low"]}
 										layout={
@@ -1395,6 +1899,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-enroute"
 										source-layer="airways"
+										beforeId="anchor-obstacles"
 										minzoom={getZoom(6)}
 										filter={["==", ["get", "structure"], "Low"]}
 										layout={
@@ -1408,6 +1913,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-enroute"
 										source-layer="airways"
+										beforeId="anchor-obstacles"
 										minzoom={getZoom(6)}
 										filter={["==", ["get", "structure"], "Low"]}
 										layout={
@@ -1424,6 +1930,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-enroute"
 										source-layer="airways"
+										beforeId="anchor-obstacles"
 										filter={["==", ["get", "structure"], "High"]}
 										paint={airwayLinePaint}
 									/>
@@ -1433,6 +1940,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-enroute"
 										source-layer="airways"
+										beforeId="anchor-obstacles"
 										minzoom={getZoom(6)}
 										filter={["==", ["get", "structure"], "High"]}
 										layout={
@@ -1449,6 +1957,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-enroute"
 										source-layer="airways"
+										beforeId="anchor-obstacles"
 										minzoom={getZoom(6)}
 										filter={["==", ["get", "structure"], "High"]}
 										layout={
@@ -1462,6 +1971,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-enroute"
 										source-layer="airways"
+										beforeId="anchor-obstacles"
 										minzoom={getZoom(6)}
 										filter={["==", ["get", "structure"], "High"]}
 										layout={
@@ -1481,6 +1991,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 							type="symbol"
 							source="src-waypoints-obstacles"
 							source-layer="obstacles"
+							beforeId="anchor-waypoints"
 							minzoom={10}
 							filter={getZoomRankFilter({ 0: 0, 7: 2, 9: 3, 11: 6 })}
 							layout={{
@@ -1571,6 +2082,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 								type="symbol"
 								source="src-waypoints-obstacles"
 								source-layer="waypoints"
+								beforeId="anchor-navaids"
 								minzoom={getZoom(4)}
 								filter={getZoomRankFilter({ 0: 2, 5: 3, 7: 4, 9: 6 })}
 								layout={{
@@ -1622,6 +2134,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 								type="symbol"
 								source="src-airports-navaids"
 								source-layer="navaids"
+								beforeId="anchor-airports"
 								filter={getZoomRankFilter({ 0: 1, 5: 2, 6: 3, 7: 4, 8: 6 })}
 								layout={{
 									"icon-image": [
@@ -1687,6 +2200,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airports-navaids"
 										source-layer="airports"
+										beforeId="anchor-flight-plan"
 										filter={
 											[
 												"all",
@@ -1721,6 +2235,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airports-navaids"
 										source-layer="airports"
+										beforeId="anchor-airports-public"
 										filter={
 											[
 												"all",
@@ -1743,6 +2258,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airports-navaids"
 										source-layer="airports"
+										beforeId="anchor-airports-public"
 										filter={
 											[
 												"all",
@@ -1765,6 +2281,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airports-navaids"
 										source-layer="airports"
+										beforeId="anchor-airports-public"
 										filter={
 											[
 												"all",
@@ -1811,6 +2328,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 					<Layer
 						id="flight-plan-line-casing"
 						type="line"
+						beforeId="anchor-top"
 						filter={["==", "$type", "LineString"]}
 						paint={{
 							"line-color": isDarkMap ? "#000000" : "#ffffff",
@@ -1821,6 +2339,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 					<Layer
 						id="flight-plan-line"
 						type="line"
+						beforeId="anchor-top"
 						filter={["==", "$type", "LineString"]}
 						paint={{
 							"line-color": cyan.cyan9,
@@ -1831,6 +2350,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 					<Layer
 						id="flight-plan-point"
 						type="symbol"
+						beforeId="anchor-top"
 						filter={["==", "$type", "Point"]}
 						layout={{
 							"icon-image": [
@@ -1868,6 +2388,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 					<Layer
 						id="flight-plan-label"
 						type="symbol"
+						beforeId="anchor-top"
 						filter={["==", "$type", "Point"]}
 						layout={{
 							"text-field": ["get", "id"],
