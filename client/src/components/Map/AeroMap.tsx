@@ -258,6 +258,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			"airspaces-sua-fill",
 			"airspaces-trsa",
 			"airspaces-trsa-fill",
+			"airspaces-mode-c",
 			"airspaces-class-e-fill",
 			"parachute-areas",
 			"parachute-areas-fill",
@@ -551,7 +552,13 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						"case",
 						["==", ["get", "is_sua"], true],
 						["get", "name"],
-						["coalesce", ["get", "airspace_class"], ["get", "type"]],
+						[
+							"match",
+							["get", "airspace_class"],
+							"MODE_C",
+							"MODE C",
+							["coalesce", ["get", "airspace_class"], ["get", "type"]],
+						],
 					],
 
 					"/",
@@ -1789,6 +1796,44 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										layout={airspaceLabelLayout}
 										paint={{
 											"text-color": getAirspaceTextColor("E", false, isDarkMap),
+											"text-halo-color": haloColor,
+											"text-halo-width": 1.5,
+										}}
+									/>
+								</>
+							)}
+							{/* Mode C Veils */}
+							{aeronauticalLayers.modeC && (
+								<>
+									<Layer
+										id="airspaces-mode-c"
+										type="line"
+										source="src-airspaces"
+										source-layer="airspaces"
+										beforeId="anchor-airways"
+										filter={["==", ["get", "airspace_class"], "MODE_C"]}
+										paint={{
+											"line-color": getAirspaceColor("MODE_C"),
+											"line-width": 1.2,
+											"line-dasharray": [6, 3],
+											"line-opacity": 0.7,
+										}}
+									/>
+									<Layer
+										id="airspaces-mode-c-label"
+										type="symbol"
+										source="src-airspaces"
+										source-layer="airspaces"
+										beforeId="anchor-airways"
+										minzoom={8}
+										filter={["==", ["get", "airspace_class"], "MODE_C"]}
+										layout={airspaceLabelLayout}
+										paint={{
+											"text-color": getAirspaceTextColor(
+												"MODE_C",
+												false,
+												isDarkMap,
+											),
 											"text-halo-color": haloColor,
 											"text-halo-width": 1.5,
 										}}

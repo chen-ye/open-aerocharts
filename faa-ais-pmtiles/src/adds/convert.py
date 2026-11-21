@@ -152,20 +152,87 @@ def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]
 
 
 # ---------------------------------------------------------------------------
+# Mode C Veils (ADDS Class_Airspace FeatureServer)
+# ---------------------------------------------------------------------------
+
+
+def convert_mode_c(raw_path: str = "data/mode_c_raw.geojson") -> list[geojson.Feature]:
+    """Read Mode C Veil GeoJSON and return features with mapped properties."""
+    if not os.path.exists(raw_path):
+        print(f"  Mode C file not found at {raw_path}")
+        return []
+
+    with open(raw_path) as f:
+        data = json.load(f)
+
+    features: list[geojson.Feature] = []
+    for ft in data.get("features", []):
+        raw_props = ft.get("properties", {})
+        geom = ft.get("geometry")
+        if geom is None:
+            continue
+
+        name = (raw_props.get("NAME") or raw_props.get("IDENT") or "").strip()
+        upper_val = normalize_boundary_limit(
+            raw_props.get("UPPER_VAL"),
+            raw_props.get("UPPER_UOM"),
+            raw_props.get("UPPER_CODE"),
+        )
+        lower_val = normalize_boundary_limit(
+            raw_props.get("LOWER_VAL"),
+            raw_props.get("LOWER_UOM"),
+            raw_props.get("LOWER_CODE"),
+        )
+
+        features.append(
+            geojson.Feature(
+                geometry=geom,
+                properties={
+                    "name": name,
+                    "type": "MODE C",
+                    "airspace_class": "MODE_C",
+                    "is_sua": False,
+                    "upper_limit": upper_val,
+                    "lower_limit": lower_val,
+                    "upper_m": parse_altitude(upper_val) * 0.3048,
+                    "lower_m": parse_altitude(lower_val) * 0.3048,
+                    "local_type": "MODE C",
+                },
+            )
+        )
+
+    print(f"  {len(features)} Mode C veil features")
+    return features
+
+
+# ---------------------------------------------------------------------------
 # Airspaces (merged output)
 # ---------------------------------------------------------------------------
 
 
-def convert_airspaces(output_critical: str = "data/airspaces.fgb", output_e: str = "data/airspaces_e.fgb") -> None:
-    """Merge controlled airspace + SUA into separate High-Priority and Class E files."""
+def convert_airspaces(
+    output_critical: str = "data/airspaces.fgb",
+    output_e: str = "data/airspaces_e.fgb",
+    shp_dir: str = "shapefiles",
+    sua_path: str = "data/sua_raw.geojson",
+    mode_c_path: str = "data/mode_c_raw.geojson",
+) -> None:
+    """Merge controlled airspace, SUA, and Mode C veils into High-Priority and Class E files."""
     print("Processing controlled airspace (shapefiles)...")
-    controlled = convert_class_airspace()
+    controlled = convert_class_airspace(shp_dir=shp_dir)
 
     print("Processing SUA (ArcGIS GeoJSON)...")
-    sua = convert_sua()
+    sua = convert_sua(sua_path=sua_path)
 
-    all_features = controlled + sua
-    os.makedirs(os.path.dirname(output_critical), exist_ok=True)
+    print("Processing Mode C veils (ArcGIS GeoJSON)...")
+    mode_c = convert_mode_c(raw_path=mode_c_path)
+
+    all_features = controlled + sua + mode_c
+    if not all_features:
+        print("  No airspace features found, skipping.")
+        return
+    os.makedirs(os.path.dirname(output_critical) or ".", exist_ok=True)
+    os.makedirs(os.path.dirname(output_e) or ".", exist_ok=True)
 
     gdf = gpd.GeoDataFrame.from_features(all_features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()

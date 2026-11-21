@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import geopandas as gpd
 import pyproj
 
-from src.adds.convert import convert_boundary_airspace, normalize_boundary_limit
+from src.adds.convert import convert_airspaces, convert_boundary_airspace, convert_mode_c, normalize_boundary_limit
 from src.nasr import fetch as nasr_fetch
 from src.nasr.pja import convert_pja, parse_pja_csv
 
@@ -162,6 +162,63 @@ class TestConvertBoundaryAirspace(unittest.TestCase):
             row3 = gdf.iloc[3]
             self.assertEqual(row3["upper_limit"], "")
             self.assertEqual(row3["lower_limit"], "0")
+
+
+class TestModeCAirspace(unittest.TestCase):
+    def test_convert_mode_c_and_merge_into_airspaces(self) -> None:
+        mode_c_geojson = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[-122.5, 37.5], [-122.0, 37.5], [-122.0, 38.0], [-122.5, 37.5]]],
+                    },
+                    "properties": {
+                        "IDENT": "SFO",
+                        "NAME": "SAN FRANCISCO INTL MODE C",
+                        "LOCAL_TYPE": "MODE C",
+                        "UPPER_VAL": 10000,
+                        "UPPER_UOM": "FT",
+                        "UPPER_CODE": "MSL",
+                        "LOWER_VAL": 0,
+                        "LOWER_UOM": "FT",
+                        "LOWER_CODE": "SFC",
+                    },
+                }
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_path = os.path.join(tmpdir, "mode_c_raw.geojson")
+            out_critical = os.path.join(tmpdir, "airspaces.fgb")
+            out_e = os.path.join(tmpdir, "airspaces_e.fgb")
+            empty_sua = os.path.join(tmpdir, "missing_sua.geojson")
+            empty_shp = os.path.join(tmpdir, "missing_shp")
+            with open(raw_path, "w") as f:
+                json.dump(mode_c_geojson, f)
+
+            feats = convert_mode_c(raw_path=raw_path)
+            self.assertEqual(len(feats), 1)
+            props = feats[0]["properties"]
+            self.assertEqual(props["airspace_class"], "MODE_C")
+            self.assertEqual(props["lower_limit"], "SFC")
+            self.assertEqual(props["upper_limit"], "10000")
+            self.assertFalse(props["is_sua"])
+
+            convert_airspaces(
+                output_critical=out_critical,
+                output_e=out_e,
+                shp_dir=empty_shp,
+                sua_path=empty_sua,
+                mode_c_path=raw_path,
+            )
+            gdf = gpd.read_file(out_critical, engine="pyogrio")
+            self.assertEqual(len(gdf), 1)
+            self.assertEqual(gdf.iloc[0]["airspace_class"], "MODE_C")
+            self.assertEqual(gdf.iloc[0]["lower_limit"], "SFC")
+            self.assertEqual(gdf.iloc[0]["upper_limit"], "10000")
 
 
 class TestPjaParsingAndConversion(unittest.TestCase):

@@ -36,8 +36,6 @@ export interface AeronauticalLayerState {
 	specialRules: boolean;
 
 	// Standalone
-	vfrElements: boolean;
-	gridMora: boolean;
 	obstacles: boolean;
 }
 
@@ -72,7 +70,5 @@ export const defaultAeronauticalState: AeronauticalLayerState = {
 	ctaAcc: false,
 	specialRules: false,
 
-	vfrElements: true,
-	gridMora: false,
 	obstacles: false,
 };

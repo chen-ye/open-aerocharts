@@ -88,6 +88,13 @@ export const AIRSPACE_COLORS = {
 			dark: purpleDark.purple11,
 		},
 	},
+	MODE_C: {
+		main: crimson.crimson9,
+		text: {
+			light: crimson.crimson11,
+			dark: crimsonDark.crimson11,
+		},
+	},
 } as const;
 
 export type AirspaceType = keyof typeof AIRSPACE_COLORS;

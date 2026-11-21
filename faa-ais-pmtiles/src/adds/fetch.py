@@ -46,6 +46,11 @@ ADDS_DATASETS: dict[str, dict[str, str]] = {
         "output": "data/am_taxiways_raw.geojson",
         "label": "Airport Diagram Taxiways",
     },
+    "mode_c": {
+        "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/ArcGIS/rest/services/Class_Airspace/FeatureServer/0/query?where=LOCAL_TYPE%3D%27MODE+C%27&outFields=*&outSR=4326&f=geojson",
+        "output": "data/mode_c_raw.geojson",
+        "label": "Mode C Veils",
+    },
 }
 
 
@@ -114,7 +119,7 @@ def fetch_adds_dataset(key: str, info: dict[str, str], cycle_date: str) -> None:
                 print(f"{label} for cycle {cycle_date} already exists. Skipping download.")
                 return
 
-    url = f"{ADDS_BASE}/{info['item_id']}_0/downloads/data?format=geojson&spatialRefId=4326"
+    url = info.get("url") or f"{ADDS_BASE}/{info['item_id']}_0/downloads/data?format=geojson&spatialRefId=4326"
 
     print(f"Downloading {label}...")
     os.makedirs(os.path.dirname(output), exist_ok=True)
