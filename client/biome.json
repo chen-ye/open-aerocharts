@@ -1,5 +1,13 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
+	"files": {
+		"includes": [
+			"**",
+			"!**/dist",
+			"!**/public/metadata.json",
+			"!**/public/search_index.json"
+		]
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
