@@ -12,6 +12,7 @@ import zipfile
 import requests
 
 from src.common.utils import get_cycle_dates
+from src.nasr.pja import parse_pja_csv
 
 NFDC_BASE = "https://nfdc.faa.gov/webContent/28DaySub/"
 
@@ -60,11 +61,12 @@ def get_airport_metadata() -> dict[str, dict]:
 
     cache_path = "data/nasr_metadata.json"
     cycle_path = "data/nasr_metadata.cycle"
+    pja_raw_path = "data/pja_raw.geojson"
 
-    if os.path.exists(cache_path) and os.path.exists(cycle_path):
+    if os.path.exists(cache_path) and os.path.exists(cycle_path) and os.path.exists(pja_raw_path):
         with open(cycle_path) as f:
             if f.read().strip() == cycle_date:
-                print(f"NASR airport metadata for cycle {cycle_date} already exists. Skipping download.")
+                print(f"NASR airport metadata and PJA data for cycle {cycle_date} already exist. Skipping download.")
                 with open(cache_path) as cache_f:
                     return json.load(cache_f)
     print(f"Downloading NASR CSV bundle from {url}...")
@@ -82,45 +84,60 @@ def get_airport_metadata() -> dict[str, dict]:
         else:
             raise
 
+    os.makedirs("data", exist_ok=True)
     metadata_lookup = {}
 
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         apt_filename = None
+        pja_filename = None
         for name in z.namelist():
-            if name.upper().endswith("APT_BASE.CSV"):
+            upper_name = name.upper()
+            if apt_filename is None and upper_name.endswith("APT_BASE.CSV"):
                 apt_filename = name
-                break
+            elif pja_filename is None and upper_name.endswith("PJA_BASE.CSV"):
+                pja_filename = name
 
-        if not apt_filename:
+        if apt_filename:
+            print(f"Parsing {apt_filename} for airport metadata...")
+            with z.open(apt_filename) as f:
+                reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
+                for row in reader:
+                    arpt_id = row.get("ARPT_ID")
+                    if not arpt_id:
+                        continue
+
+                    arpt_id = arpt_id.strip()
+                    icao_id = (row.get("ICAO_ID") or "").strip()
+                    fuel_types = row.get("FUEL_TYPES", "").strip()
+                    twr_type = row.get("TWR_TYPE_CODE", "").strip()
+                    far_139 = row.get("FAR_139_TYPE_CODE", "").strip()
+
+                    metadata = {
+                        "has_fuel": bool(fuel_types),
+                        "has_tower": twr_type == "ATCT",
+                        "far_139": far_139,
+                    }
+                    metadata_lookup[arpt_id] = metadata
+                    if icao_id:
+                        metadata_lookup[icao_id] = metadata
+        else:
             print("Warning: APT_BASE.csv not found in the NASR zip.")
-            return metadata_lookup
 
-        print(f"Parsing {apt_filename} for airport metadata...")
-        with z.open(apt_filename) as f:
-            reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
-            for row in reader:
-                arpt_id = row.get("ARPT_ID")
-                if not arpt_id:
-                    continue
+        if pja_filename:
+            print(f"Parsing {pja_filename} for parachute jump areas...")
+            with z.open(pja_filename) as f:
+                pja_features = parse_pja_csv(io.TextIOWrapper(f, encoding="utf-8", errors="replace"))
+            with open(pja_raw_path, "w") as f:
+                json.dump({"type": "FeatureCollection", "features": pja_features}, f)
+            print(f"Saved {len(pja_features)} PJAs to {pja_raw_path}")
+        else:
+            print("Warning: PJA_BASE.csv not found in the NASR zip.")
 
-                arpt_id = arpt_id.strip()
-                icao_id = (row.get("ICAO_ID") or "").strip()
-                fuel_types = row.get("FUEL_TYPES", "").strip()
-                twr_type = row.get("TWR_TYPE_CODE", "").strip()
-                far_139 = row.get("FAR_139_TYPE_CODE", "").strip()
-
-                metadata = {
-                    "has_fuel": bool(fuel_types),
-                    "has_tower": twr_type == "ATCT",
-                    "far_139": far_139,
-                }
-                metadata_lookup[arpt_id] = metadata
-                if icao_id:
-                    metadata_lookup[icao_id] = metadata
+    if not apt_filename:
+        return metadata_lookup
 
     print(f"Found metadata for {len(metadata_lookup)} airports.")
 
-    os.makedirs("data", exist_ok=True)
     with open(cache_path, "w") as f:
         json.dump(metadata_lookup, f)
     with open(cycle_path, "w") as f:

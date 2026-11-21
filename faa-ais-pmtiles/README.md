@@ -49,9 +49,10 @@ vector PMTiles.
 | **Runways**             | CIFP + ADDS        | `data/runways.fgb`          | `airport_diagrams.pmtiles`    |
 | **Localizers**          | CIFP (ARINC 424)   | `data/localizers.fgb`       | `airports_navaids.pmtiles`    |
 | **Waypoints**           | CIFP (ARINC 424)   | `data/waypoints.fgb`        | `waypoints_obstacles.pmtiles` |
-| **Holding Patterns**    | ADDS ArcGIS        | `data/holding_patterns.fgb` | `waypoints_obstacles.pmtiles` |
-| **Obstacles**           | ADDS ArcGIS        | `data/obstacles.fgb`        | `waypoints_obstacles.pmtiles` |
-| **Diagrams (Taxi)**     | ADDS ArcGIS        | `data/am_taxiways.fgb`      | `airport_diagrams.pmtiles`    |
+| **Holding Patterns**    | ADDS ArcGIS         | `data/holding_patterns.fgb` | `waypoints_obstacles.pmtiles` |
+| **Obstacles**           | ADDS ArcGIS         | `data/obstacles.fgb`        | `waypoints_obstacles.pmtiles` |
+| **Parachute Areas**     | NASR (PJA_BASE.csv) | `data/parachute_areas.fgb`  | `waypoints_obstacles.pmtiles` |
+| **Diagrams (Taxi)**     | ADDS ArcGIS         | `data/am_taxiways.fgb`      | `airport_diagrams.pmtiles`    |
 
 _\*Runways are merged from ADDS (high-fidelity) and CIFP (polygonized), deduplicated, and served in the high-zoom diagrams layer._
 

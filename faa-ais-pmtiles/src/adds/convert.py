@@ -10,6 +10,7 @@ Sources:
 
 import glob
 import json
+import math
 import os
 
 import geojson
@@ -221,6 +222,42 @@ def convert_airspaces(output_critical: str = "data/airspaces.fgb", output_e: str
 # ---------------------------------------------------------------------------
 
 
+def normalize_boundary_limit(val: int | float | str | None, uom: str | None, code: str | None) -> str:
+    """Normalize ADDS boundary airspace altitude limit values."""
+    uom_norm = (uom or "").strip().upper()
+    code_norm = (code or "").strip().upper()
+
+    if val is None or isinstance(val, bool):
+        return "UNL" if code_norm == "UNLTD" else ""
+
+    if isinstance(val, str):
+        val_str = val.strip()
+        if not val_str:
+            return "UNL" if code_norm == "UNLTD" else ""
+        try:
+            num = float(val_str)
+        except ValueError:
+            return val_str
+    else:
+        num = float(val)
+
+    if not math.isfinite(num):
+        return "UNL" if code_norm == "UNLTD" else ""
+
+    if num <= -9998 or num < 0:
+        return "UNL" if code_norm == "UNLTD" else ""
+
+    if num == 0:
+        return "SFC" if code_norm in ("SFC", "") else "0"
+
+    is_int = num.is_integer()
+    if uom_norm == "FL":
+        return f"FL{int(num):03d}" if is_int else f"FL{num}"
+    if code_norm == "SFC":
+        return f"{int(num)} AGL" if is_int else f"{num} AGL"
+    return f"{int(num)}" if is_int else str(num)
+
+
 def convert_boundary_airspace(
     raw_path: str = "data/boundary_airspace_raw.geojson",
     output: str = "data/boundary_airspace.fgb",
@@ -251,14 +288,27 @@ def convert_boundary_airspace(
                     "name": name,
                     "type": type_code,
                     "ident": (raw.get("IDENT") or "").strip(),
-                    "local_type": (raw.get("LOCAL_TYPE") or "").strip(),
-                    "upper_limit": raw.get("UPPER_VAL") or "",
-                    "lower_limit": raw.get("LOWER_VAL") or "",
+                    "sector": (raw.get("SECTOR") or "").strip(),
+                    "local_type": (raw.get("LOCAL_TYPE") or "").strip().upper(),
+                    "upper_limit": normalize_boundary_limit(
+                        raw.get("UPPER_VAL"),
+                        raw.get("UPPER_UOM"),
+                        raw.get("UPPER_CODE"),
+                    ),
+                    "lower_limit": normalize_boundary_limit(
+                        raw.get("LOWER_VAL"),
+                        raw.get("LOWER_UOM"),
+                        raw.get("LOWER_CODE"),
+                    ),
                 },
             )
         )
 
-    os.makedirs(os.path.dirname(output), exist_ok=True)
+    if not features:
+        print("  No boundary airspace features found.")
+        return
+
+    os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
     gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     gdf.geometry = gdf.geometry.force_2d()
     gdf.sort_values(by="rank", ascending=True, inplace=True) if "rank" in gdf.columns else None

@@ -16,6 +16,7 @@ from src.adds import fetch as fetch_airspace_shp
 from src.cifp import convert as cifp_to_fgb
 from src.cifp import fetch as fetch_cifp
 from src.nasr import fetch as fetch_nasr
+from src.nasr import pja
 from src.runways.merge import merge_runways
 
 # Each PMTiles file is served directly to the frontend — no tile-join needed.
@@ -72,9 +73,11 @@ def main():
     with concurrent.futures.ProcessPoolExecutor() as executor:
         f1 = executor.submit(shp_to_fgb.main)
         f2 = executor.submit(cifp_to_fgb.build_pmtiles_fgb, "FAACIFP18")
-        concurrent.futures.wait([f1, f2])
+        f3 = executor.submit(pja.convert_pja)
+        concurrent.futures.wait([f1, f2, f3])
         f1.result()
         f2.result()
+        f3.result()
 
     print("Step 2.5: Merging Runways...")
     merge_runways()
@@ -105,12 +108,17 @@ def main():
         "-L navaids:data/navaids.fgb "
         "-L localizers:data/localizers.fgb "
     )
+    waypoints_obstacles_layers = [
+        "-L waypoints:data/waypoints.fgb",
+        "-L holding_patterns:data/holding_patterns.fgb",
+        "-L obstacles:data/obstacles.fgb",
+    ]
+    if os.path.exists("data/parachute_areas.fgb"):
+        waypoints_obstacles_layers.append("-L parachute_areas:data/parachute_areas.fgb")
+
     cmd_waypoints_obstacles = (
         "uv run tippecanoe -Z0 -z10 -o output/waypoints_obstacles.pmtiles --drop-fraction-as-needed -f "
-        "--order-by=rank --order-smallest-first "
-        "-L waypoints:data/waypoints.fgb "
-        "-L holding_patterns:data/holding_patterns.fgb "
-        "-L obstacles:data/obstacles.fgb"
+        "--order-by=rank --order-smallest-first " + " ".join(waypoints_obstacles_layers)
     )
     cmd_airport_diagrams = (
         "uv run tippecanoe -Z9 -z14 -o output/airport_diagrams.pmtiles "
