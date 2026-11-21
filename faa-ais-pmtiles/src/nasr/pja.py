@@ -52,7 +52,9 @@ def normalize_pja_max_alt(max_altitude: str | None, alt_type_code: str | None) -
         return "UNL"
     if not alt:
         return ""
-    return f"{alt} {code}".strip()
+    if code in ("MSL", ""):
+        return alt
+    return f"{alt} {code}"
 
 
 def parse_pja_csv(csv_file: Iterable[str] | str | os.PathLike[str]) -> list[geojson.Feature]:

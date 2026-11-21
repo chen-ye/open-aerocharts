@@ -243,7 +243,7 @@ class TestPjaParsingAndConversion(unittest.TestCase):
         self.assertEqual(p0["ident"], "PJA001")
         self.assertEqual(p0["name"], "SKYDIVE MORGAN HILL")
         self.assertEqual(p0["radius_nm"], 2.5)
-        self.assertEqual(p0["max_alt"], "14500 MSL")
+        self.assertEqual(p0["max_alt"], "14500")
         self.assertEqual(p0["rank"], 5)
 
         p1 = features[1]["properties"]

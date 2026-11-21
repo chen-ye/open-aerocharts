@@ -242,11 +242,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
 	const interactiveLayerIds = useMemo(
 		() => [
-			"boundary-artcc-line",
-			"boundary-artcc-fill",
-			"boundary-cta-line",
-			"boundary-cta-fill",
-			"boundary-special-rules-line",
+			"boundary-artcc-hit",
+			"boundary-cta-hit",
+			"boundary-special-rules-hit",
 			"boundary-special-rules-fill",
 			"airspaces-class-b",
 			"airspaces-class-b-fill",
@@ -258,9 +256,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			"airspaces-sua-fill",
 			"airspaces-trsa",
 			"airspaces-trsa-fill",
-			"airspaces-mode-c",
+			"airspaces-mode-c-hit",
 			"airspaces-class-e-fill",
-			"parachute-areas",
 			"parachute-areas-fill",
 			"airways-low-line",
 			"airways-high-line",
@@ -811,12 +808,47 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				layout={{ visibility: "none" }}
 			/>
 			<Layer
+				id="anchor-boundary-cta"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-boundary-special"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
 				id="anchor-diagrams"
 				type="background"
 				layout={{ visibility: "none" }}
 			/>
 			<Layer
 				id="anchor-airspaces"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-airspace-mode-c"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-airspace-pja"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-airspace-trsa"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-airspace-sua"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-airspace-controlled"
 				type="background"
 				layout={{ visibility: "none" }}
 			/>
@@ -1016,11 +1048,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 							{aeronauticalLayers.artccFirs && (
 								<>
 									<Layer
-										id="boundary-artcc-fill"
-										type="fill"
+										id="boundary-artcc-hit"
+										type="line"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-boundary-cta"
 										filter={[
 											"all",
 											["!=", ["get", "local_type"], "ARTCC_H"],
@@ -1040,14 +1072,14 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 												],
 											],
 										]}
-										paint={{ "fill-opacity": 0 }}
+										paint={{ "line-width": 8, "line-opacity": 0 }}
 									/>
 									<Layer
 										id="boundary-artcc-line"
 										type="line"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-boundary-cta"
 										filter={[
 											"all",
 											["!=", ["get", "local_type"], "ARTCC_H"],
@@ -1079,7 +1111,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-boundary-cta"
 										minzoom={4}
 										filter={[
 											"all",
@@ -1116,11 +1148,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 							{aeronauticalLayers.ctaAcc && (
 								<>
 									<Layer
-										id="boundary-cta-fill"
-										type="fill"
+										id="boundary-cta-hit"
+										type="line"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-boundary-special"
 										filter={[
 											"all",
 											[
@@ -1130,14 +1162,14 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											],
 											["!=", ["get", "local_type"], "ARTCC"],
 										]}
-										paint={{ "fill-opacity": 0 }}
+										paint={{ "line-width": 8, "line-opacity": 0 }}
 									/>
 									<Layer
 										id="boundary-cta-line"
 										type="line"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-boundary-special"
 										filter={[
 											"all",
 											[
@@ -1161,7 +1193,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-boundary-special"
 										minzoom={4}
 										filter={[
 											"all",
@@ -1188,6 +1220,15 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 							{aeronauticalLayers.specialRules && (
 								<>
 									<Layer
+										id="boundary-special-rules-hit"
+										type="line"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										filter={["==", ["get", "type"], "ADIZ"]}
+										paint={{ "line-width": 8, "line-opacity": 0 }}
+									/>
+									<Layer
 										id="boundary-special-rules-fill"
 										type="fill"
 										source="src-boundary"
@@ -1196,9 +1237,43 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										filter={[
 											"in",
 											["get", "type"],
-											["literal", ["SATA", "ADIZ", "NSA", "DEF"]],
+											["literal", ["SATA", "NSA", "DEF"]],
 										]}
 										paint={{ "fill-opacity": 0 }}
+									/>
+									<Layer
+										id="boundary-special-rules-band"
+										type="line"
+										source="src-boundary"
+										source-layer="boundary_airspace"
+										beforeId="anchor-diagrams"
+										filter={[
+											"in",
+											["get", "type"],
+											["literal", ["SATA", "ADIZ", "NSA", "DEF"]],
+										]}
+										paint={{
+											"line-color": getAirspaceColor("SPECIAL_RULES"),
+											"line-width": [
+												"interpolate",
+												["linear"],
+												["zoom"],
+												4,
+												4,
+												10,
+												8,
+											] as unknown as maplibregl.ExpressionSpecification,
+											"line-opacity": 0.18,
+											"line-offset": [
+												"interpolate",
+												["linear"],
+												["zoom"],
+												4,
+												2,
+												10,
+												4,
+											] as unknown as maplibregl.ExpressionSpecification,
+										}}
 									/>
 									<Layer
 										id="boundary-special-rules-line"
@@ -1480,7 +1555,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										paint={{ "fill-opacity": 0 }}
 									/>
 									<Layer
-										id="airspaces-class-b-label"
+										id="airspaces-class-d-label"
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
@@ -1489,11 +1564,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
-											["==", ["get", "airspace_class"], "B"],
+											["==", ["get", "airspace_class"], "D"],
 										]}
 										layout={airspaceLabelLayout}
 										paint={{
-											"text-color": getAirspaceTextColor("B", false, isDarkMap),
+											"text-color": getAirspaceTextColor("D", false, isDarkMap),
 											"text-halo-color": haloColor,
 											"text-halo-width": 1.5,
 										}}
@@ -1518,7 +1593,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										}}
 									/>
 									<Layer
-										id="airspaces-class-d-label"
+										id="airspaces-class-b-label"
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
@@ -1527,11 +1602,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
-											["==", ["get", "airspace_class"], "D"],
+											["==", ["get", "airspace_class"], "B"],
 										]}
 										layout={airspaceLabelLayout}
 										paint={{
-											"text-color": getAirspaceTextColor("D", false, isDarkMap),
+											"text-color": getAirspaceTextColor("B", false, isDarkMap),
 											"text-halo-color": haloColor,
 											"text-halo-width": 1.5,
 										}}
@@ -1545,7 +1620,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-controlled"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1561,7 +1636,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-controlled"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1595,7 +1670,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-controlled"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1608,7 +1683,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-controlled"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1635,7 +1710,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-sua"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1651,7 +1726,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-sua"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1685,7 +1760,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-sua"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1698,7 +1773,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-sua"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1726,7 +1801,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-enroute"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-mode-c"
 										filter={[
 											"all",
 											["==", ["get", "type"], "E"],
@@ -1744,6 +1819,15 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 												10,
 												12,
 											] as unknown as maplibregl.ExpressionSpecification,
+											"line-offset": [
+												"interpolate",
+												["linear"],
+												["zoom"],
+												2,
+												0.5,
+												10,
+												6,
+											] as unknown as maplibregl.ExpressionSpecification,
 											"line-opacity": 0.1,
 										}}
 									/>
@@ -1753,7 +1837,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-enroute"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-mode-c"
 										filter={[
 											"all",
 											["==", ["get", "type"], "E"],
@@ -1775,7 +1859,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-enroute"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-mode-c"
 										filter={["==", ["get", "type"], "E"]}
 										paint={{ "fill-opacity": 0 }}
 									/>
@@ -1784,7 +1868,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-enroute"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-mode-c"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1808,17 +1892,25 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 							{aeronauticalLayers.modeC && (
 								<>
 									<Layer
+										id="airspaces-mode-c-hit"
+										type="line"
+										source="src-airspaces"
+										source-layer="airspaces"
+										beforeId="anchor-airspace-pja"
+										filter={["==", ["get", "airspace_class"], "MODE_C"]}
+										paint={{ "line-width": 8, "line-opacity": 0 }}
+									/>
+									<Layer
 										id="airspaces-mode-c"
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-pja"
 										filter={["==", ["get", "airspace_class"], "MODE_C"]}
 										paint={{
 											"line-color": getAirspaceColor("MODE_C"),
 											"line-width": 1.2,
-											"line-dasharray": [6, 3],
-											"line-opacity": 0.7,
+											"line-opacity": 0.8,
 										}}
 									/>
 									<Layer
@@ -1826,7 +1918,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-pja"
 										minzoom={8}
 										filter={["==", ["get", "airspace_class"], "MODE_C"]}
 										layout={airspaceLabelLayout}
@@ -1850,10 +1942,36 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-waypoints-obstacles"
 										source-layer="parachute_areas"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-trsa"
+										paint={{ "fill-opacity": 0 }}
+									/>
+									<Layer
+										id="parachute-areas-band"
+										type="line"
+										source="src-waypoints-obstacles"
+										source-layer="parachute_areas"
+										beforeId="anchor-airspace-trsa"
 										paint={{
-											"fill-color": getAirspaceColor("PARACHUTE"),
-											"fill-opacity": isDarkMap ? 0.12 : 0.08,
+											"line-color": getAirspaceColor("PARACHUTE"),
+											"line-width": [
+												"interpolate",
+												["linear"],
+												["zoom"],
+												6,
+												3,
+												11,
+												6,
+											] as unknown as maplibregl.ExpressionSpecification,
+											"line-opacity": 0.2,
+											"line-offset": [
+												"interpolate",
+												["linear"],
+												["zoom"],
+												6,
+												1.5,
+												11,
+												3,
+											] as unknown as maplibregl.ExpressionSpecification,
 										}}
 									/>
 									<Layer
@@ -1861,10 +1979,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-waypoints-obstacles"
 										source-layer="parachute_areas"
-										beforeId="anchor-airways"
+										beforeId="anchor-airspace-trsa"
 										paint={{
 											"line-color": getAirspaceColor("PARACHUTE"),
-											"line-width": 1.5,
+											"line-width": 1.3,
 											"line-dasharray": [4, 3],
 										}}
 									/>
@@ -1873,26 +1991,75 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-waypoints-obstacles"
 										source-layer="parachute_areas"
-										beforeId="anchor-airways"
-										minzoom={8}
+										beforeId="anchor-airspace-trsa"
+										minzoom={9}
 										layout={{
 											"text-field": [
-												"case",
-												["!=", ["coalesce", ["get", "name"], ""], ""],
-												["get", "name"],
-												["!=", ["coalesce", ["get", "ident"], ""], ""],
-												["get", "ident"],
-												"PARACHUTE",
+												"concat",
+												"PJA ",
+												[
+													"case",
+													["!=", ["coalesce", ["get", "name"], ""], ""],
+													["get", "name"],
+													["!=", ["coalesce", ["get", "ident"], ""], ""],
+													["get", "ident"],
+													"",
+												],
+												[
+													"let",
+													"alt",
+													["to-string", ["coalesce", ["get", "max_alt"], ""]],
+													[
+														"case",
+														["==", ["var", "alt"], ""],
+														"",
+														[
+															"all",
+															[">", ["length", ["var", "alt"]], 4],
+															[
+																"==",
+																[
+																	"slice",
+																	["var", "alt"],
+																	["-", ["length", ["var", "alt"]], 4],
+																],
+																" MSL",
+															],
+														],
+														[
+															"concat",
+															"/",
+															[
+																"slice",
+																["var", "alt"],
+																0,
+																["-", ["length", ["var", "alt"]], 4],
+															],
+														],
+														["concat", "/", ["var", "alt"]],
+													],
+												],
 											] as unknown as maplibregl.ExpressionSpecification,
 											"text-font": [
 												"Open Sans Bold",
 												"Arial Unicode MS Regular",
 											],
-											"text-size": 11,
-											"symbol-placement": "point",
+											"text-size": [
+												"interpolate",
+												["linear"],
+												["zoom"],
+												9,
+												9,
+												12,
+												11,
+											] as unknown as maplibregl.ExpressionSpecification,
+											"symbol-placement": "line",
+											"text-keep-upright": true,
+											"text-max-angle": 55,
 											"text-allow-overlap": false,
 											"text-ignore-placement": false,
-											"text-padding": 2,
+											"symbol-spacing": 180,
+											"text-offset": [0, 1],
 										}}
 										paint={{
 											"text-color": getAirspaceTextColor(

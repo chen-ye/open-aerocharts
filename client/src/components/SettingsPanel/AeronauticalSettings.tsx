@@ -59,11 +59,11 @@ const IconBadge = ({ icon, color }: { icon: string; color: string }) => (
 const CircleSwatch = ({
 	color,
 	dashArray,
-	fillOpacity = 0,
+	innerBand = false,
 }: {
 	color: string;
 	dashArray?: string;
-	fillOpacity?: number;
+	innerBand?: boolean;
 }) => (
 	<svg
 		width="14"
@@ -72,14 +72,24 @@ const CircleSwatch = ({
 		aria-hidden="true"
 		style={{ display: "block", flexShrink: 0 }}
 	>
+		{innerBand && (
+			<circle
+				cx="7"
+				cy="7"
+				r="4.2"
+				fill="none"
+				stroke={color}
+				strokeOpacity={0.3}
+				strokeWidth="2.2"
+			/>
+		)}
 		<circle
 			cx="7"
 			cy="7"
 			r="5.5"
-			fill={fillOpacity > 0 ? color : "none"}
-			fillOpacity={fillOpacity > 0 ? fillOpacity : undefined}
+			fill="none"
 			stroke={color}
-			strokeWidth="1.6"
+			strokeWidth="1.5"
 			strokeDasharray={dashArray}
 		/>
 	</svg>
@@ -89,10 +99,12 @@ const LineSwatch = ({
 	color,
 	dashArray,
 	strokeWidth = 2,
+	innerBand = false,
 }: {
 	color: string;
 	dashArray?: string;
 	strokeWidth?: number;
+	innerBand?: boolean;
 }) => (
 	<svg
 		width="22"
@@ -101,11 +113,22 @@ const LineSwatch = ({
 		aria-hidden="true"
 		style={{ display: "block", flexShrink: 0 }}
 	>
+		{innerBand && (
+			<line
+				x1="1"
+				y1="9.2"
+				x2="21"
+				y2="9.2"
+				stroke={color}
+				strokeOpacity={0.28}
+				strokeWidth={3.2}
+			/>
+		)}
 		<line
 			x1="1"
-			y1="7"
+			y1={innerBand ? "6.2" : "7"}
 			x2="21"
-			y2="7"
+			y2={innerBand ? "6.2" : "7"}
 			stroke={color}
 			strokeWidth={strokeWidth}
 			strokeDasharray={dashArray}
@@ -328,7 +351,7 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 								legend={
 									<CircleSwatch
 										color="var(--airspace-parachute-color)"
-										fillOpacity={0.28}
+										innerBand={true}
 										dashArray="2.5 2"
 									/>
 								}
@@ -338,12 +361,7 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 							/>
 							<ToggleRow
 								label="Mode C"
-								legend={
-									<CircleSwatch
-										color="var(--airspace-mode-c-color)"
-										dashArray="3.5 2"
-									/>
-								}
+								legend={<CircleSwatch color="var(--airspace-mode-c-color)" />}
 								checked={layers.modeC}
 								disabled={!layers.showAirspaceMaster}
 								onChange={(c: boolean) => updateLayer("modeC", c)}
@@ -491,7 +509,8 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 									<LineSwatch
 										color="var(--airspace-special-rules-color)"
 										dashArray="6.5 2.5 2 2.5 6.5"
-										strokeWidth={2.2}
+										strokeWidth={2}
+										innerBand={true}
 									/>
 								}
 								checked={layers.specialRules}
