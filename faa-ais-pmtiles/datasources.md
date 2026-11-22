@@ -7,19 +7,31 @@ pipeline.
 
 ### From CIFP (ARINC 424)
 
-| Layer                      | Status         | Output                    |
-| -------------------------- | -------------- | ------------------------- |
-| **Airports**               | ✅ Implemented | `data/airports.geojson`*  |
-| **Navaids (VHF/NDB)**      | ✅ Implemented | `data/navaids.fgb`        |
-| **Procedures (SID/STAR)**  | ✅ Implemented | `data/procedures.fgb`     |
-| **Airways**                | ✅ Implemented | `data/airways.fgb`        |
-| **Runways**                | CIFP + ADDS    | ✅ Implemented | `data/runways.fgb`        |
-| **Localizers**             | ✅ Implemented | `data/localizers.fgb`     |
-| **Waypoints**              | ✅ Implemented | `data/waypoints.fgb`      |
+| Layer                     | Status         | Output                    |
+| ------------------------- | -------------- | ------------------------- |
+| **Airports & Heliports**  | ✅ Implemented | `data/airports.geojson`*  |
+| **Navaids (VHF/NDB)**     | ✅ Implemented | `data/navaids.fgb`        |
+| **Procedures (SID/STAR)** | ✅ Implemented | `data/procedures.fgb`     |
+| **Airways**               | ✅ Implemented | `data/airways.fgb`        |
+| **Runways**               | ✅ Implemented | `data/runways.fgb`        |
+| **Localizers**            | ✅ Implemented | `data/localizers.fgb`     |
+| **Waypoints**             | ✅ Implemented | `data/waypoints.fgb`      |
 
-\*_Airports use GeoJSON to allow Tippecanoe to respect explicit `minzoom` and rank-based feature preservation._
+\*_Merged with operational NASR facilities (`APT_BASE.csv` + `APT_RWY.csv`) and written as GeoJSON so Tippecanoe respects explicit `minzoom` and rank-based feature preservation. Runways merge CIFP + ADDS._
 
 CIFP download: https://aeronav.faa.gov/Upload_313-d/cifp/
+
+---
+
+### From NASR 28-Day Subscription (CSV)
+
+| Layer                           | Source Files                | Status         | Output                                                       |
+| ------------------------------- | --------------------------- | -------------- | ------------------------------------------------------------ |
+| **Airport & Heliport Facilities** | `APT_BASE.csv`, `APT_RWY.csv` | ✅ Implemented | `data/nasr_facilities.json`, `data/nasr_metadata.json`       |
+| **Parachute Jump Areas (PJA)**  | `PJA_BASE.csv`              | ✅ Implemented | `data/pja_raw.geojson` → `data/parachute_areas.fgb`          |
+
+Download:
+`https://nfdc.faa.gov/webContent/28DaySub/{cycle-date}/28DaySubscription_CSV.zip` (fallback `extra/{dd_Mon_YYYY}_CSV.zip`)
 
 ---
 

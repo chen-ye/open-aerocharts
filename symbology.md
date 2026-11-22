@@ -5,24 +5,16 @@
 These are the core point markers for landing facilities.
 
 | Asset Name | Visual Description | Notes |
-
 | :--- | :--- | :--- |
-
-| apt-civil-unpaved | Open circle | |
-
-| apt-civil-paved-small | Filled circle, with runway geometry in worldspace on top | Runways 1500'-8069'. Runways rendered as worldpsace polylines in MapLibre |
-
-| apt-military | Double concentric circle | |
-
-| apt-private | Open circle with an "R" inside | |
-
-| apt-heliport | Open circle with an "H" inside | |
-
-| apt-seaplane | Anchor symbol | Enclosed in a circle with fuel ticks if fuel is available, otherwise bare |
-
-| apt-seaplane-paved | Anchor symbol with a runway line | |
-
-| apt-ultralight | Open circle with a "F" inside | |
+| `apt-civil-unpaved` | Open circle | Public unpaved civil airports (`civil_soft`) |
+| `apt-ifr-civil` | Open circle with 12, 3, 6, and 9 o'clock ticks | Public paved civil airports (`civil_hard`); world-space runway polygons render underneath at high zoom |
+| `apt-ifr-military` | Double concentric circle with central dot | Military airports (`military`); `apt-ifr-military-civil` variant also available |
+| `apt-private` | Open circle with an "R" inside | Private-use airports (`private`) |
+| `apt-helipad` | Open circle with an "H" inside | Public, private, and military heliports/vertiports (`heliport`) |
+| `apt-seaplane` | Anchor symbol inside ticked circle | Public and private seaplane bases (`seaplane`, `seaplane_private`) |
+| `apt-ultralight` | Open circle with an "F" inside | Ultralight flightparks (`ultralight`) |
+| `apt-gliderport` | Open circle with a "G" inside | Gliderports (`gliderport`) |
+| `apt-balloonport` | Open circle with a "B" inside | Balloonports (`balloonport`) |
 
 ### Overlays + Variants
 

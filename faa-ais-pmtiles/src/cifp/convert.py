@@ -24,15 +24,256 @@ def load_nasr_metadata():
     return nasr.load_nasr_metadata()
 
 
+def load_nasr_facilities():
+    return nasr.load_nasr_facilities()
+
+
+RANK_MINZOOM = {1: 0, 2: 3, 3: 4, 4: 5, 5: 7}
+
+
+def compute_airport_rank(
+    ident: str,
+    facility_type: str,
+    facility_use: str,
+    longest_runway: int,
+    has_tower: bool,
+    far_139: str,
+    is_ifr: bool,
+    is_military: bool,
+) -> int:
+    """Compute airport/heliport declutter rank (1=major hub .. 5=minor/private/medical)."""
+    if any(idx in far_139 for idx in ("D", "E")) or (facility_type == "military" and longest_runway >= 10000):
+        return 1
+    if (
+        any(idx in far_139 for idx in ("A", "B", "C"))
+        or has_tower
+        or (facility_type in {"civil_hard", "civil_soft", "military"} and longest_runway >= 7500)
+    ):
+        return 2
+    if (
+        facility_type in {"civil_hard", "civil_soft", "seaplane", "military"}
+        and ((ident.startswith("K") and len(ident) == 4) or longest_runway >= 4000)
+    ) or (facility_type == "heliport" and (facility_use == "PU" or is_ifr or is_military)):
+        return 3
+    if (
+        facility_type in {"civil_hard", "civil_soft", "seaplane", "military"}
+        or (facility_type in {"ultralight", "gliderport", "balloonport"} and facility_use == "PU")
+        or (facility_type in {"private", "seaplane_private"} and (longest_runway >= 3000 or is_ifr))
+    ):
+        return 4
+    return 5
+
+
+def build_airport_features(
+    cifp_airports: list,
+    cifp_heliports: list,
+    nasr_facilities: list[dict],
+    airport_metadata: dict[str, dict],
+) -> tuple[dict[str, geojson.Feature], dict[str, tuple[float, float, float]]]:
+    """Merge NASR facilities and CIFP airport/heliport records into GeoJSON features and fix coords."""
+    cifp_airport_records: dict[str, dict] = {}
+    for a in cifp_airports:
+        if not a.has_primary():
+            continue
+        p = a.to_dict()["primary"]
+        lat, lon = p.get("lat"), p.get("lon")
+        ident = (p.get("airport_id") or "").strip()
+        if not ident or lat is None or lon is None:
+            continue
+        existing = cifp_airport_records.get(ident)
+        if existing is None:
+            cifp_airport_records[ident] = {
+                "id": ident,
+                "name": p.get("airport_name"),
+                "lat": float(lat),
+                "lon": float(lon),
+                "elevation": float(p.get("elevation") or 0.0),
+                "surface": p.get("longest_surface"),
+                "usage": p.get("usage"),
+                "longest_runway": int(p.get("longest") or 0),
+                "is_ifr": bool(p.get("is_ifr")),
+            }
+        else:
+            existing["is_ifr"] = existing["is_ifr"] or bool(p.get("is_ifr"))
+
+    cifp_heliport_records: dict[str, dict] = {}
+    for h in cifp_heliports:
+        if not h.has_primary():
+            continue
+        p = h.to_dict()["primary"]
+        lat, lon = p.get("lat"), p.get("lon")
+        ident = (p.get("heliport_id") or "").strip()
+        if not ident or lat is None or lon is None:
+            continue
+        existing = cifp_heliport_records.get(ident)
+        if existing is None:
+            cifp_heliport_records[ident] = {
+                "id": ident,
+                "name": p.get("heliport_name"),
+                "lat": float(lat),
+                "lon": float(lon),
+                "elevation": float(p.get("elevation") or 0.0),
+                "usage": p.get("usage"),
+                "is_ifr": bool(p.get("is_ifr")),
+            }
+        else:
+            existing["is_ifr"] = existing["is_ifr"] or bool(p.get("is_ifr"))
+
+    airport_features_dict: dict[str, geojson.Feature] = {}
+    fixes: dict[str, tuple[float, float, float]] = {}
+    seen_nasr_ids: set[str] = set()
+
+    def _add_feature(
+        ident: str,
+        name: str | None,
+        lat: float,
+        lon: float,
+        elev: float,
+        fac_type: str,
+        surface: str,
+        facility_use: str,
+        is_military: bool,
+        is_ifr: bool,
+        longest_runway: int,
+        has_fuel: bool,
+        has_tower: bool,
+        far_139: str,
+    ) -> None:
+        rank = compute_airport_rank(
+            ident=ident,
+            facility_type=fac_type,
+            facility_use=facility_use,
+            longest_runway=longest_runway,
+            has_tower=has_tower,
+            far_139=far_139,
+            is_ifr=is_ifr,
+            is_military=is_military,
+        )
+        properties = {
+            "id": ident,
+            "name": name,
+            "type": "airport",
+            "facility_type": fac_type,
+            "surface": surface,
+            "is_military": is_military,
+            "is_ifr": is_ifr,
+            "longest_runway": longest_runway,
+            "has_fuel": has_fuel,
+            "rank": rank,
+        }
+        feat = geojson.Feature(
+            geometry=geojson.Point((lon, lat, elev)),
+            properties=properties,
+            tippecanoe={"minzoom": RANK_MINZOOM[rank]},
+        )
+        airport_features_dict[ident] = feat
+        fixes[ident] = (lon, lat, elev)
+
+    for fac in nasr_facilities:
+        ident = (fac.get("id") or "").strip()
+        lat, lon = fac.get("lat"), fac.get("lon")
+        if not ident or lat is None or lon is None:
+            continue
+        seen_nasr_ids.add(ident)
+        for alias_key in ("arpt_id", "icao_id"):
+            alias = (fac.get(alias_key) or "").strip()
+            if alias:
+                seen_nasr_ids.add(alias)
+        elev = float(fac.get("elevation") or 0.0)
+        is_ifr = bool((cifp_airport_records.get(ident) or {}).get("is_ifr") or (cifp_heliport_records.get(ident) or {}).get("is_ifr"))
+        _add_feature(
+            ident=ident,
+            name=fac.get("name"),
+            lat=float(lat),
+            lon=float(lon),
+            elev=elev,
+            fac_type=fac.get("facility_type") or "civil_soft",
+            surface=fac.get("surface") or "S",
+            facility_use=(fac.get("facility_use") or "").strip().upper(),
+            is_military=bool(fac.get("is_military")),
+            is_ifr=is_ifr,
+            longest_runway=int(fac.get("longest_runway") or 0),
+            has_fuel=bool(fac.get("has_fuel")),
+            has_tower=bool(fac.get("has_tower")),
+            far_139=str(fac.get("far_139") or ""),
+        )
+
+    for ident, rec in cifp_airport_records.items():
+        if ident in airport_features_dict or ident in seen_nasr_ids:
+            continue
+        meta = airport_metadata.get(ident)
+        if not meta and ident.startswith("K") and len(ident) == 4:
+            meta = airport_metadata.get(ident[1:])
+        meta = meta or {}
+
+        surface = rec.get("surface") or "S"
+        usage = rec.get("usage")
+        if surface == "W":
+            fac_type = "seaplane_private" if usage == "P" else "seaplane"
+        elif usage == "M":
+            fac_type = "military"
+        elif usage == "P":
+            fac_type = "private"
+        else:
+            fac_type = "civil_hard" if surface == "H" else "civil_soft"
+
+        _add_feature(
+            ident=ident,
+            name=rec.get("name"),
+            lat=rec["lat"],
+            lon=rec["lon"],
+            elev=rec["elevation"],
+            fac_type=fac_type,
+            surface=surface,
+            facility_use="PR" if usage == "P" else "PU",
+            is_military=usage == "M",
+            is_ifr=rec["is_ifr"],
+            longest_runway=rec["longest_runway"],
+            has_fuel=bool(meta.get("has_fuel", False)),
+            has_tower=bool(meta.get("has_tower", False)),
+            far_139=str(meta.get("far_139", "")),
+        )
+
+    for ident, rec in cifp_heliport_records.items():
+        if ident in airport_features_dict or ident in seen_nasr_ids:
+            continue
+        meta = airport_metadata.get(ident)
+        if not meta and ident.startswith("K") and len(ident) == 4:
+            meta = airport_metadata.get(ident[1:])
+        meta = meta or {}
+
+        usage = rec.get("usage")
+        _add_feature(
+            ident=ident,
+            name=rec.get("name"),
+            lat=rec["lat"],
+            lon=rec["lon"],
+            elev=rec["elevation"],
+            fac_type="heliport",
+            surface="S",
+            facility_use="PR" if usage == "P" else "PU",
+            is_military=usage == "M",
+            is_ifr=rec["is_ifr"],
+            longest_runway=0,
+            has_fuel=bool(meta.get("has_fuel", False)),
+            has_tower=bool(meta.get("has_tower", False)),
+            far_139=str(meta.get("far_139", "")),
+        )
+
+    return airport_features_dict, fixes
+
+
 def build_pmtiles_fgb(cifp_path):
     print("Fetching NASR airport metadata...", flush=True)
     airport_metadata = load_nasr_metadata()
+    nasr_facilities = load_nasr_facilities()
 
     print("Loading CIFP...", flush=True)
     c = CIFP(cifp_path)
 
     print("Parsing everything needed...", flush=True)
     c.parse_airports()
+    c.parse_heliports()
     c.parse_vhf_navaids()
     c.parse_ndb_navaids()
     c.parse_enroute_waypoints()
@@ -44,91 +285,13 @@ def build_pmtiles_fgb(cifp_path):
     c.parse_loc_gss()
 
     print("Building lookup dictionaries...", flush=True)
-    fixes = {}
-
     print("Extracting Airports...", flush=True)
-    airport_features_dict = {}
-    for a in c.get_airports():
-        p = a.to_dict()["primary"]
-        lat, lon = p.get("lat"), p.get("lon")
-        if lat is not None and lon is not None:
-            ident = p.get("airport_id", "").strip()
-            if not ident:
-                continue
-
-            elev = float(p.get("elevation") or 0.0)
-
-            surface = p.get("longest_surface")
-            usage = p.get("usage")
-
-            if surface == "W":
-                fac_type = "seaplane"
-            elif usage == "M":
-                fac_type = "military"
-            elif usage == "P":
-                fac_type = "private"
-            else:
-                fac_type = "civil_hard" if surface == "H" else "civil_soft"
-
-            ident = p.get("airport_id", "").strip()
-            # Try direct lookup (now robust with ICAO_ID indexing)
-            meta = airport_metadata.get(ident)
-
-            # Fallback for continental US if ICAO_ID was missing from NASR but present in CIFP
-            if not meta and ident.startswith("K") and len(ident) == 4:
-                meta = airport_metadata.get(ident[1:])
-
-            meta = meta or {}
-            has_fuel = meta.get("has_fuel", False)
-            has_tower = meta.get("has_tower", False)
-            far_139 = meta.get("far_139", "")
-            longest_runway = int(p.get("longest") or 0)
-
-            # Determine facility rank for decluttering (lower is more important)
-            # Tier 1: Major Hubs (FAR 139 Index D/E)
-            # Tier 2: Regional/Commercial (FAR 139 B/C OR Towered OR > 7500ft)
-            # Tier 3: General Aviation (Starts with K OR > 4000ft)
-            # Tier 4: Minor / Private / Others
-
-            # FAR 139 Index D or E are major commercial hubs
-            is_major_hub = any(idx in far_139 for idx in ["D", "E"])
-            # FAR 139 Index A, B, or C are standard commercial
-            is_commercial = any(idx in far_139 for idx in ["A", "B", "C"])
-
-            if is_major_hub:
-                rank = 1
-            elif is_commercial or has_tower or longest_runway >= 7500:
-                rank = 2
-            elif ident.startswith("K") and len(ident) == 4 or longest_runway >= 4000:
-                rank = 3
-            else:
-                rank = 4
-
-            # Ensure military bases with huge runways remain Rank 1 even if not FAR 139
-            if usage == "M" and longest_runway >= 10000:
-                rank = 1
-
-            properties = {
-                "id": ident,
-                "name": p.get("airport_name"),
-                "type": "airport",
-                "facility_type": fac_type,
-                "surface": surface,
-                "is_military": usage == "M",
-                "is_ifr": bool(p.get("is_ifr")),
-                "longest_runway": longest_runway,
-                "has_fuel": has_fuel,
-                "rank": rank,
-            }
-
-            feat = geojson.Feature(
-                geometry=geojson.Point((lon, lat, elev)),
-                properties=properties,
-                tippecanoe={"minzoom": 0 if rank == 1 else (rank + 1)},  # Root-level control
-            )
-
-            airport_features_dict[ident] = feat
-            fixes[ident] = (lon, lat, elev)
+    airport_features_dict, fixes = build_airport_features(
+        cifp_airports=c.get_airports(),
+        cifp_heliports=c.get_heliports(),
+        nasr_facilities=nasr_facilities,
+        airport_metadata=airport_metadata,
+    )
 
     with open("data/airports.geojson", "w") as f:
         geojson.dump(geojson.FeatureCollection(list(airport_features_dict.values())), f)
