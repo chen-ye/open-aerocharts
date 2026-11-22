@@ -31,6 +31,13 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 	const { showAirspaceMaster, controlledAirspace, suaMoa, trsa } = layers;
 	const { current: mapRef } = useMap();
 	const overlayElRef = useRef<HTMLElement | null>(null);
+	const latestLayersRef = useRef<
+		(
+			| AirspaceWallLayer
+			| PolygonLayer<AirspaceCap3d>
+			| PathLayer<AirspaceEdge3d>
+		)[]
+	>([]);
 	const [data3d, setData3d] = useState<ParsedAirspaces3d | null>(null);
 
 	const overlay = useControl<MapLibreOverlay>(() => {
@@ -107,74 +114,103 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 
 	useEffect(() => {
 		if (!data3d) {
+			latestLayersRef.current = [];
 			overlay.setProps({ layers: [] });
 			return;
 		}
 
 		const isRendered = visible && visibleMask !== 0;
+		const nextLayers = [
+			new AirspaceWallLayer({
+				id: "airspace-3d-walls",
+				data: data3d.walls,
+				visible: isRendered,
+				visibleMask,
+				terrainScale: showTerrain ? 1 : 0,
+				palette,
+				parameters: {
+					cullMode: "none",
+					depthWriteEnabled: false,
+					depthCompare: "less-equal",
+				},
+			}),
+			new PolygonLayer<AirspaceCap3d>({
+				id: "airspace-3d-caps",
+				data: visibleCaps,
+				visible: isRendered,
+				getPolygon: (c) => (showTerrain ? c.polygonTerrain : c.polygonFlat),
+				getFillColor: (c) =>
+					[
+						...(pickAirspaceMaskColorRgb(c.mask, visibleMask) ?? [
+							150, 150, 150,
+						]),
+						AIRSPACE_FILL_ALPHA,
+					] as [number, number, number, number],
+				updateTriggers: {
+					getPolygon: [showTerrain],
+					getFillColor: [visibleMask],
+				},
+				extruded: false,
+				filled: true,
+				stroked: false,
+				parameters: {
+					cullMode: "none",
+					depthWriteEnabled: false,
+					depthCompare: "less-equal",
+				},
+			}),
+			new PathLayer<AirspaceEdge3d>({
+				id: "airspace-3d-edges",
+				data: visibleEdges,
+				visible: isRendered,
+				getPath: (e) => (showTerrain ? e.pathTerrain : e.pathFlat),
+				getColor: (e) =>
+					pickAirspaceMaskColorRgb(e.mask, visibleMask) ?? [150, 150, 150],
+				updateTriggers: {
+					getPath: [showTerrain],
+					getColor: [visibleMask],
+				},
+				widthMinPixels: 1,
+				opacity: 1.0,
+				parameters: {
+					depthWriteEnabled: false,
+					depthCompare: "less-equal",
+				},
+			}),
+		];
 
-		overlay.setProps({
-			layers: [
-				new AirspaceWallLayer({
-					id: "airspace-3d-walls",
-					data: data3d.walls,
-					visible: isRendered,
-					visibleMask,
-					terrainScale: showTerrain ? 1 : 0,
-					palette,
-					parameters: {
-						cullMode: "none",
-						depthWriteEnabled: false,
-						depthCompare: "less-equal",
-					},
-				}),
-				new PolygonLayer<AirspaceCap3d>({
-					id: "airspace-3d-caps",
-					data: visibleCaps,
-					visible: isRendered,
-					getPolygon: (c) => (showTerrain ? c.polygonTerrain : c.polygonFlat),
-					getFillColor: (c) =>
-						[
-							...(pickAirspaceMaskColorRgb(c.mask, visibleMask) ?? [
-								150, 150, 150,
-							]),
-							AIRSPACE_FILL_ALPHA,
-						] as [number, number, number, number],
-					updateTriggers: {
-						getPolygon: [showTerrain],
-						getFillColor: [visibleMask],
-					},
-					extruded: false,
-					filled: true,
-					stroked: false,
-					parameters: {
-						cullMode: "none",
-						depthWriteEnabled: false,
-						depthCompare: "less-equal",
-					},
-				}),
-				new PathLayer<AirspaceEdge3d>({
-					id: "airspace-3d-edges",
-					data: visibleEdges,
-					visible: isRendered,
-					getPath: (e) => (showTerrain ? e.pathTerrain : e.pathFlat),
-					getColor: (e) =>
-						pickAirspaceMaskColorRgb(e.mask, visibleMask) ?? [150, 150, 150],
-					updateTriggers: {
-						getPath: [showTerrain],
-						getColor: [visibleMask],
-					},
-					widthMinPixels: 1,
-					opacity: 1.0,
-					parameters: {
-						depthWriteEnabled: false,
-						depthCompare: "less-equal",
-					},
-				}),
-			],
-		});
+		latestLayersRef.current = nextLayers;
+		overlay.setProps({ layers: nextLayers });
 
-		mapRef?.getMap()?.triggerRepaint();
+		const rawMap = mapRef?.getMap();
+		rawMap?.triggerRepaint();
+
+		// @deck.gl/maplibre skips adding deck-maplibre-layer-group-last while tiles are
+		// in-flight (!map.isStyleLoaded()) and only retries on styledata, not tile completion.
+		// Falling back to afterMapLibreRender draws outside MapLibre's depthRangeFor3D!
+		if (rawMap && !rawMap.getLayer("deck-maplibre-layer-group-last")) {
+			const ensureGroupAttached = () => {
+				if (
+					rawMap.isStyleLoaded() &&
+					!rawMap.getLayer("deck-maplibre-layer-group-last") &&
+					latestLayersRef.current.length > 0
+				) {
+					overlay.setProps({ layers: [...latestLayersRef.current] });
+					rawMap.triggerRepaint();
+				}
+				if (rawMap.getLayer("deck-maplibre-layer-group-last")) {
+					rawMap.off("sourcedata", ensureGroupAttached);
+					rawMap.off("idle", ensureGroupAttached);
+				}
+			};
+			rawMap.on("sourcedata", ensureGroupAttached);
+			rawMap.on("idle", ensureGroupAttached);
+			return () => {
+				rawMap.off("sourcedata", ensureGroupAttached);
+				rawMap.off("idle", ensureGroupAttached);
+			};
+		}
+		return undefined;
 	}, [
 		overlay,
 		mapRef,
