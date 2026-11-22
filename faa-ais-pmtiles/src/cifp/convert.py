@@ -31,6 +31,71 @@ def load_nasr_facilities():
 RANK_MINZOOM = {1: 0, 2: 3, 3: 4, 4: 5, 5: 7}
 
 
+def classify_vhf_navaid(nav_class: str | None) -> tuple[str, int]:
+    """Derive `(navaid_type, rank)` from ARINC 424 5-character VHF NAVAID class."""
+    nc = (nav_class or "     ").ljust(5)
+    col0, col1, col2 = nc[0:1], nc[1:2], nc[2:3]
+
+    if col0 == "V":
+        if col1 in ("T", "M"):
+            nav_type = "vortac"
+        elif col1 == "D":
+            nav_type = "vordme"
+        else:
+            nav_type = "vor"
+    elif col1 in ("T", "M"):
+        nav_type = "tacan"
+    elif col1 in ("D", "I"):
+        nav_type = "dme"
+    else:
+        nav_type = "vhf"
+
+    if col1 == "I":
+        rank = 5
+    elif col2 == "H":
+        rank = 2
+    elif col2 == "L":
+        rank = 3
+    elif col2 == "T":
+        rank = 4
+    else:
+        rank = 5
+
+    return nav_type, rank
+
+
+def classify_waypoint(raw_type: str | None, raw_usage: str | None) -> tuple[str, int]:
+    """Derive `(waypoint_type, rank)` from ARINC 424 3-character waypoint type and usage."""
+    wt = (raw_type or "   ").ljust(3)
+    col0, col1 = wt[0:1], wt[1:2]
+
+    if col0 == "C":
+        wpt_type = "compulsory"
+    elif col0 == "W" or (col0 == " " and col1 == "W"):
+        wpt_type = "rnav"
+    elif col0 == "V":
+        wpt_type = "vfr"
+    else:
+        wpt_type = "named"
+
+    usage = (raw_usage or "").strip()
+
+    base_rank = 5
+    if wpt_type == "compulsory":
+        base_rank = 3
+    elif wpt_type in ("rnav", "vfr"):
+        base_rank = 4
+
+    if usage in ("H", "B"):
+        rank = base_rank
+    elif usage == "L":
+        rank = base_rank + 1
+    else:
+        rank = base_rank + 2
+
+    return wpt_type, min(rank, 6)
+
+
 def compute_airport_rank(
     ident: str,
     facility_type: str,
@@ -306,31 +371,7 @@ def build_pmtiles_fgb(cifp_path):
             elev = float(p.get("dme_elevation") or p.get("elevation") or 0.0)
             ident = (p.get("vhf_id") or p.get("dme_id") or "").strip()
 
-            nav_class = p.get("nav_class") or "     "
-            alt_class = nav_class[1:2] if len(nav_class) > 1 else " "
-            if alt_class == "H":
-                rank = 2
-            elif alt_class == "L":
-                rank = 3
-            elif alt_class == "T":
-                rank = 4
-            else:
-                rank = 5
-
-            # Parse NAVAID type from class (e.g., 'V' for VOR/VORTAC/VORDME, 'T' for TACAN, 'D' for DME)
-            nav_type = "vhf"
-            if nav_class.startswith("V"):
-                if "T" in nav_class:
-                    nav_type = "vortac"
-                elif "D" in nav_class:
-                    nav_type = "vordme"
-                else:
-                    nav_type = "vor"
-            elif nav_class.startswith("T") or nav_class.startswith("M"):
-                nav_type = "tacan"
-            elif nav_class.startswith("D"):
-                nav_type = "dme"
-            # (Note: ILS/Localizers are handled separately)
+            nav_type, rank = classify_vhf_navaid(p.get("nav_class"))
 
             navaid_features.append(
                 geojson.Feature(
@@ -376,32 +417,9 @@ def build_pmtiles_fgb(cifp_path):
             ident = (p.get("waypoint_id") or "").strip()
             fixes[ident] = (p.get("lon"), p.get("lat"), 0.0)
 
-            # Classify waypoint type from ARINC 424
-            raw_type = (p.get("type") or "").strip()
-            if raw_type == "C":
-                wpt_type = "compulsory"
-            elif raw_type == "R":
-                wpt_type = "rnav"
-            else:
-                wpt_type = "named"
-
-            # Usage: H = high altitude, L = low altitude, B = both, blank = terminal/other
+            # Classify waypoint type and rank from ARINC 424
             usage = (p.get("usage") or "").strip()
-
-            base_rank = 5
-            if wpt_type == "compulsory":
-                base_rank = 3
-            elif wpt_type == "rnav":
-                base_rank = 4
-
-            if usage in ("H", "B"):
-                rank = base_rank
-            elif usage == "L":
-                rank = base_rank + 1
-            else:
-                rank = base_rank + 2
-
-            rank = min(rank, 6)
+            wpt_type, rank = classify_waypoint(p.get("type"), usage)
 
             waypoint_features.append(
                 geojson.Feature(

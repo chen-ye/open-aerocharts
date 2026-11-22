@@ -137,6 +137,42 @@ def main():
             "layer": "airports",
             "matches": {"id": "0CL8", "facility_type": "ultralight"},
         },
+        {
+            "name": "Standalone DME CZF in airports_navaids at Z8",
+            "file": "airports_navaids.pmtiles",
+            "z": 8,
+            "x": 9,
+            "y": 71,
+            "layer": "navaids",
+            "matches": {"id": "CZF", "type": "dme"},
+        },
+        {
+            "name": "Standalone TACAN NUQ in airports_navaids at Z10",
+            "file": "airports_navaids.pmtiles",
+            "z": 10,
+            "x": 164,
+            "y": 397,
+            "layer": "navaids",
+            "matches": {"id": "NUQ", "type": "tacan"},
+        },
+        {
+            "name": "RNAV waypoint TECKY in waypoints_obstacles at Z10",
+            "file": "waypoints_obstacles.pmtiles",
+            "z": 10,
+            "x": 166,
+            "y": 398,
+            "layer": "waypoints",
+            "matches": {"id": "TECKY", "type": "rnav"},
+        },
+        {
+            "name": "VFR checkpoint VPBCK in waypoints_obstacles at Z10",
+            "file": "waypoints_obstacles.pmtiles",
+            "z": 10,
+            "x": 163,
+            "y": 395,
+            "layer": "waypoints",
+            "matches": {"id": "VPBCK", "type": "vfr"},
+        },
     ]
 
     failed = False

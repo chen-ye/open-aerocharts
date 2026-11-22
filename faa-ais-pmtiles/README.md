@@ -122,8 +122,8 @@ interface NavaidProperties {
   id: string; // e.g., "SJC"
   name: string; // e.g., "SAN JOSE"
   frequency: number; // e.g., 114.1
-  type: "vhf" | "ndb";
-  rank: 4 | 5;
+  type: "vor" | "vortac" | "vordme" | "tacan" | "dme" | "ndb" | "vhf";
+  rank: 2 | 3 | 4 | 5;
 }
 ```
 
@@ -222,7 +222,7 @@ Example:
 interface WaypointProperties {
   id: string; // e.g., "VINCO"
   name: string;
-  type: "named" | "rnav" | "compulsory";
+  type: "named" | "rnav" | "compulsory" | "vfr";
   usage: "L" | "H" | "B" | ""; // Low, High, Both, Terminal
   rank: 3 | 4 | 5 | 6;
 }

@@ -124,8 +124,8 @@ def build_search_index(
         lat, lon = p.get("lat"), p.get("lon")
         if ident and lat is not None and lon is not None:
             # Classify waypoint type
-            raw_type = (p.get("type") or "").strip()
-            if raw_type == "C":
+            raw_type = p.get("type") or ""
+            if raw_type[:1] == "C":
                 wpt_type = "compulsory"
             else:
                 wpt_type = "waypoint"

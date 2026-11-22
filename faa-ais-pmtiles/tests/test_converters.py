@@ -10,7 +10,13 @@ import geopandas as gpd
 import pyproj
 
 from src.adds.convert import convert_airspaces, convert_boundary_airspace, convert_mode_c, normalize_boundary_limit
-from src.cifp.convert import RANK_MINZOOM, build_airport_features, compute_airport_rank
+from src.cifp.convert import (
+    RANK_MINZOOM,
+    build_airport_features,
+    classify_vhf_navaid,
+    classify_waypoint,
+    compute_airport_rank,
+)
 from src.nasr import fetch as nasr_fetch
 from src.nasr.facilities import classify_nasr_facility, parse_nasr_facilities, parse_nasr_runways
 from src.nasr.pja import convert_pja, parse_pja_csv
@@ -775,6 +781,32 @@ class TestCifpNasrMergeAndSearchIndex(unittest.TestCase):
             self.assertEqual(fixes["SJC"]["type"], "navaid")
             self.assertEqual(fixes["MHM"]["type"], "navaid")
             self.assertNotIn("CLSD", fixes)
+
+    def test_classify_vhf_navaid_columns(self) -> None:
+        self.assertEqual(classify_vhf_navaid("VTHW "), ("vortac", 2))
+        self.assertEqual(classify_vhf_navaid("VTLA "), ("vortac", 3))
+        self.assertEqual(classify_vhf_navaid("VDHW "), ("vordme", 2))
+        self.assertEqual(classify_vhf_navaid("VDTW "), ("vordme", 4))
+        self.assertEqual(classify_vhf_navaid("V LW "), ("vor", 3))
+        self.assertEqual(classify_vhf_navaid("V TW "), ("vor", 4))
+        self.assertEqual(classify_vhf_navaid(" TLW "), ("tacan", 3))
+        self.assertEqual(classify_vhf_navaid(" MTW "), ("tacan", 4))
+        self.assertEqual(classify_vhf_navaid(" DHW "), ("dme", 2))
+        self.assertEqual(classify_vhf_navaid(" DLW "), ("dme", 3))
+        self.assertEqual(classify_vhf_navaid(" DUW "), ("dme", 5))
+        self.assertEqual(classify_vhf_navaid(" ITW "), ("dme", 5))
+
+    def test_classify_waypoint_arinc_types_and_ranks(self) -> None:
+        self.assertEqual(classify_waypoint("C  ", " L"), ("compulsory", 4))
+        self.assertEqual(classify_waypoint("C  ", " H"), ("compulsory", 3))
+        self.assertEqual(classify_waypoint("W  ", None), ("rnav", 6))
+        self.assertEqual(classify_waypoint("W  ", " H"), ("rnav", 4))
+        self.assertEqual(classify_waypoint(" W ", None), ("rnav", 6))
+        self.assertEqual(classify_waypoint("V  ", None), ("vfr", 6))
+        self.assertEqual(classify_waypoint(" V ", None), ("named", 6))
+        self.assertEqual(classify_waypoint("R  ", " L"), ("named", 6))
+        self.assertEqual(classify_waypoint("R  ", " B"), ("named", 5))
+        self.assertEqual(classify_waypoint("A  ", None), ("named", 6))
 
 
 if __name__ == "__main__":
