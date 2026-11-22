@@ -109,110 +109,151 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
 	const mapRef = React.useRef<Maplibre | null>(null);
 
-	const addAirwayBgIcon = useCallback((map: Maplibre, isDark: boolean) => {
-		const definitions = [
-			{ id: "airway-bg-gray", color: isDark ? grayDark.gray11 : gray.gray11 },
-			{ id: "airway-bg-blue", color: blueDark.blue8 },
-			{
-				id: "airway-bg-brown",
-				color: isDark ? brownDark.brown9 : brown.brown9,
-			},
-		];
+	const addAirwayBgIcon = useCallback(
+		(map: Maplibre, isDark: boolean, shouldApply?: () => boolean) => {
+			const definitions = [
+				{ id: "airway-bg-gray", color: isDark ? grayDark.gray11 : gray.gray11 },
+				{ id: "airway-bg-blue", color: blueDark.blue8 },
+				{
+					id: "airway-bg-brown",
+					color: isDark ? brownDark.brown9 : brown.brown9,
+				},
+			];
 
-		definitions.forEach((def) => {
-			const svgStr = `
+			definitions.forEach((def) => {
+				const svgStr = `
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="1" y="1" width="22" height="22" rx="4" fill="${def.color}"/>
         </svg>
       `;
-			const img = new Image(24, 24);
-			const blob = new Blob([svgStr], {
-				type: "image/svg+xml;charset=utf-8",
-			});
-			const url = URL.createObjectURL(blob);
-			img.onload = () => {
-				if (map.hasImage(def.id)) map.removeImage(def.id);
-				map.addImage(def.id, img, {
-					stretchX: [[8, 16]],
-					stretchY: [[8, 16]],
-					content: [4, 4, 20, 20],
-					pixelRatio: 1,
+				const img = new Image(24, 24);
+				const blob = new Blob([svgStr], {
+					type: "image/svg+xml;charset=utf-8",
 				});
-				URL.revokeObjectURL(url);
-			};
-			img.src = url;
-		});
-	}, []);
+				const url = URL.createObjectURL(blob);
+				img.onload = () => {
+					URL.revokeObjectURL(url);
+					if (shouldApply && !shouldApply()) return;
+					if (map.hasImage(def.id)) map.removeImage(def.id);
+					map.addImage(def.id, img, {
+						stretchX: [[8, 16]],
+						stretchY: [[8, 16]],
+						content: [4, 4, 20, 20],
+						pixelRatio: 1,
+					});
+				};
+				img.onerror = () => {
+					URL.revokeObjectURL(url);
+				};
+				img.src = url;
+			});
+		},
+		[],
+	);
 
-	const addVfrPatterns = useCallback((map: Maplibre, isDark: boolean) => {
-		const color = isDark ? purpleDark.purple9 : purple.purple9;
-		const svgStr = `
+	const addVfrPatterns = useCallback(
+		(map: Maplibre, isDark: boolean, shouldApply?: () => boolean) => {
+			const color = isDark ? purpleDark.purple9 : purple.purple9;
+			const svgStr = `
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M-2 2L2 -2M-2 18L18 -2M14 18L18 14" stroke="${color}" stroke-width="0.9" stroke-opacity="0.45"/>
         <circle cx="4" cy="4" r="1.1" fill="${color}" fill-opacity="0.8"/>
         <circle cx="12" cy="12" r="1.1" fill="${color}" fill-opacity="0.8"/>
       </svg>
     `;
-		const img = new Image(16, 16);
-		const blob = new Blob([svgStr], {
-			type: "image/svg+xml;charset=utf-8",
-		});
-		const url = URL.createObjectURL(blob);
-		img.onload = () => {
-			if (map.hasImage("pat-wind-farm")) map.removeImage("pat-wind-farm");
-			map.addImage("pat-wind-farm", img, { pixelRatio: 1 });
-			URL.revokeObjectURL(url);
-		};
-		img.src = url;
-	}, []);
+			const img = new Image(16, 16);
+			const blob = new Blob([svgStr], {
+				type: "image/svg+xml;charset=utf-8",
+			});
+			const url = URL.createObjectURL(blob);
+			img.onload = () => {
+				URL.revokeObjectURL(url);
+				if (shouldApply && !shouldApply()) return;
+				if (map.hasImage("pat-wind-farm")) map.removeImage("pat-wind-farm");
+				map.addImage("pat-wind-farm", img, { pixelRatio: 1 });
+			};
+			img.onerror = () => {
+				URL.revokeObjectURL(url);
+			};
+			img.src = url;
+		},
+		[],
+	);
+
+	const iconGenRef = React.useRef(0);
+	const injectedThemeRef = React.useRef<boolean | null>(null);
+	const styleEpochRef = React.useRef(0);
+	const lastInjectedEpochRef = React.useRef(-1);
+	const prevBasemapRef = React.useRef<string>(basemapUrlOrId);
+	if (prevBasemapRef.current !== basemapUrlOrId) {
+		prevBasemapRef.current = basemapUrlOrId;
+		styleEpochRef.current += 1;
+	}
+
+	const injectMapIcons = useCallback(
+		(map: Maplibre) => {
+			const gen = ++iconGenRef.current;
+			const shouldApply = () => iconGenRef.current === gen;
+			injectedThemeRef.current = isDarkMap;
+			const svgHaloColor = isDarkMap ? "#000000" : "#ffffff";
+			addAeroIcons(map, svgHaloColor, 0.95, shouldApply);
+			addAirwayBgIcon(map, isDarkMap, shouldApply);
+			addVfrPatterns(map, isDarkMap, shouldApply);
+		},
+		[isDarkMap, addAirwayBgIcon, addVfrPatterns],
+	);
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const onMapLoad = useCallback(
 		(e: any) => {
 			mapRef.current = e.target;
-			const svgHaloColor = isDarkMap ? "#000000" : "#ffffff";
-			addAeroIcons(e.target, svgHaloColor, 0.95);
-			addAirwayBgIcon(e.target, isDarkMap);
-			addVfrPatterns(e.target, isDarkMap);
+			lastInjectedEpochRef.current = styleEpochRef.current;
+			injectMapIcons(e.target);
 		},
-		[isDarkMap, addAirwayBgIcon, addVfrPatterns],
+		[injectMapIcons],
 	);
 
-	// Re-inject icons every time the base Map Style finishes mutating/swapping
+	// Re-inject icons when a full style swap rebuilds ImageManager or theme changes mid-load
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const onStyleData = useCallback(
 		(e: any) => {
-			if (!mapRef.current) return;
-			// We only care when the style explicitly finishes loading its base sprite sheet
-			if (!e.target.isStyleLoaded()) return;
-			const svgHaloColor = isDarkMap ? "#000000" : "#ffffff";
+			const map = mapRef.current ?? (e.target as Maplibre | undefined);
+			if (!map || !map.getStyle()) return;
 
-			// Only inject if missing
-			if (!mapRef.current.hasImage("airway-bg-blue")) {
-				addAeroIcons(mapRef.current, svgHaloColor, 0.95);
-				addAirwayBgIcon(mapRef.current, isDarkMap);
-			}
-			if (!mapRef.current.hasImage("pat-wind-farm")) {
-				addVfrPatterns(mapRef.current, isDarkMap);
+			const missingIcons =
+				!map.hasImage("airway-bg-blue") || !map.hasImage("pat-wind-farm");
+			const needsEpochInject =
+				missingIcons && lastInjectedEpochRef.current !== styleEpochRef.current;
+			const themeMismatch = injectedThemeRef.current !== isDarkMap;
+
+			if (needsEpochInject || themeMismatch) {
+				lastInjectedEpochRef.current = styleEpochRef.current;
+				injectMapIcons(map);
 			}
 		},
-		[isDarkMap, addAirwayBgIcon, addVfrPatterns],
+		[isDarkMap, injectMapIcons],
 	);
 
-	// Reload icons when dark/light mode changes
+	// Re-inject icons immediately when light/dark basemap theme changes via styleDiffing
 	React.useEffect(() => {
-		if (!mapRef.current) return;
-		const svgHaloColor = isDarkMap ? "#000000" : "#ffffff";
-		addAeroIcons(mapRef.current, svgHaloColor, 0.95);
-		addAirwayBgIcon(mapRef.current, isDarkMap);
-		addVfrPatterns(mapRef.current, isDarkMap);
-	}, [isDarkMap, addAirwayBgIcon, addVfrPatterns]);
+		const map = mapRef.current;
+		if (!map || !map.getStyle()) return;
+		if (injectedThemeRef.current !== isDarkMap) {
+			injectMapIcons(map);
+		}
+	}, [isDarkMap, injectMapIcons]);
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const [hoverInfo, setHoverInfo] = useState<{
 		lngLat: [number, number];
 		features: any[];
 	} | null>(null);
+
+	React.useEffect(() => {
+		if (!aeronauticalLayers.showAll) {
+			setHoverInfo(null);
+		}
+	}, [aeronauticalLayers.showAll]);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const [localSelectedFeatures, setLocalSelectedFeatures] = useState<{
 		lngLat: [number, number];
@@ -770,7 +811,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 	};
 
 	const highlightData = useMemo(() => {
-		const rawFeatures = selectedFeatures?.features || [];
+		const rawFeatures = aeronauticalLayers.showAll
+			? selectedFeatures?.features || []
+			: [];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const features = rawFeatures.map((f: any) => ({
 			type: "Feature",
@@ -784,7 +827,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			features: features,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		} as any;
-	}, [selectedFeatures]);
+	}, [aeronauticalLayers.showAll, selectedFeatures]);
 
 	return (
 		<ReactMap
@@ -810,17 +853,20 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			maxPitch={85}
 			// projection={{ type: 'globe' }}
 			mapStyle={mapStyle}
+			styleDiffing={false}
 			style={{ width: "100%", height: "100%" }}
 			hash={true}
 			mapLib={maplibregl}
 			terrain={
-				showTerrain ? { source: "terrain", exaggeration: 1.2 } : undefined
+				showTerrain
+					? { source: "terrain", exaggeration: 1.2 }
+					: (null as unknown as maplibregl.TerrainSpecification)
 			}
 		>
 			<NavigationControl position="bottom-right" visualizePitch={true} />
 
 			{/* Feature Sidebar (Left) */}
-			{selectedFeatures && (
+			{aeronauticalLayers.showAll && selectedFeatures && (
 				<Box className="map-feature-panel desktop-only">
 					<Card
 						size="2"
@@ -2837,11 +2883,27 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 								beforeId="anchor-vfr-waypoints"
 								minzoom={getZoom(4)}
 								filter={
-									[
-										"all",
-										["!=", ["get", "type"], "vfr"],
-										getZoomRankFilter({ 0: 2, 5: 3, 7: 4, 9: 6 }),
-									] as maplibregl.ExpressionSpecification
+									(aeronauticalLayers.waypointUsage === "all"
+										? [
+												"all",
+												["!=", ["get", "type"], "vfr"],
+												getZoomRankFilter({ 0: 2, 5: 3, 7: 4, 9: 6 }),
+											]
+										: [
+												"all",
+												["!=", ["get", "type"], "vfr"],
+												[
+													"in",
+													["get", "usage"],
+													[
+														"literal",
+														aeronauticalLayers.waypointUsage === "high"
+															? ["H", "B"]
+															: ["L", "B"],
+													],
+												],
+												getZoomRankFilter({ 0: 3, 5: 4, 7: 6 }),
+											]) as maplibregl.ExpressionSpecification
 								}
 								layout={{
 									"icon-image": [
@@ -3245,7 +3307,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			)}
 
 			{/* Hover Tooltip */}
-			{hoverInfo && (
+			{aeronauticalLayers.showAll && hoverInfo && (
 				<Popup
 					longitude={hoverInfo.lngLat[0]}
 					latitude={hoverInfo.lngLat[1]}

@@ -45,6 +45,14 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 			tileSize: 256,
 
 			zoomOffset: window.devicePixelRatio === 1 ? -1 : 0,
+			updateTriggers: {
+				renderSubLayers: [
+					layers.showAirspaceMaster,
+					layers.controlledAirspace,
+					layers.suaMoa,
+					layers.trsa,
+				],
+			},
 			// We want to render outlines at altitude (upper_m).
 			// Since MVTLayer features are 2D, we must modify them in renderSubLayers.
 			renderSubLayers: (props) => {
@@ -60,6 +68,7 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 				// Filter features based on layer state
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const filteredFeatures = data.features.filter((f: any) => {
+					if (!layers.showAirspaceMaster) return false;
 					const cls = f.properties.airspace_class;
 					const isSua = f.properties.is_sua;
 

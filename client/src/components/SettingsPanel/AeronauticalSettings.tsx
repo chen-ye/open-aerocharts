@@ -10,10 +10,21 @@ import {
 	purple,
 	teal,
 } from "@radix-ui/colors";
-import { Box, Flex, Separator, Slider, Switch, Text } from "@radix-ui/themes";
+import {
+	Box,
+	Flex,
+	SegmentedControl,
+	Separator,
+	Slider,
+	Switch,
+	Text,
+} from "@radix-ui/themes";
 import type React from "react";
 import { grayColor } from "../../App.tsx";
-import type { AeronauticalLayerState } from "../../types/AeronauticalLayerState";
+import type {
+	AeronauticalLayerState,
+	WaypointUsage,
+} from "../../types/AeronauticalLayerState";
 
 interface AeronauticalSettingsProps {
 	layers: AeronauticalLayerState;
@@ -203,6 +214,48 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 	) => {
 		setLayers((prev: AeronauticalLayerState) => {
 			if (
+				masterKey === "showAirportsMaster" &&
+				value &&
+				!prev.publicAirports &&
+				!prev.privateAirports &&
+				!prev.heliports &&
+				!prev.otherAirports
+			) {
+				return {
+					...prev,
+					showAirportsMaster: true,
+					publicAirports: true,
+				};
+			}
+			if (
+				masterKey === "showAirspaceMaster" &&
+				value &&
+				!prev.controlledAirspace &&
+				!prev.suaMoa &&
+				!prev.trsa &&
+				!prev.classE &&
+				!prev.parachuteArea &&
+				!prev.modeC
+			) {
+				return {
+					...prev,
+					showAirspaceMaster: true,
+					controlledAirspace: true,
+				};
+			}
+			if (
+				masterKey === "showAirwaysMaster" &&
+				value &&
+				!prev.enrouteLow &&
+				!prev.enrouteHigh
+			) {
+				return {
+					...prev,
+					showAirwaysMaster: true,
+					enrouteLow: true,
+				};
+			}
+			if (
 				masterKey === "showWaypointsMaster" &&
 				value &&
 				!prev.navaids &&
@@ -231,6 +284,19 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 					mtrs: true,
 					mountainPasses: true,
 					windFarms: true,
+				};
+			}
+			if (
+				masterKey === "showArtccMaster" &&
+				value &&
+				!prev.artccFirs &&
+				!prev.ctaAcc &&
+				!prev.specialRules
+			) {
+				return {
+					...prev,
+					showArtccMaster: true,
+					artccFirs: true,
 				};
 			}
 			return {
@@ -536,6 +602,37 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 								disabled={!layers.showWaypointsMaster}
 								onChange={(c: boolean) => updateLayer("waypoints", c)}
 							/>
+							<Flex align="center" justify="between" gap="2">
+								<Text
+									size="1"
+									color={grayColor}
+									style={{
+										opacity:
+											!layers.showWaypointsMaster || !layers.waypoints
+												? 0.5
+												: 1,
+									}}
+								>
+									IFR Usage
+								</Text>
+								<SegmentedControl.Root
+									size="1"
+									aria-label="IFR Waypoint Usage"
+									disabled={!layers.showWaypointsMaster || !layers.waypoints}
+									value={layers.waypointUsage}
+									onValueChange={(val: string) => {
+										if (val === "all" || val === "low" || val === "high") {
+											updateLayer("waypointUsage", val as WaypointUsage);
+										}
+									}}
+								>
+									<SegmentedControl.Item value="all">All</SegmentedControl.Item>
+									<SegmentedControl.Item value="low">Low</SegmentedControl.Item>
+									<SegmentedControl.Item value="high">
+										High
+									</SegmentedControl.Item>
+								</SegmentedControl.Root>
+							</Flex>
 							<ToggleRow
 								label="VFR Waypoints"
 								legend={

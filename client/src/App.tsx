@@ -4,20 +4,32 @@ import { FlightPlanPanel } from "./components/FlightPlanPanel/FlightPlanPanel";
 import { AeroMap } from "./components/Map/AeroMap";
 import { MobileBottomSheet } from "./components/MobileBottomSheet/MobileBottomSheet";
 import { SettingsPanel } from "./components/SettingsPanel/SettingsPanel";
-import type { AeronauticalLayerState } from "./types/AeronauticalLayerState";
+import { DEFAULT_BASEMAP_URL } from "./mapStyles";
+import type {
+	AeronauticalLayerState,
+	WaypointUsage,
+} from "./types/AeronauticalLayerState";
 import { defaultAeronauticalState } from "./types/AeronauticalLayerState";
 import type { FlightPlan, SearchIndex } from "./types/FlightPlan";
 
 export const accentColor = "iris" as const;
 export const grayColor = "gray" as const;
 
+type AeronauticalBooleanKey = {
+	[K in keyof AeronauticalLayerState]: AeronauticalLayerState[K] extends boolean
+		? K
+		: never;
+}[keyof AeronauticalLayerState];
+
+const parseWaypointUsage = (val: string | null): WaypointUsage => {
+	if (val === "high" || val === "low") return val;
+	return "all";
+};
+
 function App() {
 	const [basemapUrlOrId, setBasemapUrlOrId] = useState(() => {
 		const params = new URLSearchParams(window.location.search);
-		return (
-			params.get("basemap") ||
-			"https://api.protomaps.com/styles/v5/black/en.json?key=6f6306dcba238cd5"
-		);
+		return params.get("basemap") || DEFAULT_BASEMAP_URL;
 	});
 
 	const [showTerrain, setShowTerrain] = useState(() => {
@@ -82,8 +94,11 @@ function App() {
 			const params = new URLSearchParams(window.location.search);
 			const layersParam = params.get("layers");
 			const densityParam = params.get("density");
+			const wptUsageParam = params.get("wptUsage");
 
-			const initialState = { ...defaultAeronauticalState };
+			const initialState: AeronauticalLayerState = {
+				...defaultAeronauticalState,
+			};
 
 			if (densityParam) {
 				const density = parseInt(densityParam, 10);
@@ -92,44 +107,38 @@ function App() {
 				}
 			}
 
+			initialState.waypointUsage = parseWaypointUsage(wptUsageParam);
+
 			if (!layersParam) return initialState;
 
+			const booleanKeys = (
+				Object.keys(initialState) as Array<keyof AeronauticalLayerState>
+			).filter(
+				(k): k is AeronauticalBooleanKey =>
+					typeof initialState[k] === "boolean",
+			);
+
 			if (layersParam === "none") {
-				return Object.keys(initialState).reduce(
-					(acc, key) => {
-						const k = key as keyof AeronauticalLayerState;
-						if (typeof initialState[k] === "number") {
-							// @ts-expect-error - indexing is safe here
-							acc[k] = initialState[k];
-						} else {
-							// @ts-expect-error - indexing is safe here
-							acc[k] = false;
-						}
-						return acc;
-					},
-					{ ...initialState },
-				);
+				const nextState = { ...initialState };
+				for (const key of booleanKeys) {
+					nextState[key] = false;
+				}
+				return nextState;
 			}
 
 			const enabledLayers = new Set(layersParam.split(","));
-			return Object.keys(initialState).reduce(
-				(acc, key) => {
-					const k = key as keyof AeronauticalLayerState;
-					if (typeof initialState[k] === "boolean") {
-						// @ts-expect-error - indexing is safe here
-						acc[k] = enabledLayers.has(key);
-					}
-					return acc;
-				},
-				{ ...initialState },
-			);
+			const nextState = { ...initialState };
+			for (const key of booleanKeys) {
+				nextState[key] = enabledLayers.has(key);
+			}
+			return nextState;
 		});
 
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search);
 		let changed = false;
 
-		if (basemapUrlOrId !== "faa-sectional") {
+		if (basemapUrlOrId !== DEFAULT_BASEMAP_URL) {
 			if (params.get("basemap") !== basemapUrlOrId) {
 				params.set("basemap", basemapUrlOrId);
 				changed = true;
@@ -171,7 +180,7 @@ function App() {
 
 		const isLayersDefault = Object.entries(aeronauticalLayers).every(
 			([key, val]) => {
-				if (key === "declutterLevel") return true; // Handled separately
+				if (key === "declutterLevel" || key === "waypointUsage") return true; // Handled separately
 				return (
 					defaultAeronauticalState[key as keyof AeronauticalLayerState] === val
 				);
@@ -203,6 +212,16 @@ function App() {
 			}
 		} else if (params.has("density")) {
 			params.delete("density");
+			changed = true;
+		}
+
+		if (aeronauticalLayers.waypointUsage !== "all") {
+			if (params.get("wptUsage") !== aeronauticalLayers.waypointUsage) {
+				params.set("wptUsage", aeronauticalLayers.waypointUsage);
+				changed = true;
+			}
+		} else if (params.has("wptUsage")) {
+			params.delete("wptUsage");
 			changed = true;
 		}
 
@@ -254,6 +273,7 @@ function App() {
 					setAeronauticalLayers={setAeronauticalLayers}
 					basemapBrightness={basemapBrightness}
 					setBasemapBrightness={setBasemapBrightness}
+					onClearSelection={() => setSelectedFeatures(null)}
 				/>
 				<AeroMap
 					basemapUrlOrId={basemapUrlOrId}
@@ -276,7 +296,9 @@ function App() {
 					setShowTooltip={setShowTooltip}
 				/>
 				<MobileBottomSheet
-					selectedFeatures={selectedFeatures}
+					selectedFeatures={
+						aeronauticalLayers.showAll ? selectedFeatures : null
+					}
 					onCloseFeatures={() => setSelectedFeatures(null)}
 					onFlightPlanChange={setFlightPlan}
 					routeString={routeString}

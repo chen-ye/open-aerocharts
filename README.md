@@ -79,12 +79,14 @@ The project is split into two packages:
 - [ ] Flight Planning route fidelity/visualization improvements
 - [ ] Flight Planning navlog support
 - [ ] Flight Planning capability improvements
-- [ ] Fully support remaining aeronautical layers (Localizers, VOR compass roses, etc.)
+- [ ] Fully support remaining aeronautical layers (Localizers in `airports_navaids.pmtiles`, Holding Patterns in `waypoints_obstacles.pmtiles`, VOR compass roses, etc.)
+- [ ] Render terminal instrument procedures (`procedures.fgb` SIDs/STARs/IAPs on chart tiles / dynamic procedures) and support geo-referenced approach plates (`d-TPP`)
 - [ ] Show weather/radar + METAR/TAF/FRS
 - [ ] Show TFRs/other SWIM data
-- [ ] Show Airport/Runway info
+- [ ] Dedicated Airport/Runway detail sheets (FBOs, pattern/field info, geo-referenced airport diagrams)
 - [ ] Custom Aeronautical basemap (light + dark)
-- [ ] Show VHF information
+- [ ] Show VHF communication frequencies (Tower, CTAF, ATIS, Ground, Approach/Center)
+- [ ] Vertical Profile View & terrain/obstacle hazard alerts/shading
 - [ ] 3D Airway/Waypoint support
 - [ ] 3D Flight Plan Visualization
 - [ ] Handle overlapping airways better

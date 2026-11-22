@@ -193,7 +193,7 @@ async function main() {
 			};
 		});
 
-		// Keep smoke tests offline and deterministic by stubbing external style requests.
+		// Keep smoke tests offline and deterministic by stubbing external style/DEM requests.
 		await page.route("**/*", async (route) => {
 			const url = new URL(route.request().url());
 
@@ -204,6 +204,10 @@ async function main() {
 						contentType: "application/json",
 						body: OFFLINE_STYLE,
 					});
+					return;
+				}
+				if (url.hostname === "tiles.mapterhorn.com") {
+					await route.fulfill({ status: 204 });
 					return;
 				}
 				await route.abort();
@@ -237,6 +241,140 @@ async function main() {
 			);
 		}
 
+		// Exercise FAA-aligned Chart Presets + URL round-trip + divergence clearing
+		const vfrSectionalBtn = page.getByRole("button", { name: "VFR Sectional" });
+		const vfrTerminalBtn = page.getByRole("button", { name: "VFR Terminal" });
+		const helicopterBtn = page.getByRole("button", { name: "Helicopter" });
+		const ifrLowBtn = page.getByRole("button", { name: "IFR Low" });
+		const ifrHighBtn = page.getByRole("button", { name: "IFR High" });
+		const cleanBtn = page.getByRole("button", { name: "Clean" });
+
+		for (const btn of [
+			vfrSectionalBtn,
+			vfrTerminalBtn,
+			helicopterBtn,
+			ifrLowBtn,
+			ifrHighBtn,
+			cleanBtn,
+		]) {
+			if ((await btn.getAttribute("aria-pressed")) !== "false") {
+				throw new Error("Expected no active preset on initial default load");
+			}
+		}
+
+		await vfrSectionalBtn.click();
+		await page.waitForFunction(() => {
+			const p = new URLSearchParams(window.location.search);
+			return (
+				p.get("terrain") === "true" && p.get("basemap")?.includes("/dark/")
+			);
+		});
+		if ((await vfrSectionalBtn.getAttribute("aria-pressed")) !== "true") {
+			throw new Error("VFR Sectional preset should be active");
+		}
+
+		await vfrTerminalBtn.click();
+		await page.waitForFunction(
+			() => new URLSearchParams(window.location.search).get("density") === "2",
+		);
+		if ((await vfrTerminalBtn.getAttribute("aria-pressed")) !== "true") {
+			throw new Error("VFR Terminal preset should be active");
+		}
+
+		await helicopterBtn.click();
+		if ((await helicopterBtn.getAttribute("aria-pressed")) !== "true") {
+			throw new Error("Helicopter preset should be active");
+		}
+
+		await ifrLowBtn.click();
+		await page.waitForFunction(() => {
+			const p = new URLSearchParams(window.location.search);
+			return (
+				p.get("wptUsage") === "low" &&
+				!p.has("terrain") &&
+				!p.has("basemap") &&
+				!p.has("density")
+			);
+		});
+		if ((await ifrLowBtn.getAttribute("aria-pressed")) !== "true") {
+			throw new Error("IFR Low preset should be active");
+		}
+		const lowRadio = page.getByRole("radio", { name: "Low" });
+		if ((await lowRadio.getAttribute("aria-checked")) !== "true") {
+			throw new Error("IFR Usage segmented control should select Low");
+		}
+
+		await ifrHighBtn.click();
+		await page.waitForFunction(
+			() =>
+				new URLSearchParams(window.location.search).get("wptUsage") === "high",
+		);
+		if ((await ifrHighBtn.getAttribute("aria-pressed")) !== "true") {
+			throw new Error("IFR High preset should be active");
+		}
+
+		// Reload the synced IFR High URL and verify active preset persists
+		await page.goto(page.url(), { waitUntil: "domcontentloaded" });
+		await waitForMapCanvasPixels(page);
+		if (
+			(await page
+				.getByRole("button", { name: "IFR High" })
+				.getAttribute("aria-pressed")) !== "true"
+		) {
+			throw new Error("IFR High preset should remain active after URL reload");
+		}
+
+		// Changing IFR Usage manually should clear the active preset highlight
+		await page.getByRole("radio", { name: "All" }).click();
+		await page.waitForFunction(
+			() => !new URLSearchParams(window.location.search).has("wptUsage"),
+		);
+		if (
+			(await page
+				.getByRole("button", { name: "IFR High" })
+				.getAttribute("aria-pressed")) !== "false"
+		) {
+			throw new Error("Manual IFR Usage edit should clear IFR High highlight");
+		}
+
+		await page.getByRole("button", { name: "Clean" }).click();
+		if (
+			(await page
+				.getByRole("button", { name: "Clean" })
+				.getAttribute("aria-pressed")) !== "true"
+		) {
+			throw new Error("Clean preset should be active");
+		}
+
+		// Restore VFR Sectional, test Light <-> Dark basemap swap, then restore VFR Sectional
+		await page.getByRole("button", { name: "VFR Sectional" }).click();
+		await page.waitForFunction(
+			() =>
+				new URLSearchParams(window.location.search).get("terrain") === "true",
+		);
+		await page.getByRole("combobox").click();
+		await page.getByRole("option", { name: "Protomaps Light" }).click();
+		await page.waitForFunction(() =>
+			new URLSearchParams(window.location.search)
+				.get("basemap")
+				?.includes("/light/"),
+		);
+		if (
+			(await page
+				.getByRole("button", { name: "VFR Sectional" })
+				.getAttribute("aria-pressed")) !== "false"
+		) {
+			throw new Error(
+				"Switching basemap to Protomaps Light should clear VFR Sectional highlight",
+			);
+		}
+		await page.getByRole("button", { name: "VFR Sectional" }).click();
+		await page.waitForFunction(() =>
+			new URLSearchParams(window.location.search)
+				.get("basemap")
+				?.includes("/dark/"),
+		);
+
 		// Toggle Settings panel
 		await page.getByRole("button", { name: "Close Settings" }).click();
 		await page.getByRole("button", { name: "Open Settings" }).waitFor();
@@ -252,12 +390,26 @@ async function main() {
 		await page.getByRole("button", { name: "Plot Route" }).click();
 		await page.getByText("Fixes (2)").waitFor({ timeout: 5000 });
 
-		// 2. 3D tilted view (pitch > 10 mounts deck.gl MapLibreOverlay)
+		// 2. 3D tilted view (pitch > 10 mounts deck.gl MapLibreOverlay) + preset switching
 		await page.goto(`${baseUrl}#11/37.6213/-122.3790/0/55`, {
 			waitUntil: "domcontentloaded",
 		});
 		await waitForMapCanvasPixels(page);
-		await page.waitForTimeout(500);
+		await page.getByRole("button", { name: "VFR Sectional" }).click();
+		await page.waitForFunction(
+			() =>
+				new URLSearchParams(window.location.search).get("terrain") === "true",
+		);
+		await page.waitForTimeout(300);
+		await page.getByRole("button", { name: "IFR High" }).click();
+		await page.waitForFunction(
+			() =>
+				new URLSearchParams(window.location.search).get("wptUsage") ===
+					"high" && !new URLSearchParams(window.location.search).has("terrain"),
+		);
+		await page.waitForTimeout(300);
+		await page.getByRole("button", { name: "Clean" }).click();
+		await page.waitForTimeout(300);
 
 		if (
 			pageErrors.length > 0 ||

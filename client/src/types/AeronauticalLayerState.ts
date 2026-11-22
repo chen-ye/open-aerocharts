@@ -1,3 +1,5 @@
+export type WaypointUsage = "all" | "high" | "low";
+
 export interface AeronauticalLayerState {
 	// Master
 	showAll: boolean;
@@ -28,6 +30,7 @@ export interface AeronauticalLayerState {
 	showWaypointsMaster: boolean;
 	navaids: boolean;
 	waypoints: boolean;
+	waypointUsage: WaypointUsage;
 	vfrWaypoints: boolean;
 
 	// VFR Elements
@@ -73,6 +76,7 @@ export const defaultAeronauticalState: AeronauticalLayerState = {
 	showWaypointsMaster: true,
 	navaids: true,
 	waypoints: true,
+	waypointUsage: "all",
 	vfrWaypoints: true,
 
 	showVfrMaster: true,

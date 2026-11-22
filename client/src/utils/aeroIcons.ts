@@ -50,6 +50,7 @@ export const addAeroIcons = (
 	map: Maplibre,
 	haloColor = "#ffffff",
 	haloOpacity = 0.95,
+	shouldApply?: () => boolean,
 ) => {
 	const loadIcon = (id: string, svgContent: string) => {
 		// Inject the halo filter into the SVG content
@@ -89,11 +90,15 @@ export const addAeroIcons = (
 		});
 		const url = URL.createObjectURL(blob);
 		img.onload = () => {
+			URL.revokeObjectURL(url);
+			if (shouldApply && !shouldApply()) return;
 			// Remove existing image if present (for theme switches)
 			if (map.hasImage(id)) {
 				map.removeImage(id);
 			}
 			map.addImage(id, img);
+		};
+		img.onerror = () => {
 			URL.revokeObjectURL(url);
 		};
 		img.src = url;
@@ -130,11 +135,15 @@ export const addAeroIcons = (
 			});
 			const urlCyan = URL.createObjectURL(blobCyan);
 			imgCyan.onload = () => {
+				URL.revokeObjectURL(urlCyan);
+				if (shouldApply && !shouldApply()) return;
 				const cyanId = `${id}-cyan`;
 				if (map.hasImage(cyanId)) {
 					map.removeImage(cyanId);
 				}
 				map.addImage(cyanId, imgCyan);
+			};
+			imgCyan.onerror = () => {
 				URL.revokeObjectURL(urlCyan);
 			};
 			imgCyan.src = urlCyan;

@@ -1,5 +1,11 @@
 import type * as maplibregl from "maplibre-gl";
 
+export const PROTOMAPS_BLACK_URL =
+	"https://api.protomaps.com/styles/v5/black/en.json?key=6f6306dcba238cd5";
+export const PROTOMAPS_DARK_URL =
+	"https://api.protomaps.com/styles/v5/dark/en.json?key=6f6306dcba238cd5";
+export const DEFAULT_BASEMAP_URL = PROTOMAPS_BLACK_URL;
+
 export const sources = {
 	"faa-sectional": {
 		type: "raster",

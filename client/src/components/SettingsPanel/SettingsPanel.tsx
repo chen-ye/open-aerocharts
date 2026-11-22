@@ -1,7 +1,9 @@
 import {
 	Box,
+	Button,
 	Card,
 	Flex,
+	Grid,
 	Heading,
 	IconButton,
 	Select,
@@ -12,7 +14,13 @@ import {
 import { Layers, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { grayColor } from "../../App.tsx";
+import { accentColor, grayColor } from "../../App.tsx";
+import { PROTOMAPS_BLACK_URL, PROTOMAPS_DARK_URL } from "../../mapStyles";
+import {
+	CHART_PRESETS,
+	type ChartPreset,
+	getActivePresetId,
+} from "../../presets/chartPresets";
 import type { AeronauticalLayerState } from "../../types/AeronauticalLayerState";
 import { AeronauticalSettings } from "./AeronauticalSettings";
 
@@ -27,6 +35,7 @@ interface SettingsPanelProps {
 	>;
 	basemapBrightness: number;
 	setBasemapBrightness: (val: number) => void;
+	onClearSelection?: () => void;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -38,8 +47,27 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 	setAeronauticalLayers,
 	basemapBrightness,
 	setBasemapBrightness,
+	onClearSelection,
 }) => {
 	const [isOpen, setIsOpen] = useState(true);
+
+	const activePresetId = getActivePresetId({
+		basemap,
+		showTerrain,
+		layers: aeronauticalLayers,
+	});
+
+	const applyPreset = (preset: ChartPreset) => {
+		onClearSelection?.();
+		if (preset.id === "clean") {
+			setShowTerrain(false);
+			setAeronauticalLayers((prev) => ({ ...prev, showAll: false }));
+			return;
+		}
+		setBasemap(preset.basemap);
+		setShowTerrain(preset.showTerrain);
+		setAeronauticalLayers({ ...preset.layers });
+	};
 
 	return (
 		<Box className="settings-panel-container">
@@ -97,6 +125,36 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 										color={grayColor}
 										style={{ textTransform: "uppercase" }}
 									>
+										Presets
+									</Text>
+									<Grid columns="2" gap="2">
+										{CHART_PRESETS.map((preset) => {
+											const isActive = activePresetId === preset.id;
+											return (
+												<Button
+													key={preset.id}
+													size="1"
+													variant={isActive ? "solid" : "soft"}
+													color={isActive ? accentColor : grayColor}
+													aria-pressed={isActive}
+													title={preset.title}
+													onClick={() => applyPreset(preset)}
+													style={{ width: "100%", cursor: "pointer" }}
+												>
+													{preset.label}
+												</Button>
+											);
+										})}
+									</Grid>
+								</Flex>
+
+								<Flex direction="column" gap="2">
+									<Text
+										size="2"
+										weight="bold"
+										color={grayColor}
+										style={{ textTransform: "uppercase" }}
+									>
 										Basemap
 									</Text>
 									<Select.Root value={basemap} onValueChange={setBasemap}>
@@ -120,7 +178,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 											<Select.Separator />
 											<Select.Group>
 												<Select.Label>Protomaps</Select.Label>
-												<Select.Item value="https://api.protomaps.com/styles/v5/black/en.json?key=6f6306dcba238cd5">
+												<Select.Item value={PROTOMAPS_BLACK_URL}>
 													Protomaps Dataviz Black
 												</Select.Item>
 												<Select.Item value="https://api.protomaps.com/styles/v5/grayscale/en.json?key=6f6306dcba238cd5">
@@ -132,7 +190,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 												<Select.Item value="https://api.protomaps.com/styles/v5/light/en.json?key=6f6306dcba238cd5">
 													Protomaps Light
 												</Select.Item>
-												<Select.Item value="https://api.protomaps.com/styles/v5/dark/en.json?key=6f6306dcba238cd5">
+												<Select.Item value={PROTOMAPS_DARK_URL}>
 													Protomaps Dark
 												</Select.Item>
 											</Select.Group>

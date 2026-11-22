@@ -169,6 +169,12 @@ body {
 	.maplibregl-popup {
 		display: none !important;
 	}
+
+	/* Keep attribution & bottom-right zoom controls above the collapsed 44px bottom sheet */
+	.maplibregl-ctrl-bottom-left,
+	.maplibregl-ctrl-bottom-right {
+		bottom: 44px;
+	}
 }
 
 /* Accordion Styles */
