@@ -1,6 +1,14 @@
 {
-  "name": "avmvt-workspace",
+  "name": "open-aerocharts",
+  "version": "0.1.0",
   "private": true,
+  "description": "Vector-data driven reference aeronautical chart implementation in MapLibre.",
+  "license": "MIT",
+  "author": "Chen Ye",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chen-ye/open-aerocharts.git"
+  },
   "workspaces": [
     "client"
   ],

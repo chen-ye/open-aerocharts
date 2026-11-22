@@ -1,8 +1,10 @@
 [project]
 name = "faa-ais-pmtiles"
 version = "0.1.0"
-description = "Add your description here"
+description = "Fetch and convert FAA AIS (CIFP, NASR, ADDS) data to MapLibre-compatible 3D PMTiles"
 readme = "README.md"
+license = "MIT"
+authors = [{ name = "Chen Ye" }]
 requires-python = ">=3.15"
 dependencies = [
     "cifparse>=2.0.9",
@@ -13,6 +15,9 @@ dependencies = [
     "requests>=2.34.2",
     "tippecanoe>=2.72.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/chen-ye/open-aerocharts"
 
 [project.scripts]
 fetch-cifp = "src.cifp.fetch:main"
