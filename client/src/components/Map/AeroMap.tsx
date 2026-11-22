@@ -2903,15 +2903,15 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										] as maplibregl.ExpressionSpecification
 									}
 									layout={{
-										"icon-image": "wpt-vfr-checkpoint",
+										"icon-image": "wpt-rnav-solid",
 										"icon-size": [
 											"interpolate",
 											["linear"],
 											["zoom"],
 											5,
-											0.4,
+											0.5,
 											10,
-											0.55,
+											0.7,
 										] as unknown as maplibregl.ExpressionSpecification,
 										"icon-allow-overlap": false,
 										"icon-ignore-placement": false,
@@ -2921,7 +2921,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											"Arial Unicode MS Regular",
 										],
 										"text-size": 9,
-										"text-offset": [0, 1.0],
+										"text-offset": [0, 1.2],
 										"text-anchor": "top",
 										"text-allow-overlap": false,
 										"text-ignore-placement": false,
@@ -3196,7 +3196,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 								"waypoint",
 								"fix-non-compulsory-cyan",
 								"vfr",
-								"wpt-vfr-checkpoint-cyan",
+								"wpt-rnav-solid-cyan",
 								"vor",
 								"nav-vor-cyan",
 								"vortac",
@@ -3213,13 +3213,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 								"apt-ifr-civil-cyan",
 								"fix-non-compulsory-cyan", // default
 							] as unknown as maplibregl.ExpressionSpecification,
-							"icon-size": [
-								"match",
-								["get", "type"],
-								"vfr",
-								0.65,
-								0.8,
-							] as unknown as maplibregl.ExpressionSpecification,
+							"icon-size": 0.8,
 							"icon-allow-overlap": true,
 							"icon-ignore-placement": true,
 						}}

@@ -180,11 +180,11 @@ import heliportIcon from "../../assets/icons/carbon/apt-helipad.svg?url";
 import aptCivilIcon from "../../assets/icons/carbon/apt-ifr-civil.svg?url";
 import privateIcon from "../../assets/icons/carbon/apt-private.svg?url";
 import ultralightIcon from "../../assets/icons/carbon/apt-ultralight.svg?url";
+import waypointIcon from "../../assets/icons/carbon/fix-non-compulsory.svg?url";
 import navaidIcon from "../../assets/icons/carbon/nav-vor.svg?url";
 import obstacleIcon from "../../assets/icons/carbon/obs-major.svg?url";
 import mountainPassIcon from "../../assets/icons/carbon/pass-mountain.svg?url";
-import waypointIcon from "../../assets/icons/carbon/wpt-rnav-solid.svg?url";
-import vfrWaypointIcon from "../../assets/icons/carbon/wpt-vfr-checkpoint.svg?url";
+import vfrWaypointIcon from "../../assets/icons/carbon/wpt-rnav-solid.svg?url";
 
 export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 	layers,

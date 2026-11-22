@@ -49,9 +49,9 @@ Icons representing specific coordinate points in the sky and VFR routing element
 | :---: | :--- | :--- | :--- |
 | ![fix-compulsory](client/src/assets/icons/carbon/fix-compulsory.svg) | `fix-compulsory` | Solid triangle | |
 | ![fix-non-compulsory](client/src/assets/icons/carbon/fix-non-compulsory.svg) | `fix-non-compulsory` | Open triangle | |
-| ![wpt-rnav-solid](client/src/assets/icons/carbon/wpt-rnav-solid.svg) | `wpt-rnav-solid` | Solid 4-point starburst | |
-| ![wpt-rnav-open](client/src/assets/icons/carbon/wpt-rnav-open.svg) | `wpt-rnav-open` | Open 4-point starburst | |
-| ![wpt-vfr-checkpoint](client/src/assets/icons/carbon/wpt-vfr-checkpoint.svg) | `wpt-vfr-checkpoint` | FAA crimson/magenta pennant/flag icon | `VP*` VFR waypoints (NASR `FIX_BASE.csv`); sectional-charted IFR fixes fall back to `fix-compulsory` / `fix-non-compulsory` when IFR Waypoints are hidden |
+| ![wpt-rnav-solid](client/src/assets/icons/carbon/wpt-rnav-solid.svg) | `wpt-rnav-solid` | Solid 4-point starburst (crimson/magenta) | Standalone `VP*` VFR waypoints (NASR `FIX_BASE.csv`); sectional-charted IFR fixes fall back to `fix-compulsory` / `fix-non-compulsory` when IFR Waypoints are hidden |
+| ![wpt-rnav-open](client/src/assets/icons/carbon/wpt-rnav-open.svg) | `wpt-rnav-open` | Open 4-point starburst (indigo) | IFR RNAV waypoints |
+| ![wpt-vfr-checkpoint](client/src/assets/icons/carbon/wpt-vfr-checkpoint.svg) | `wpt-vfr-checkpoint` | FAA crimson/magenta pennant/flag icon | Reserved for named visual VFR checkpoints (not published in FAA NASR/ADDS open vector feeds) |
 | ![pass-mountain](client/src/assets/icons/carbon/pass-mountain.svg) | `pass-mountain` | Brown opposing curved brackets `)(` + elevation label (ft) | Identifies mountain passes |
 
 ### Military Training Routes (`IR` / `VR` / `SR`)
