@@ -8,6 +8,7 @@
     "dev": "npm run dev -w client",
     "build": "npm run build -w client",
     "lint": "npm run lint -w client && cd faa-ais-pmtiles && uv run ruff check src",
+    "test": "npm test -w client && cd faa-ais-pmtiles && uv run python -m unittest discover -s tests",
     "preview": "npm run preview -w client"
   }
 }

@@ -3,15 +3,15 @@ name = "faa-ais-pmtiles"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.15"
 dependencies = [
     "cifparse>=2.0.9",
-    "geojson>=3.2.0",
-    "geopandas>=1.1.2",
-    "pyogrio>=0.12.1",
-    "pyshp>=2.3.1",
-    "requests>=2.32.5",
-    "tippecanoe>=2.7.0",
+    "geojson>=3.3.0",
+    "geopandas>=1.2.0",
+    "pyogrio>=0.13.0",
+    "pyshp>=3.1.9",
+    "requests>=2.34.2",
+    "tippecanoe>=2.72.0",
 ]
 
 [project.scripts]
@@ -32,12 +32,12 @@ packages = ["src"]
 
 [tool.ruff]
 line-length = 140
-target-version = "py313"
+target-version = "py315"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
 
 [dependency-groups]
 dev = [
-    "ruff",
+    "ruff>=0.17.6",
 ]

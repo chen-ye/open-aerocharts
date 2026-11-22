@@ -1,8 +1,9 @@
 import { brown, crimson, cyan, indigo, plum, teal } from "@radix-ui/colors";
 import type { Map as Maplibre } from "maplibre-gl";
 
-const iconGlob = import.meta.glob("../assets/icons/carbon/*.svg", {
-	as: "raw",
+const iconGlob = import.meta.glob<string>("../assets/icons/carbon/*.svg", {
+	query: "?raw",
+	import: "default",
 	eager: true,
 });
 

@@ -332,7 +332,7 @@ def build_pmtiles_fgb(cifp_path):
                 else:
                     try:
                         mea_val = int(parse_altitude(min_alt))
-                    except (ValueError, TypeError):
+                    except ValueError, TypeError:
                         mea_val = 0
 
                 route_type = p1.get("route_type") or p1.get("airway_type")
@@ -487,7 +487,7 @@ def build_pmtiles_fgb(cifp_path):
                             }
                             label_features.append(geojson.Feature(geometry=t1.geometry, properties=l1_props))
 
-                    except (ValueError, TypeError):
+                    except ValueError, TypeError:
                         # Fallback to point if bearing invalid
                         runway_features.append(t1)
                 else:

@@ -23,7 +23,9 @@ import {
 	Text,
 } from "@radix-ui/themes";
 import { X } from "lucide-react";
-import maplibregl, { type Map as Maplibre } from "maplibre-gl";
+import type { Map as Maplibre } from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
 import React, { useCallback, useMemo, useState } from "react";
 import ReactMap, {
@@ -43,6 +45,8 @@ import {
 } from "../../utils/airspaceColors.ts";
 import { AirspaceOverlay } from "./AirspaceOverlay";
 import { FeatureList } from "./FeatureList";
+
+maplibregl.setWorkerUrl(workerUrl);
 
 interface AeroMapProps {
 	basemapUrlOrId: string;
