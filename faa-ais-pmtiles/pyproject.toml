@@ -10,6 +10,7 @@ dependencies = [
     "cifparse>=2.0.9",
     "geojson>=3.3.0",
     "geopandas>=1.2.0",
+    "pillow>=13.0.0",
     "pyogrio>=0.13.0",
     "pyshp>=3.1.9",
     "requests>=2.34.2",

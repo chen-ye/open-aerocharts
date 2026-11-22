@@ -25,20 +25,21 @@ def haversine(lon1, lat1, lon2, lat2):
 def parse_altitude(alt_str):
     if not alt_str:
         return 0.0
-    alt_str = str(alt_str).strip()
-    if alt_str == "GND":
+    alt_str = str(alt_str).strip().upper()
+    if alt_str in ("GND", "SFC"):
         return 0.0
     if alt_str == "UNL":
-        return 60000.0
+        return 65000.0
+    if alt_str.startswith("FL"):
+        try:
+            return float(alt_str[2:]) * 100
+        except ValueError:
+            return 0.0
+    if alt_str.endswith(" AGL") or alt_str.endswith(" MSL"):
+        alt_str = alt_str[:-4].strip()
     try:
-        val = float(alt_str)
-        return val
+        return float(alt_str)
     except ValueError:
-        if alt_str.startswith("FL"):
-            try:
-                return float(alt_str[2:]) * 100
-            except Exception:
-                pass
         return 0.0
 
 

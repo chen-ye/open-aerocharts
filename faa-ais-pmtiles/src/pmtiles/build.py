@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 
+from src.adds import airspaces_3d
 from src.adds import convert as shp_to_fgb
 from src.adds import fetch as fetch_airspace_shp
 from src.cifp import convert as cifp_to_fgb
@@ -195,6 +196,7 @@ def main():
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [executor.submit(run_cmd, cmd) for cmd in commands]
+        futures.append(executor.submit(airspaces_3d.convert_airspaces_3d))
         concurrent.futures.wait(futures)
         for f in futures:
             f.result()
@@ -209,6 +211,7 @@ def main():
 
     print("Symlinking output to client/public/...")
     run_cmd("ln -sf ../../faa-ais-pmtiles/output/airspaces.pmtiles ../client/public/airspaces.pmtiles")
+    run_cmd("ln -sf ../../faa-ais-pmtiles/output/airspaces_3d.bin ../client/public/airspaces_3d.bin")
     run_cmd("ln -sf ../../faa-ais-pmtiles/output/enroute.pmtiles ../client/public/enroute.pmtiles")
     run_cmd("ln -sf ../../faa-ais-pmtiles/output/boundary.pmtiles ../client/public/boundary.pmtiles")
     run_cmd("ln -sf ../../faa-ais-pmtiles/output/airports_navaids.pmtiles ../client/public/airports_navaids.pmtiles")

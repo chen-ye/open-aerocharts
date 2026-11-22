@@ -18,6 +18,7 @@ const distIndexPath = path.join(distDir, "index.html");
 const LFS_POINTER_MAX_BYTES = 512;
 const REQUIRED_PMTILES = [
 	"airspaces.pmtiles",
+	"airspaces_3d.bin",
 	"enroute.pmtiles",
 	"boundary.pmtiles",
 	"airports_navaids.pmtiles",

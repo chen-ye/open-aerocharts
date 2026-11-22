@@ -50,6 +50,8 @@ def classify_controlled_airspace(record: dict) -> dict:
 
     upper_val = record.get("UPPER_VAL") or ""
     lower_val = record.get("LOWER_VAL") or ""
+    upper_code = (record.get("UPPER_CODE") or "").strip().upper()
+    lower_code = (record.get("LOWER_CODE") or "").strip().upper()
 
     return {
         "name": name,
@@ -60,6 +62,8 @@ def classify_controlled_airspace(record: dict) -> dict:
         "lower_limit": lower_val,
         "upper_m": parse_altitude(upper_val) * 0.3048,
         "lower_m": parse_altitude(lower_val) * 0.3048,
+        "upper_is_agl": upper_code in ("SFC", "HEI"),
+        "lower_is_agl": lower_code in ("SFC", "HEI"),
         # "local_type": local_type,
     }
 
@@ -127,8 +131,19 @@ def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]
         type_code = (raw_props.get("TYPE_CODE") or "").strip().upper()
         name = (raw_props.get("NAME") or "").strip()
 
-        upper_val = raw_props.get("UPPER_VAL") or ""
-        lower_val = raw_props.get("LOWER_VAL") or ""
+        upper_val = normalize_boundary_limit(
+            raw_props.get("UPPER_VAL"),
+            raw_props.get("UPPER_UOM"),
+            raw_props.get("UPPER_CODE"),
+        )
+        lower_val = normalize_boundary_limit(
+            raw_props.get("LOWER_VAL"),
+            raw_props.get("LOWER_UOM"),
+            raw_props.get("LOWER_CODE"),
+        )
+
+        upper_code = (raw_props.get("UPPER_CODE") or "").strip().upper()
+        lower_code = (raw_props.get("LOWER_CODE") or "").strip().upper()
 
         features.append(
             geojson.Feature(
@@ -142,6 +157,8 @@ def convert_sua(sua_path: str = "data/sua_raw.geojson") -> list[geojson.Feature]
                     "lower_limit": lower_val,
                     "upper_m": parse_altitude(upper_val) * 0.3048,
                     "lower_m": parse_altitude(lower_val) * 0.3048,
+                    "upper_is_agl": upper_code in ("SFC", "HEI"),
+                    "lower_is_agl": lower_code in ("SFC", "HEI"),
                     "local_type": type_code,
                 },
             )
@@ -184,6 +201,9 @@ def convert_mode_c(raw_path: str = "data/mode_c_raw.geojson") -> list[geojson.Fe
             raw_props.get("LOWER_CODE"),
         )
 
+        upper_code = (raw_props.get("UPPER_CODE") or "").strip().upper()
+        lower_code = (raw_props.get("LOWER_CODE") or "").strip().upper()
+
         features.append(
             geojson.Feature(
                 geometry=geom,
@@ -196,6 +216,8 @@ def convert_mode_c(raw_path: str = "data/mode_c_raw.geojson") -> list[geojson.Fe
                     "lower_limit": lower_val,
                     "upper_m": parse_altitude(upper_val) * 0.3048,
                     "lower_m": parse_altitude(lower_val) * 0.3048,
+                    "upper_is_agl": upper_code in ("SFC", "HEI"),
+                    "lower_is_agl": lower_code in ("SFC", "HEI"),
                     "local_type": "MODE C",
                 },
             )
@@ -252,6 +274,8 @@ def convert_airspaces(
         "local_type",
         "upper_m",
         "lower_m",
+        "upper_is_agl",
+        "lower_is_agl",
     ]
     gdf[dissolution_cols] = gdf[dissolution_cols].fillna("")
 

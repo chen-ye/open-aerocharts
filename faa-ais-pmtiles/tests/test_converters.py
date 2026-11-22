@@ -14,6 +14,7 @@ from src.adds.convert import (
     convert_boundary_airspace,
     convert_mode_c,
     convert_obstacles,
+    convert_sua,
     normalize_boundary_limit,
 )
 from src.cifp.convert import (
@@ -25,6 +26,7 @@ from src.cifp.convert import (
     format_mora_parts,
     parse_mora_coord,
 )
+from src.common.utils import parse_altitude
 from src.nasr import fetch as nasr_fetch
 from src.nasr.facilities import classify_nasr_facility, parse_nasr_facilities, parse_nasr_runways
 from src.nasr.pja import convert_pja, parse_pja_csv
@@ -245,6 +247,98 @@ class TestModeCAirspace(unittest.TestCase):
             self.assertEqual(gdf.iloc[0]["airspace_class"], "MODE_C")
             self.assertEqual(gdf.iloc[0]["lower_limit"], "SFC")
             self.assertEqual(gdf.iloc[0]["upper_limit"], "10000")
+
+
+class TestSuaAltitudeNormalization(unittest.TestCase):
+    def test_parse_altitude_handles_sfc_agl_fl_and_unl(self) -> None:
+        self.assertEqual(parse_altitude("SFC"), 0.0)
+        self.assertEqual(parse_altitude("GND"), 0.0)
+        self.assertEqual(parse_altitude("500 AGL"), 500.0)
+        self.assertEqual(parse_altitude("1200 MSL"), 1200.0)
+        self.assertEqual(parse_altitude("FL180"), 18000.0)
+        self.assertGreater(parse_altitude("UNL"), 60000.0)
+
+    def test_convert_sua_normalizes_fl_unltd_and_agl_limits(self) -> None:
+        sua_geojson = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[-121.5, 36.5], [-121.0, 36.5], [-121.0, 37.0], [-121.5, 36.5]]],
+                    },
+                    "properties": {
+                        "NAME": "A-632A",
+                        "TYPE_CODE": "A",
+                        "UPPER_VAL": "180",
+                        "UPPER_UOM": "FL",
+                        "UPPER_CODE": "STD",
+                        "LOWER_VAL": "6000",
+                        "LOWER_UOM": "FT",
+                        "LOWER_CODE": "MSL",
+                    },
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[-120.5, 36.5], [-120.0, 36.5], [-120.0, 37.0], [-120.5, 36.5]]],
+                    },
+                    "properties": {
+                        "NAME": "R-2202D",
+                        "TYPE_CODE": "R",
+                        "UPPER_VAL": "-9998",
+                        "UPPER_UOM": None,
+                        "UPPER_CODE": "UNLTD",
+                        "LOWER_VAL": "310",
+                        "LOWER_UOM": "FL",
+                        "LOWER_CODE": "STD",
+                    },
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[-119.5, 36.5], [-119.0, 36.5], [-119.0, 37.0], [-119.5, 36.5]]],
+                    },
+                    "properties": {
+                        "NAME": "AVON EAST MOA",
+                        "TYPE_CODE": "MOA",
+                        "UPPER_VAL": "14000",
+                        "UPPER_UOM": "FT",
+                        "UPPER_CODE": "MSL",
+                        "LOWER_VAL": "500",
+                        "LOWER_UOM": "FT",
+                        "LOWER_CODE": "SFC",
+                    },
+                },
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sua_path = os.path.join(tmpdir, "sua_raw.geojson")
+            with open(sua_path, "w") as f:
+                json.dump(sua_geojson, f)
+
+            feats = convert_sua(sua_path=sua_path)
+            self.assertEqual(len(feats), 3)
+
+            p0 = feats[0]["properties"]
+            self.assertEqual(p0["upper_limit"], "FL180")
+            self.assertEqual(p0["lower_limit"], "6000")
+            self.assertAlmostEqual(p0["upper_m"], 18000.0 * 0.3048)
+            self.assertAlmostEqual(p0["lower_m"], 6000.0 * 0.3048)
+
+            p1 = feats[1]["properties"]
+            self.assertEqual(p1["upper_limit"], "UNL")
+            self.assertEqual(p1["lower_limit"], "FL310")
+            self.assertGreater(p1["upper_m"], p1["lower_m"])
+
+            p2 = feats[2]["properties"]
+            self.assertEqual(p2["lower_limit"], "500 AGL")
+            self.assertAlmostEqual(p2["lower_m"], 500.0 * 0.3048)
+            self.assertGreater(p2["upper_m"], p2["lower_m"])
 
 
 class TestPjaParsingAndConversion(unittest.TestCase):

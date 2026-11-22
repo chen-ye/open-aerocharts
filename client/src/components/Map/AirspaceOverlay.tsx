@@ -1,25 +1,37 @@
-import { Fp64Extension } from "@deck.gl/extensions";
 import { MapLibreOverlay } from "@deck.gl/maplibre";
-import { PMTilesSource } from "@loaders.gl/pmtiles";
-import { PathLayer, PolygonLayer, TileLayer } from "deck.gl";
+import { PathLayer, PolygonLayer } from "deck.gl";
 import type React from "react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useControl, useMap } from "react-map-gl/maplibre";
+import { AirspaceWallLayer } from "../../layers/AirspaceWallLayer";
 import type { AeronauticalLayerState } from "../../types/AeronauticalLayerState";
-import { getAirspaceColorRgb } from "../../utils/airspaceColors";
+import {
+	type AirspaceCap3d,
+	type AirspaceEdge3d,
+	getAirspace3dPalette,
+	getAirspace3dVisibleMask,
+	loadAirspaces3d,
+	type ParsedAirspaces3d,
+	pickAirspaceMaskColorRgb,
+} from "../../utils/airspaces3d";
 
 interface AirspaceOverlayProps {
 	visible: boolean;
 	layers: AeronauticalLayerState;
+	showTerrain?: boolean;
 }
+
+const AIRSPACE_FILL_ALPHA = 35;
 
 export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 	visible,
 	layers,
+	showTerrain = false,
 }) => {
 	const { showAirspaceMaster, controlledAirspace, suaMoa, trsa } = layers;
 	const { current: mapRef } = useMap();
 	const overlayElRef = useRef<HTMLElement | null>(null);
+	const [data3d, setData3d] = useState<ParsedAirspaces3d | null>(null);
 
 	const overlay = useControl<MapLibreOverlay>(() => {
 		const ctrl = new MapLibreOverlay({
@@ -51,163 +63,128 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 		};
 	}, [mapRef]);
 
-	const pmTilesSource = useMemo(() => {
-		const tileUrl = `${window.location.origin}${import.meta.env.BASE_URL}airspaces.pmtiles`;
-		return PMTilesSource.createDataSource(tileUrl, {
-			pmtiles: {
-				loadOptions: {},
-			},
-		});
+	useEffect(() => {
+		let cancelled = false;
+		const dataUrl = `${window.location.origin}${import.meta.env.BASE_URL}airspaces_3d.bin`;
+		loadAirspaces3d(dataUrl)
+			.then((parsed) => {
+				if (!cancelled) {
+					setData3d(parsed);
+				}
+			})
+			.catch((err) => {
+				if (!cancelled) {
+					console.error("Failed to load 3D airspace geometry:", err);
+				}
+			});
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
+	const visibleMask = useMemo(
+		() =>
+			getAirspace3dVisibleMask({
+				showAirspaceMaster,
+				controlledAirspace,
+				suaMoa,
+				trsa,
+			}),
+		[showAirspaceMaster, controlledAirspace, suaMoa, trsa],
+	);
+
+	const palette = useMemo(() => getAirspace3dPalette(AIRSPACE_FILL_ALPHA), []);
+
+	const visibleCaps = useMemo(() => {
+		if (!data3d || visibleMask === 0) return [];
+		return data3d.caps.filter((c) => (c.mask & visibleMask) !== 0);
+	}, [data3d, visibleMask]);
+
+	const visibleEdges = useMemo(() => {
+		if (!data3d || visibleMask === 0) return [];
+		return data3d.edges.filter((e) => (e.mask & visibleMask) !== 0);
+	}, [data3d, visibleMask]);
+
 	useEffect(() => {
-		const layer = new TileLayer({
-			id: "airspace-edges-3d",
-			getTileData: pmTilesSource.getTileData,
-			tileSource: pmTilesSource,
-			visible,
-			minZoom: 0,
-			maxZoom: 8,
-			tileSize: 256,
+		if (!data3d) {
+			overlay.setProps({ layers: [] });
+			return;
+		}
 
-			zoomOffset: window.devicePixelRatio === 1 ? -1 : 0,
-			updateTriggers: {
-				renderSubLayers: [showAirspaceMaster, controlledAirspace, suaMoa, trsa],
-			},
-			// We want to render outlines at altitude (upper_m).
-			// Since MVTLayer features are 2D, we must modify them in renderSubLayers.
-			renderSubLayers: (props) => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const { data } = props as any; // Should be GeoJSONFeatureCollection
-				if (!data) return null;
-
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const getColor = (p: any) => {
-					return getAirspaceColorRgb(p.airspace_class, p.is_sua);
-				};
-
-				// Filter features based on layer state
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const filteredFeatures = data.features.filter((f: any) => {
-					if (!showAirspaceMaster) return false;
-					const cls = f.properties.airspace_class;
-					const isSua = f.properties.is_sua;
-
-					if (isSua) return suaMoa;
-					if (cls === "B" || cls === "C" || cls === "D")
-						return controlledAirspace;
-					if (cls === "TRSA") return trsa;
-					return false;
-				});
-
-				// Flatten features for PolygonLayer
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const flatFeatures = filteredFeatures.flatMap((f: any) => {
-					if (f.geometry.type === "Polygon") {
-						return f;
-					}
-					if (f.geometry.type === "MultiPolygon") {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						return f.geometry.coordinates.map((coords: any) => ({
-							...f,
-							geometry: { type: "Polygon", coordinates: coords },
-						}));
-					}
-					return [];
-				});
-
-				const pathOffset = 15;
-
-				return [
-					new PolygonLayer(props, {
-						id: `${props.id}-volume`,
-						data: flatFeatures,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						getPolygon: (f: any) => {
-							const lowerM = f.properties.lower_m || 0;
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							return f.geometry.coordinates.map((coord: any[]) =>
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								coord.map((p: any) => [p[0], p[1], lowerM]),
-							);
-						},
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						getElevation: (f: any) =>
-							(f.properties.upper_m || 0) - (f.properties.lower_m || 0),
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						getFillColor: (f: any) =>
-							[...getColor(f.properties), 35] as [
-								number,
-								number,
-								number,
-								number,
-							],
-						extruded: true,
-						wireframe: false,
-						getPolygonOffset: ({ layerIndex }) => [0, layerIndex * -10000],
-						extensions: [new Fp64Extension()],
-					}),
-					new PathLayer(props, {
-						id: `${props.id}-edges-upper`,
-						data: flatFeatures,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						getPath: (f: any) => {
-							const upperM = f.properties.upper_m || 0;
-							// Outer ring only
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							return f.geometry.coordinates[0].map((p: any) => [
-								p[0],
-								p[1],
-								upperM + pathOffset,
-							]);
-						},
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						getColor: (f: any) =>
-							getColor(f.properties) as [number, number, number],
-						widthMinPixels: 1,
-						opacity: 1.0,
-						getPolygonOffset: ({ layerIndex }) => [0, layerIndex * -10000],
-					}),
-					new PathLayer(props, {
-						id: `${props.id}-edges-lower`,
-						data: flatFeatures,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						getPath: (f: any) => {
-							const lowerM = f.properties.lower_m || 0;
-							// Outer ring only
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							return f.geometry.coordinates[0].map((p: any) => [
-								p[0],
-								p[1],
-								lowerM - pathOffset,
-							]);
-						},
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						getColor: (f: any) =>
-							getColor(f.properties) as [number, number, number],
-						widthMinPixels: 1,
-						opacity: 1.0,
-						getPolygonOffset: ({ layerIndex }) => [0, layerIndex * -10000],
-					}),
-				];
-			},
-		});
+		const isRendered = visible && visibleMask !== 0;
 
 		overlay.setProps({
-			layers: [layer],
+			layers: [
+				new AirspaceWallLayer({
+					id: "airspace-3d-walls",
+					data: data3d.walls,
+					visible: isRendered,
+					visibleMask,
+					terrainScale: showTerrain ? 1 : 0,
+					palette,
+					parameters: {
+						cullMode: "none",
+						depthWriteEnabled: false,
+						depthCompare: "less-equal",
+					},
+				}),
+				new PolygonLayer<AirspaceCap3d>({
+					id: "airspace-3d-caps",
+					data: visibleCaps,
+					visible: isRendered,
+					getPolygon: (c) => (showTerrain ? c.polygonTerrain : c.polygonFlat),
+					getFillColor: (c) =>
+						[
+							...(pickAirspaceMaskColorRgb(c.mask, visibleMask) ?? [
+								150, 150, 150,
+							]),
+							AIRSPACE_FILL_ALPHA,
+						] as [number, number, number, number],
+					updateTriggers: {
+						getPolygon: [showTerrain],
+						getFillColor: [visibleMask],
+					},
+					extruded: false,
+					filled: true,
+					stroked: false,
+					parameters: {
+						cullMode: "none",
+						depthWriteEnabled: false,
+						depthCompare: "less-equal",
+					},
+				}),
+				new PathLayer<AirspaceEdge3d>({
+					id: "airspace-3d-edges",
+					data: visibleEdges,
+					visible: isRendered,
+					getPath: (e) => (showTerrain ? e.pathTerrain : e.pathFlat),
+					getColor: (e) =>
+						pickAirspaceMaskColorRgb(e.mask, visibleMask) ?? [150, 150, 150],
+					updateTriggers: {
+						getPath: [showTerrain],
+						getColor: [visibleMask],
+					},
+					widthMinPixels: 1,
+					opacity: 1.0,
+					parameters: {
+						depthWriteEnabled: false,
+						depthCompare: "less-equal",
+					},
+				}),
+			],
 		});
-		if (!visible) {
-			mapRef?.getMap()?.triggerRepaint();
-		}
+
+		mapRef?.getMap()?.triggerRepaint();
 	}, [
 		overlay,
 		mapRef,
+		data3d,
 		visible,
-		pmTilesSource,
-		showAirspaceMaster,
-		controlledAirspace,
-		suaMoa,
-		trsa,
+		visibleMask,
+		showTerrain,
+		palette,
+		visibleCaps,
+		visibleEdges,
 	]);
 
 	return null;

@@ -41,8 +41,8 @@ vector PMTiles.
 | :----------------------- | :--------------------------------------- | :-------------------------- | :----------------------------------- |
 | **Airports & Heliports** | NASR (`APT_BASE`/`APT_RWY`) + CIFP       | `data/airports.geojson`*    | `airports_navaids.pmtiles`           |
 | **Navaids (VHF/NDB)**    | CIFP (ARINC 424)                         | `data/navaids.fgb`          | `airports_navaids.pmtiles`           |
-| **Airspaces (B/C/D)**    | NFDC Shapefiles                          | `data/airspaces.fgb`        | `airspaces.pmtiles`                  |
-| **Airspaces (SUA)**      | ADDS ArcGIS                              | `data/airspaces.fgb`        | `airspaces.pmtiles`                  |
+| **Airspaces (B/C/D)**    | NFDC Shapefiles                          | `data/airspaces.fgb`        | `airspaces.pmtiles` + `airspaces_3d.bin` |
+| **Airspaces (SUA)**      | ADDS ArcGIS                              | `data/airspaces.fgb`        | `airspaces.pmtiles` + `airspaces_3d.bin` |
 | **Airspaces (Class E)**      | NFDC Shapefiles                                          | `data/airspaces_e.fgb`                          | `enroute.pmtiles`                    |
 | **Airways**                  | CIFP (ARINC 424)                                         | `data/airways.fgb`                              | `enroute.pmtiles`                    |
 | **Grid MORA**                | CIFP (ARINC 424 `AS` records)                            | `data/grid_mora_lines.fgb`, `data/grid_mora_labels.fgb` | `enroute.pmtiles`            |

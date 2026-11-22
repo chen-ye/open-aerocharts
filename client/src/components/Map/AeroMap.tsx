@@ -1232,7 +1232,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				</>
 			)}
 			{hasMountedAirspaceOverlay && (
-				<AirspaceOverlay visible={show3dAirspace} layers={aeronauticalLayers} />
+				<AirspaceOverlay
+					visible={show3dAirspace}
+					layers={aeronauticalLayers}
+					showTerrain={showTerrain}
+				/>
 			)}
 			{aeronauticalLayers.showAll && (
 				<>
