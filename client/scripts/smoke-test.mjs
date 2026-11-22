@@ -18,6 +18,7 @@ const REQUIRED_PMTILES = [
 	"airports_navaids.pmtiles",
 	"waypoints_obstacles.pmtiles",
 	"airport_diagrams.pmtiles",
+	"vfr.pmtiles",
 ];
 
 const OFFLINE_STYLE = JSON.stringify({

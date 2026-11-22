@@ -18,9 +18,12 @@ The project is split into two packages:
 
 - **3D Terrain**: Global AWS Open Data Registry Terrarium Tiles integrated
   natively with MapLibre mountain hillshading.
-- **Aeronautical Data**: FAA AIS-derived vector tiles providing airspaces,
-  airways, navaids, and airports. See the [`faa ais pmtiles` README.md](faa-ais-pmtiles/README.md) for more
-  information.
+- **Aeronautical Data**: FAA AIS-derived and auxiliary VFR vector tiles
+  providing airspaces, airways, Grid MORA (`enroute.pmtiles`), navaids,
+  airports, obstacles, and VFR elements (`vfr.pmtiles`: VFR waypoints,
+  military training routes, mountain passes, wind farms, and high-voltage power
+  transmission lines). See the [`faa-ais-pmtiles` README](faa-ais-pmtiles/README.md)
+  and [datasources.md](faa-ais-pmtiles/datasources.md) for full details.
 - **Basemap**: Tilelized FAA Chart Rasters + general vector basemaps from CartoCDN, MapTiler, and Protomaps.
 
 ## References + Resources

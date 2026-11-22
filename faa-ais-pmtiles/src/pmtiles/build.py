@@ -5,6 +5,7 @@ Coordinates the fetching of raw data (CIFP, ADDS, NASR), conversion to intermedi
 formats (FlatGeobuf/GeoJSON), and the compilation of final PMTiles archives using `tippecanoe`.
 """
 
+import argparse
 import concurrent.futures
 import json
 import os
@@ -19,6 +20,11 @@ from src.nasr import fetch as fetch_nasr
 from src.nasr import pja
 from src.runways.merge import merge_runways
 from src.search import build_index
+from src.vfr import fetch as fetch_vfr
+from src.vfr import mtr as vfr_mtr
+from src.vfr import passes as vfr_passes
+from src.vfr import powerlines as vfr_powerlines
+from src.vfr import wind_farms as vfr_wind_farms
 
 # Each PMTiles file is served directly to the frontend — no tile-join needed.
 # This allows each file to use its own optimal zoom range.
@@ -26,7 +32,10 @@ PMTILES_FILES = [
     "airspaces",
     "enroute",
     "boundary",
+    "airports_navaids",
+    "waypoints_obstacles",
     "airport_diagrams",
+    "vfr",
 ]
 
 
@@ -41,30 +50,46 @@ def fetch_nasr_wrapper():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Build aeronautical PMTiles archives.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force rebuild even when output/metadata.json already matches the latest CIFP cycle.",
+    )
+    args = parser.parse_args()
+
     print("Step 1: Checking for new cycle...")
 
     # Check if a new cycle is available without downloading anything yet
     cycle, is_new, download_url, zip_path = fetch_cifp.check_latest_cycle()
 
     if cycle is None:
-        print("No CIFP zip files found, aborting build.")
-        sys.exit(1)
+        if args.force and os.path.exists("FAACIFP18") and os.path.exists("output/metadata.json"):
+            with open("output/metadata.json") as f:
+                cycle = json.load(f).get("cycle", "unknown")
+            print(f"Could not reach FAA CIFP listing; forcing local rebuild for cycle {cycle}.")
+        else:
+            print("No CIFP zip files found, aborting build.")
+            sys.exit(1)
 
     print(f"Current cycle identified as: {cycle}")
-    if not is_new:
+    if not is_new and not args.force:
         print(f"Cycle {cycle} is already the latest. Short-circuiting build pipeline.")
         return
 
     print("Step 1.5: Fetching data concurrently...")
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        f1 = executor.submit(fetch_cifp.download_cifp, download_url, zip_path)
-        f2 = executor.submit(fetch_airspace_shp.main)
-        f3 = executor.submit(fetch_nasr_wrapper)
-        concurrent.futures.wait([f1, f2, f3])
-        # Check exceptions
-        f1.result()
-        f2.result()
-        f3.result()
+        futures = []
+        if is_new or not os.path.exists("FAACIFP18"):
+            futures.append(executor.submit(fetch_cifp.download_cifp, download_url, zip_path))
+        else:
+            print("FAACIFP18 already present for current cycle; skipping CIFP download.")
+        futures.append(executor.submit(fetch_airspace_shp.main))
+        futures.append(executor.submit(fetch_nasr_wrapper))
+        futures.append(executor.submit(fetch_vfr.main))
+        concurrent.futures.wait(futures)
+        for future in futures:
+            future.result()
 
     if not os.path.exists("FAACIFP18"):
         print("Error: FAACIFP18 not found after fetching.")
@@ -72,18 +97,22 @@ def main():
 
     print("Step 2: Parsing and converting to FlatGeobuf concurrently...")
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        f1 = executor.submit(shp_to_fgb.main)
-        f2 = executor.submit(cifp_to_fgb.build_pmtiles_fgb, "FAACIFP18")
-        f3 = executor.submit(pja.convert_pja)
-        f4 = executor.submit(build_index.build_search_index, "FAACIFP18")
-        concurrent.futures.wait([f1, f2, f3, f4])
-        f1.result()
-        f2.result()
-        f3.result()
-        f4.result()
+        futures = [
+            executor.submit(shp_to_fgb.main),
+            executor.submit(cifp_to_fgb.build_pmtiles_fgb, "FAACIFP18"),
+            executor.submit(pja.convert_pja),
+            executor.submit(vfr_mtr.convert_mtrs),
+            executor.submit(vfr_passes.convert_passes),
+            executor.submit(vfr_powerlines.convert_powerlines),
+            executor.submit(build_index.build_search_index, "FAACIFP18"),
+        ]
+        concurrent.futures.wait(futures)
+        for future in futures:
+            future.result()
 
-    print("Step 2.5: Merging Runways...")
+    print("Step 2.5: Merging Runways and Clustering Wind Farms...")
     merge_runways()
+    vfr_wind_farms.convert_wind_farms()
 
     print("Step 3: Compiling into PMTiles with tippecanoe concurrently...")
     os.makedirs("output", exist_ok=True)
@@ -93,11 +122,17 @@ def main():
         "--no-feature-limit --no-tile-size-limit --buffer=25 --no-clipping -f "
         "-l airspaces data/airspaces.fgb"
     )
-    cmd_enroute = (
-        "uv run tippecanoe -Z0 -z8 -o output/enroute.pmtiles "
-        "--no-feature-limit --no-tile-size-limit -f "
-        "-L airways:data/airways.fgb "
-        "-L airspaces:data/airspaces_e.fgb"
+    enroute_layers = [
+        "-L airways:data/airways.fgb",
+        "-L airspaces:data/airspaces_e.fgb",
+    ]
+    if os.path.exists("data/grid_mora_lines.fgb"):
+        enroute_layers.append("-L grid_mora_lines:data/grid_mora_lines.fgb")
+    if os.path.exists("data/grid_mora_labels.fgb"):
+        enroute_layers.append("-L grid_mora_labels:data/grid_mora_labels.fgb")
+
+    cmd_enroute = "uv run tippecanoe -Z0 -z8 -r1 -o output/enroute.pmtiles --no-feature-limit --no-tile-size-limit -f " + " ".join(
+        enroute_layers
     )
     cmd_boundary = (
         "uv run tippecanoe -Z0 -z8 -o output/boundary.pmtiles "
@@ -131,15 +166,35 @@ def main():
         "-L runway_labels:data/runway_labels.fgb"
     )
 
+    vfr_layers = []
+    for layer_name, path in [
+        ("vfr_waypoints", "data/vfr_waypoints.fgb"),
+        ("mtrs", "data/mtrs.fgb"),
+        ("mtr_corridors", "data/mtr_corridors.fgb"),
+        ("mountain_passes", "data/mountain_passes.fgb"),
+        ("wind_farms", "data/wind_farms.fgb"),
+        ("powerlines", "data/powerlines.geojson"),
+    ]:
+        if os.path.exists(path):
+            vfr_layers.append(f"-L {layer_name}:{path}")
+
+    commands = [
+        cmd_airspaces,
+        cmd_enroute,
+        cmd_boundary,
+        cmd_airports_navaids,
+        cmd_waypoints_obstacles,
+        cmd_airport_diagrams,
+    ]
+    if vfr_layers:
+        cmd_vfr = (
+            "uv run tippecanoe -Z0 -z10 -r1 -o output/vfr.pmtiles "
+            "--no-feature-limit --no-tile-size-limit --order-by=rank --order-smallest-first -f " + " ".join(vfr_layers)
+        )
+        commands.append(cmd_vfr)
+
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [
-            executor.submit(run_cmd, cmd_airspaces),
-            executor.submit(run_cmd, cmd_enroute),
-            executor.submit(run_cmd, cmd_boundary),
-            executor.submit(run_cmd, cmd_airports_navaids),
-            executor.submit(run_cmd, cmd_waypoints_obstacles),
-            executor.submit(run_cmd, cmd_airport_diagrams),
-        ]
+        futures = [executor.submit(run_cmd, cmd) for cmd in commands]
         concurrent.futures.wait(futures)
         for f in futures:
             f.result()
@@ -159,6 +214,8 @@ def main():
     run_cmd("ln -sf ../../faa-ais-pmtiles/output/airports_navaids.pmtiles ../client/public/airports_navaids.pmtiles")
     run_cmd("ln -sf ../../faa-ais-pmtiles/output/waypoints_obstacles.pmtiles ../client/public/waypoints_obstacles.pmtiles")
     run_cmd("ln -sf ../../faa-ais-pmtiles/output/airport_diagrams.pmtiles ../client/public/airport_diagrams.pmtiles")
+    if os.path.exists("output/vfr.pmtiles"):
+        run_cmd("ln -sf ../../faa-ais-pmtiles/output/vfr.pmtiles ../client/public/vfr.pmtiles")
     run_cmd("ln -sf ../../faa-ais-pmtiles/output/metadata.json ../client/public/metadata.json")
     print("Done.")
 

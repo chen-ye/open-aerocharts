@@ -21,6 +21,7 @@ fetch-airspace-shp = "src.adds.fetch:main"
 shp-to-fgb = "src.adds.convert:main"
 build-pmtiles = "src.pmtiles.build:main"
 build-search-index = "src.search.build_index:main"
+fetch-vfr = "src.vfr.fetch:main"
 spot-check = "src.tools.spot_check:main"
 list-enums = "src.tools.enums:main"
 

@@ -23,7 +23,8 @@ const colorMap = {
 	"fix-non-compulsory": indigo.indigo9,
 	"wpt-rnav-open": indigo.indigo9,
 	"wpt-rnav-solid": indigo.indigo9,
-	"wpt-vfr-checkpoint": indigo.indigo9,
+	"wpt-vfr-checkpoint": crimson.crimson9,
+	"pass-mountain": brown.brown9,
 	"nav-vor": indigo.indigo9,
 	"nav-vortac": indigo.indigo9,
 	"nav-vordme": indigo.indigo9,
@@ -101,6 +102,7 @@ export const addAeroIcons = (
 		const cyanIds = [
 			"fix-compulsory",
 			"fix-non-compulsory",
+			"wpt-vfr-checkpoint",
 			"nav-vor",
 			"nav-vortac",
 			"nav-vordme",

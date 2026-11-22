@@ -29,6 +29,14 @@ export interface AeronauticalLayerState {
 	navaids: boolean;
 	waypoints: boolean;
 
+	// VFR Elements
+	showVfrMaster: boolean;
+	vfrWaypoints: boolean;
+	mtrs: boolean;
+	mountainPasses: boolean;
+	windFarms: boolean;
+	powerlines: boolean;
+
 	// Boundaries (ARTCC/FIR/CTA/Special Rules)
 	showArtccMaster: boolean;
 	artccFirs: boolean;
@@ -37,6 +45,7 @@ export interface AeronauticalLayerState {
 
 	// Standalone
 	obstacles: boolean;
+	gridMora: boolean;
 }
 
 export const defaultAeronauticalState: AeronauticalLayerState = {
@@ -65,10 +74,18 @@ export const defaultAeronauticalState: AeronauticalLayerState = {
 	navaids: true,
 	waypoints: true,
 
+	showVfrMaster: true,
+	vfrWaypoints: true,
+	mtrs: true,
+	mountainPasses: true,
+	windFarms: true,
+	powerlines: false,
+
 	showArtccMaster: false,
 	artccFirs: true,
 	ctaAcc: false,
 	specialRules: false,
 
 	obstacles: false,
+	gridMora: false,
 };

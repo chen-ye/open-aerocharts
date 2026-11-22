@@ -315,12 +315,12 @@ def normalize_boundary_limit(val: int | float | str | None, uom: str | None, cod
         return "UNL" if code_norm == "UNLTD" else ""
 
     if num == 0:
-        return "SFC" if code_norm in ("SFC", "") else "0"
+        return "SFC" if code_norm in ("SFC", "HEI", "") else "0"
 
     is_int = num.is_integer()
     if uom_norm == "FL":
         return f"FL{int(num):03d}" if is_int else f"FL{num}"
-    if code_norm == "SFC":
+    if code_norm in ("SFC", "HEI"):
         return f"{int(num)} AGL" if is_int else f"{num} AGL"
     return f"{int(num)}" if is_int else str(num)
 

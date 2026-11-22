@@ -43,22 +43,27 @@ vector PMTiles.
 | **Navaids (VHF/NDB)**    | CIFP (ARINC 424)                         | `data/navaids.fgb`          | `airports_navaids.pmtiles`           |
 | **Airspaces (B/C/D)**    | NFDC Shapefiles                          | `data/airspaces.fgb`        | `airspaces.pmtiles`                  |
 | **Airspaces (SUA)**      | ADDS ArcGIS                              | `data/airspaces.fgb`        | `airspaces.pmtiles`                  |
-| **Airspaces (Class E)**  | NFDC Shapefiles                          | `data/airspaces.fgb`        | `enroute.pmtiles`                    |
-| **Airways**              | CIFP (ARINC 424)                         | `data/airways.fgb`          | `enroute.pmtiles`                    |
-| **Procedures**           | CIFP (ARINC 424)                         | `data/procedures.fgb`       | `enroute.pmtiles`                    |
-| **Runways**              | CIFP + ADDS                              | `data/runways.fgb`          | `airport_diagrams.pmtiles`           |
-| **Localizers**           | CIFP (ARINC 424)                         | `data/localizers.fgb`       | `airports_navaids.pmtiles`           |
-| **Waypoints**            | CIFP (ARINC 424)                         | `data/waypoints.fgb`        | `waypoints_obstacles.pmtiles`        |
-| **Holding Patterns**     | ADDS ArcGIS                              | `data/holding_patterns.fgb` | `waypoints_obstacles.pmtiles`        |
-| **Obstacles**            | ADDS ArcGIS                              | `data/obstacles.fgb`        | `waypoints_obstacles.pmtiles`        |
-| **Parachute Areas**      | NASR (`PJA_BASE.csv`)                    | `data/parachute_areas.fgb`  | `waypoints_obstacles.pmtiles`        |
-| **Diagrams (Taxi)**      | ADDS ArcGIS                              | `data/am_taxiways.fgb`      | `airport_diagrams.pmtiles`           |
-| **Search Index**         | NASR (`APT_BASE.csv`) + CIFP (ARINC 424) | —                           | `../client/public/search_index.json` |
+| **Airspaces (Class E)**      | NFDC Shapefiles                                          | `data/airspaces_e.fgb`                          | `enroute.pmtiles`                    |
+| **Airways**                  | CIFP (ARINC 424)                                         | `data/airways.fgb`                              | `enroute.pmtiles`                    |
+| **Grid MORA**                | CIFP (ARINC 424 `AS` records)                            | `data/grid_mora_lines.fgb`, `data/grid_mora_labels.fgb` | `enroute.pmtiles`            |
+| **Procedures**               | CIFP (ARINC 424)                                         | `data/procedures.fgb`                           | `enroute.pmtiles`                    |
+| **Runways**                  | CIFP + ADDS                                              | `data/runways.fgb`                              | `airport_diagrams.pmtiles`           |
+| **Localizers**               | CIFP (ARINC 424)                                         | `data/localizers.fgb`                           | `airports_navaids.pmtiles`           |
+| **Waypoints**                | CIFP (ARINC 424)                                         | `data/waypoints.fgb`                            | `waypoints_obstacles.pmtiles`        |
+| **Holding Patterns**         | ADDS ArcGIS                                              | `data/holding_patterns.fgb`                     | `waypoints_obstacles.pmtiles`        |
+| **Obstacles**                | ADDS ArcGIS                                              | `data/obstacles.fgb`                            | `waypoints_obstacles.pmtiles`        |
+| **Parachute Areas**          | NASR (`PJA_BASE.csv`)                                    | `data/parachute_areas.fgb`                      | `waypoints_obstacles.pmtiles`        |
+| **VFR Waypoints**            | NASR (`FIX_BASE.csv`)                                    | `data/vfr_waypoints.fgb`                        | `vfr.pmtiles`                        |
+| **Military Training Routes** | ADDS (`MTRSegment`) + NASR (`MTR_BASE`/`MTR_PT`)         | `data/mtrs.fgb`, `data/mtr_corridors.fgb`       | `vfr.pmtiles`                        |
+| **Mountain Passes**          | QLever OSM (`mountain_pass=yes`)                         | `data/mountain_passes.fgb`                      | `vfr.pmtiles`                        |
+| **Wind Farms**               | USGS USWTDB + FAA DOF (`WINDMILL`)                       | `data/wind_farms.fgb`                           | `vfr.pmtiles`                        |
+| **Power Transmission Lines** | HIFLD (`Electric_Power_Transmission_Lines`)              | `data/powerlines.geojson`*                     | `vfr.pmtiles`                        |
+| **Diagrams (Taxi)**          | ADDS ArcGIS                                              | `data/am_taxiways.fgb`                          | `airport_diagrams.pmtiles`           |
+| **Search Index**             | NASR (`APT_BASE.csv`) + CIFP (ARINC 424)                 | —                                               | `../client/public/search_index.json` |
 
 _\*Runways are merged from ADDS (high-fidelity) and CIFP (polygonized), deduplicated, and served in the high-zoom diagrams layer._
 
-_\*Airports use GeoJSON to allow Tippecanoe to respect explicit minzoom/priority
-ranks._
+_\*Airports and power transmission lines use GeoJSON so Tippecanoe respects explicit `minzoom` / priority ranks and voltage-tiered zoom cutoffs (`z6`/`z7`/`z9`)._
 
 ---
 
@@ -243,6 +248,18 @@ Example:
 }
 ```
 
+### 6. Grid MORA & VFR Elements
+
+- **`enroute.pmtiles` (`grid_mora_lines`, `grid_mora_labels`)**: Derived from CIFP `AS` records (`1° × 1°` off-route altitude grid with high/low terrain thresholds).
+- **`vfr.pmtiles`**: Dedicated VFR overlay archive containing:
+  - `vfr_waypoints` (NASR `FIX_BASE.csv` `VP*` waypoints & sectional fixes)
+  - `mtrs` (ADDS `MTRSegment` corridors backfilled from NASR `MTR_BASE.csv`/`MTR_PT.csv`)
+  - `mountain_passes` (QLever OSM `mountain_pass=yes`)
+  - `wind_farms` (USGS USWTDB 5 km AEQD clusters enriched with FAA DOF `WINDMILL` heights)
+  - `powerlines` (HIFLD overhead lines `>= 115 kV`, tiered at `z6`/`z7`/`z9`)
+
+See [datasources.md](datasources.md) for detailed dataset URLs, processing rules, and omitted VFR elements rationale.
+
 ---
 
 ## Running & Validating
@@ -279,7 +296,8 @@ Example:
    
    - **`src/cifp/`**: Handling of FAA CIFP (ARINC 424) datasets.
    - **`src/adds/`**: Handling of ADDS ArcGIS and NFDC Shapefile datasets.
-   - **`src/nasr/`**: Handling of FAA NASR 28-day CSV datasets (`APT_BASE.csv`, `APT_RWY.csv`, `PJA_BASE.csv`) for operational facilities, runways, metadata, and parachute jump areas.
+   - **`src/nasr/`**: Handling of FAA NASR 28-day CSV datasets (`APT_BASE.csv`, `APT_RWY.csv`, `PJA_BASE.csv`, `FIX_BASE.csv`, `MTR_BASE.csv`, `MTR_PT.csv`) for operational facilities, runways, metadata, parachute jump areas, VFR waypoints, and MTR backfill.
+   - **`src/vfr/`**: Fetching and converting VFR auxiliary datasets (`uv run fetch-vfr` — ADDS/NASR MTR centerlines & corridors, QLever OSM mountain passes, USWTDB wind farms, and HIFLD high-voltage powerlines).
    - **`src/runways/`**: Logic for generating runway polygons from threshold data.
    - **`src/pmtiles/`**: Orchestration of the build pipeline (including `build-search-index` during Step 2).
    - **`src/tools/`**: Utilities for inspection and validation.

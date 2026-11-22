@@ -17,6 +17,7 @@ def build_search_index(
     cifp_path: str = "FAACIFP18",
     output_path: str = "../client/public/search_index.json",
     nasr_facilities_path: str = "data/nasr_facilities.json",
+    nasr_vfr_path: str = "data/nasr_vfr_fixes.json",
 ) -> dict:
     output_dir = os.path.dirname(output_path)
     if output_dir and not os.path.exists(output_dir):
@@ -119,18 +120,37 @@ def build_search_index(
 
     # Waypoints
     for wp in c.get_enroute_waypoints() + c.get_terminal_waypoints():
+        if hasattr(wp, "has_primary") and not wp.has_primary():
+            continue
         p = wp.to_dict()["primary"]
         ident = (p.get("waypoint_id") or "").strip()
         lat, lon = p.get("lat"), p.get("lon")
         if ident and lat is not None and lon is not None:
             # Classify waypoint type
-            raw_type = (p.get("type") or "").strip()
-            if raw_type == "C":
+            raw_type_field = p.get("type") or "   "
+            raw_type = raw_type_field.strip()
+            if len(raw_type_field) > 0 and raw_type_field[0] == "V":
+                wpt_type = "vfr"
+            elif raw_type == "C":
                 wpt_type = "compulsory"
             else:
                 wpt_type = "waypoint"
 
             fixes[ident] = {"lat": float(lat), "lon": float(lon), "type": wpt_type}
+
+    if nasr_vfr_path and os.path.exists(nasr_vfr_path):
+        print(f"Loading NASR VFR fixes from {nasr_vfr_path}...", flush=True)
+        with open(nasr_vfr_path) as f:
+            nasr_vfr_data = json.load(f)
+        for item in nasr_vfr_data.get("vfr_waypoints", []):
+            ident = (item.get("id") or "").strip()
+            lat, lon = item.get("lat"), item.get("lon")
+            if ident and lat is not None and lon is not None and ident not in fixes:
+                entry = {"lat": float(lat), "lon": float(lon), "type": "vfr"}
+                name = (item.get("name") or "").strip()
+                if name:
+                    entry["name"] = name
+                fixes[ident] = entry
 
     print("Indexing procedures...", flush=True)
     # Structure: procedures[airport_id][proc_name] = { transitions: { trans_id: [points] }, body: [points] }

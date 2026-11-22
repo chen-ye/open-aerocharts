@@ -1,10 +1,14 @@
 import {
+	amber,
 	blueDark,
+	brown,
 	crimson,
 	gray,
 	grayDark,
 	indigo,
 	plum,
+	purple,
+	teal,
 } from "@radix-ui/colors";
 import { Box, Flex, Separator, Slider, Switch, Text } from "@radix-ui/themes";
 import type React from "react";
@@ -139,13 +143,48 @@ const LineSwatch = ({
 	</svg>
 );
 
+const WindFarmSwatch = ({ color }: { color: string }) => (
+	<svg
+		width="1em"
+		height="1em"
+		viewBox="0 0 16 16"
+		aria-hidden="true"
+		style={{ display: "block", flexShrink: 0 }}
+	>
+		<rect
+			x="1"
+			y="1"
+			width="14"
+			height="14"
+			rx="2.5"
+			fill={color}
+			fillOpacity={0.18}
+			stroke={color}
+			strokeWidth="1.4"
+		/>
+		<line
+			x1="3"
+			y1="13"
+			x2="13"
+			y2="3"
+			stroke={color}
+			strokeWidth="1"
+			strokeOpacity={0.65}
+		/>
+		<circle cx="5.2" cy="5.2" r="1.2" fill={color} />
+		<circle cx="10.8" cy="10.8" r="1.2" fill={color} />
+	</svg>
+);
+
 import heliportIcon from "../../assets/icons/carbon/apt-helipad.svg?url";
 import aptCivilIcon from "../../assets/icons/carbon/apt-ifr-civil.svg?url";
 import privateIcon from "../../assets/icons/carbon/apt-private.svg?url";
 import ultralightIcon from "../../assets/icons/carbon/apt-ultralight.svg?url";
 import navaidIcon from "../../assets/icons/carbon/nav-vor.svg?url";
 import obstacleIcon from "../../assets/icons/carbon/obs-major.svg?url";
+import mountainPassIcon from "../../assets/icons/carbon/pass-mountain.svg?url";
 import waypointIcon from "../../assets/icons/carbon/wpt-rnav-solid.svg?url";
+import vfrWaypointIcon from "../../assets/icons/carbon/wpt-vfr-checkpoint.svg?url";
 
 export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 	layers,
@@ -162,10 +201,30 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 		masterKey: keyof AeronauticalLayerState,
 		value: boolean,
 	) => {
-		setLayers((prev: AeronauticalLayerState) => ({
-			...prev,
-			[masterKey]: value,
-		}));
+		setLayers((prev: AeronauticalLayerState) => {
+			if (
+				masterKey === "showVfrMaster" &&
+				value &&
+				!prev.vfrWaypoints &&
+				!prev.mtrs &&
+				!prev.mountainPasses &&
+				!prev.windFarms &&
+				!prev.powerlines
+			) {
+				return {
+					...prev,
+					showVfrMaster: true,
+					vfrWaypoints: true,
+					mtrs: true,
+					mountainPasses: true,
+					windFarms: true,
+				};
+			}
+			return {
+				...prev,
+				[masterKey]: value,
+			};
+		});
 	};
 
 	return (
@@ -468,6 +527,70 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 					</Box>
 					<Separator size="4" />
 
+					{/* VFR Elements */}
+					<Box>
+						<Flex align="center" justify="between" mb="2">
+							<Text size="2" weight="bold">
+								VFR Elements
+							</Text>
+							<Switch
+								size="1"
+								checked={layers.showVfrMaster}
+								onCheckedChange={(c: boolean) =>
+									updateMasterGroup("showVfrMaster", c)
+								}
+							/>
+						</Flex>
+						<Flex direction="column" gap="2">
+							<ToggleRow
+								label="VFR Waypoints"
+								legend={
+									<IconBadge icon={vfrWaypointIcon} color={crimson.crimson9} />
+								}
+								checked={layers.vfrWaypoints}
+								disabled={!layers.showVfrMaster}
+								onChange={(c: boolean) => updateLayer("vfrWaypoints", c)}
+							/>
+							<ToggleRow
+								label="Military Training Routes"
+								legend={
+									<LineSwatch
+										color={indigo.indigo9}
+										dashArray="6 3"
+										innerBand={true}
+									/>
+								}
+								checked={layers.mtrs}
+								disabled={!layers.showVfrMaster}
+								onChange={(c: boolean) => updateLayer("mtrs", c)}
+							/>
+							<ToggleRow
+								label="Mountain Passes"
+								legend={
+									<IconBadge icon={mountainPassIcon} color={brown.brown9} />
+								}
+								checked={layers.mountainPasses}
+								disabled={!layers.showVfrMaster}
+								onChange={(c: boolean) => updateLayer("mountainPasses", c)}
+							/>
+							<ToggleRow
+								label="Wind Farms"
+								legend={<WindFarmSwatch color={purple.purple9} />}
+								checked={layers.windFarms}
+								disabled={!layers.showVfrMaster}
+								onChange={(c: boolean) => updateLayer("windFarms", c)}
+							/>
+							<ToggleRow
+								label="Power Transmission Lines"
+								legend={<LineSwatch color={amber.amber9} dashArray="4 3" />}
+								checked={layers.powerlines}
+								disabled={!layers.showVfrMaster}
+								onChange={(c: boolean) => updateLayer("powerlines", c)}
+							/>
+						</Flex>
+					</Box>
+					<Separator size="4" />
+
 					{/* Boundaries (ARTCC/FIR/CTA/Special Rules) */}
 					<Box>
 						<Flex align="center" justify="between" mb="2">
@@ -533,6 +656,12 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 								legend={<IconBadge icon={obstacleIcon} color={plum.plum9} />}
 								checked={layers.obstacles}
 								onChange={(c: boolean) => updateLayer("obstacles", c)}
+							/>
+							<ToggleRow
+								label="Grid MORA"
+								legend={<LegendBadge label="23" color={teal.teal9} />}
+								checked={layers.gridMora}
+								onChange={(c: boolean) => updateLayer("gridMora", c)}
 							/>
 						</Flex>
 					</Box>

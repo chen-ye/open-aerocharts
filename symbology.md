@@ -43,7 +43,7 @@ These icons indicate radio navigation aids.
 
 ## 3. Fixes, Waypoints & Routing
 
-Icons representing specific coordinate points in the sky.
+Icons representing specific coordinate points in the sky and VFR routing elements.
 
 | Icon | Asset Name | Visual Description | Notes |
 | :---: | :--- | :--- | :--- |
@@ -51,8 +51,14 @@ Icons representing specific coordinate points in the sky.
 | ![fix-non-compulsory](client/src/assets/icons/carbon/fix-non-compulsory.svg) | `fix-non-compulsory` | Open triangle | |
 | ![wpt-rnav-solid](client/src/assets/icons/carbon/wpt-rnav-solid.svg) | `wpt-rnav-solid` | Solid 4-point starburst | |
 | ![wpt-rnav-open](client/src/assets/icons/carbon/wpt-rnav-open.svg) | `wpt-rnav-open` | Open 4-point starburst | |
-| ![wpt-vfr-checkpoint](client/src/assets/icons/carbon/wpt-vfr-checkpoint.svg) | `wpt-vfr-checkpoint` | Pennant/Flag icon | |
-| ![pass-mountain](client/src/assets/icons/pass-mountain.svg) | `pass-mountain` | Opposing curved brackets `)(` | Identifies mountain passes |
+| ![wpt-vfr-checkpoint](client/src/assets/icons/carbon/wpt-vfr-checkpoint.svg) | `wpt-vfr-checkpoint` | FAA crimson/magenta pennant/flag icon | `VP*` VFR waypoints (NASR `FIX_BASE.csv`); sectional-charted IFR fixes fall back to `fix-compulsory` / `fix-non-compulsory` when IFR Waypoints are hidden |
+| ![pass-mountain](client/src/assets/icons/carbon/pass-mountain.svg) | `pass-mountain` | Brown opposing curved brackets `)(` + elevation label (ft) | Identifies mountain passes |
+
+### Military Training Routes (`IR` / `VR` / `SR`)
+
+| Feature | Representation | Visual Description | Notes |
+| :--- | :--- | :--- | :--- |
+| **Military Training Routes** (`IR` / `VR` / `SR`) | Line + corridor polygon + label | Centerline with translucent width corridor and route/altitude labels | Instrument (`IR`), Visual (`VR`), and Slow Speed Low Altitude (`SR`) routes from ADDS `MTRSegment` + NASR `MTR_BASE`/`MTR_PT` |
 
 ## 4. Obstructions & Relief
 
@@ -63,6 +69,7 @@ Markers for hazards to flight.
 | ![obs-minor](client/src/assets/icons/carbon/obs-minor.svg) | `obs-minor` | Upward pointing chevron with dot | Obstacle < 1000' AGL |
 | ![obs-major](client/src/assets/icons/carbon/obs-major.svg) | `obs-major` | Tower/Eiffel-shape with dot | Obstacle ≥ 1000' AGL |
 | ![obs-wind-turbine](client/src/assets/icons/carbon/obs-wind-turbine.svg) | `obs-wind-turbine` | Wind turbine icon | |
+| ![pat-wind-farm](client/src/assets/icons/pat-wind-farm.svg) | `pat-wind-farm` | Hatched polygon + outline + FAA MSL/AGL height label | Wind turbine clusters (USGS USWTDB 5 km AEQD + FAA DOF `WINDMILL`) |
 
 ### Overlays + Variants
 
@@ -71,3 +78,12 @@ Markers for hazards to flight.
 | ![obs-minor-lit](client/src/assets/icons/carbon/obs-minor-lit.svg) | `obs-minor-lit` | Minor obstacle with radiating light rays | Lighted obstacle < 1000' AGL |
 | ![obs-major-lit](client/src/assets/icons/carbon/obs-major-lit.svg) | `obs-major-lit` | Major obstacle with radiating light rays | Lighted obstacle ≥ 1000' AGL |
 | ![obs-lighted-mod](client/src/assets/icons/obs-lighted-mod.svg) | `obs-lighted-mod` | Radiating light rays | Legacy overlay placed on top of standard obstacle icons |
+
+## 5. Enroute Grid & Infrastructure
+
+Vector-rendered grid overlays and linear infrastructure hazards.
+
+| Feature | Visual Description | Notes |
+| :--- | :--- | :--- |
+| **Power Transmission Lines** | Dashed bronze/amber lines | Overhead lines `>= 115 kV` (HIFLD), voltage-tiered at `z6`/`z7`/`z9` |
+| **Grid MORA** | `1° × 1°` latitude/longitude grid with Jeppesen two-tone split labels: teal (`< 14,000 ft`) / crimson (`>= 14,000 ft`) and superscripted hundreds digit | Minimum Off-Route Altitude derived from CIFP `AS` records (`enroute.pmtiles`) |

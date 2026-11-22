@@ -1,7 +1,7 @@
 export interface FixInfo {
 	lat: number;
 	lon: number;
-	type: "airport" | "navaid" | "waypoint";
+	type: "airport" | "navaid" | "waypoint" | "vfr";
 	name?: string;
 }
 
@@ -27,7 +27,7 @@ export interface RoutePoint {
 	id: string;
 	lat: number;
 	lon: number;
-	type: "airport" | "navaid" | "waypoint" | "procedure";
+	type: "airport" | "navaid" | "waypoint" | "vfr" | "procedure";
 	name?: string; // e.g. "TECKY4"
 }
 

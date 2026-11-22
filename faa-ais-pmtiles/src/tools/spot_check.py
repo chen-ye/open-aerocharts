@@ -137,6 +137,88 @@ def main():
             "layer": "airports",
             "matches": {"id": "0CL8", "facility_type": "ultralight"},
         },
+        {
+            "name": "Grid MORA N36W119 in enroute at Z6",
+            "file": "enroute.pmtiles",
+            "z": 6,
+            "x": 10,
+            "y": 25,
+            "layer": "grid_mora_labels",
+            "matches": {"cell_id": "N36W119", "mora_ft": "16800", "thousands": "16", "hundreds": "8", "is_high": True},
+        },
+        {
+            "name": "VFR Waypoint VPAAQ in vfr at Z8",
+            "file": "vfr.pmtiles",
+            "z": 8,
+            "x": 40,
+            "y": 99,
+            "layer": "vfr_waypoints",
+            "matches": {"id": "VPAAQ", "type": "vfr"},
+        },
+        {
+            "name": "NASR-backfilled MTR VR1257 in vfr at Z8",
+            "file": "vfr.pmtiles",
+            "z": 8,
+            "x": 41,
+            "y": 100,
+            "layer": "mtrs",
+            "matches": {"route_id": "VR1257", "mtr_type": "VR", "source": "nasr"},
+        },
+        {
+            "name": "ADDS MTR IR207 in vfr at Z8",
+            "file": "vfr.pmtiles",
+            "z": 8,
+            "x": 41,
+            "y": 99,
+            "layer": "mtrs",
+            "matches": {"route_id": "IR207", "mtr_type": "IR"},
+        },
+        {
+            "name": "Mountain Pass Altamont Pass in vfr at Z7",
+            "file": "vfr.pmtiles",
+            "z": 7,
+            "x": 20,
+            "y": 49,
+            "layer": "mountain_passes",
+            "matches": {"name": "Altamont Pass"},
+        },
+        {
+            "name": "Wind Farm Golden Hills in vfr at Z8",
+            "file": "vfr.pmtiles",
+            "z": 8,
+            "x": 41,
+            "y": 99,
+            "layer": "wind_farms",
+            "matches": {"name": "Golden Hills", "source": "uswtdb"},
+        },
+        {
+            "name": "Powerline 500 kV in vfr at Z8",
+            "file": "vfr.pmtiles",
+            "z": 8,
+            "x": 41,
+            "y": 99,
+            "layer": "powerlines",
+            "matches": {"voltage_kv": 500},
+        },
+        {
+            "name": "VFR Waypoint VPAAQ excluded from IFR waypoints at Z10",
+            "file": "waypoints_obstacles.pmtiles",
+            "z": 10,
+            "x": 163,
+            "y": 396,
+            "layer": "waypoints",
+            "matches": {"id": "VPAAQ"},
+            "expect_absent": True,
+        },
+        {
+            "name": "IFR NRS Waypoint KL12G preserved in waypoints at Z10",
+            "file": "waypoints_obstacles.pmtiles",
+            "z": 10,
+            "x": 170,
+            "y": 415,
+            "layer": "waypoints",
+            "matches": {"id": "KL12G", "type": "named"},
+        },
     ]
 
     failed = False
@@ -148,10 +230,16 @@ def main():
             continue
 
         tile_json = run_decode(path, check["z"], check["x"], check["y"])
-        if check_feature_in_tile(tile_json, check["layer"], check["matches"]):
+        found = check_feature_in_tile(tile_json, check["layer"], check["matches"])
+        expect_absent = bool(check.get("expect_absent", False))
+        if (not expect_absent and found) or (expect_absent and not found):
             print(f"PASSED: {check['name']}")
         else:
-            print(f"FAILED: {check['name']} - Feature matching {check['matches']} not found in tile {check['z']}/{check['x']}/{check['y']}")
+            status_word = "unexpectedly found" if expect_absent else "not found"
+            print(
+                f"FAILED: {check['name']} - Feature matching {check['matches']} "
+                f"{status_word} in tile {check['z']}/{check['x']}/{check['y']}"
+            )
             failed = True
 
     if failed:

@@ -5,6 +5,7 @@ Extracts airports, navaids, airways, procedures, runways, and localizers using t
 Enriches airport data with metadata from NASR (fuel, tower, FAR 139 status).
 """
 
+import os
 import sys
 from collections import defaultdict
 
@@ -26,6 +27,116 @@ def load_nasr_metadata():
 
 def load_nasr_facilities():
     return nasr.load_nasr_facilities()
+
+
+def load_nasr_vfr_fixes():
+    return nasr.load_nasr_vfr_fixes()
+
+
+def parse_mora_coord(start_lat: str, start_lon: str) -> tuple[int, int]:
+    """Parse ARINC 424 Grid MORA starting lat/lon strings (e.g. 'N36', 'W090', 'S29', 'E150') into integer SW corner coords."""
+    if not isinstance(start_lat, str) or not isinstance(start_lon, str):
+        raise ValueError("MORA start_lat and start_lon must be non-empty strings.")
+    lat_str = start_lat.strip().upper()
+    lon_str = start_lon.strip().upper()
+    if len(lat_str) < 2 or len(lon_str) < 2:
+        raise ValueError(f"Invalid MORA coordinates: start_lat={start_lat!r}, start_lon={start_lon!r}")
+
+    lat_hemi = lat_str[0]
+    lon_hemi = lon_str[0]
+    if lat_hemi not in ("N", "S") or lon_hemi not in ("E", "W"):
+        raise ValueError(f"Invalid MORA hemisphere: start_lat={start_lat!r}, start_lon={start_lon!r}")
+
+    lat_val = int(lat_str[1:])
+    lon_val = int(lon_str[1:])
+    if not (0 <= lat_val <= 90 and 0 <= lon_val <= 180):
+        raise ValueError(f"MORA coordinates out of range: start_lat={start_lat!r}, start_lon={start_lon!r}")
+
+    lat0 = -lat_val if lat_hemi == "S" else lat_val
+    lon0 = -lon_val if lon_hemi == "W" else lon_val
+    return lat0, lon0
+
+
+def format_mora_parts(mora_ft: int) -> tuple[str, str, str]:
+    """Format Grid MORA altitude in feet into (thousands, hundreds, display) strings."""
+    val = int(mora_ft)
+    thousands = str(val // 1000)
+    hundreds = str((val % 1000) // 100)
+    display = f"{thousands}{hundreds}"
+    return thousands, hundreds, display
+
+
+def build_grid_mora_features(moras: list) -> tuple[list[geojson.Feature], list[geojson.Feature]]:
+    """Build deduplicated 1-degree Grid MORA border LineStrings and center label Points."""
+    line_features: list[geojson.Feature] = []
+    label_features: list[geojson.Feature] = []
+    edges: dict[tuple[tuple[int, int], tuple[int, int]], bool] = {}
+
+    for m in moras:
+        if hasattr(m, "has_primary") and not m.has_primary():
+            continue
+        p = m.to_dict().get("primary") or {}
+        start_lat = p.get("start_lat")
+        start_lon = p.get("start_lon")
+        if not start_lat or not start_lon:
+            continue
+        lat0, lon0 = parse_mora_coord(start_lat, start_lon)
+
+        for i in range(30):
+            val = p.get(f"mora_{i + 1}")
+            if val is None:
+                continue
+            try:
+                mora_ft = int(val)
+            except ValueError, TypeError:
+                continue
+            if mora_ft <= 0:
+                continue
+
+            lon_left = lon0 + i
+            if lon_left >= 180:
+                lon_left = ((lon_left + 180) % 360) - 180
+            lon_right = lon_left + 1
+
+            thousands, hundreds, display = format_mora_parts(mora_ft)
+            is_high = mora_ft >= 14000
+            cell_id = f"{'N' if lat0 >= 0 else 'S'}{abs(lat0):02d}{'E' if lon_left >= 0 else 'W'}{abs(lon_left):03d}"
+
+            label_features.append(
+                geojson.Feature(
+                    geometry=geojson.Point((lon_left + 0.5, lat0 + 0.5)),
+                    properties={
+                        "cell_id": cell_id,
+                        "mora_ft": mora_ft,
+                        "thousands": thousands,
+                        "hundreds": hundreds,
+                        "display": display,
+                        "is_high": is_high,
+                        "rank": 1,
+                    },
+                )
+            )
+
+            bl = (lon_left, lat0)
+            br = (lon_right, lat0)
+            tr = (lon_right, lat0 + 1)
+            tl = (lon_left, lat0 + 1)
+            for pt1, pt2 in ((bl, br), (tl, tr), (bl, tl), (br, tr)):
+                edge_key = (min(pt1, pt2), max(pt1, pt2))
+                edges[edge_key] = edges.get(edge_key, False) or is_high
+
+    for (pt1, pt2), edge_is_high in edges.items():
+        line_features.append(
+            geojson.Feature(
+                geometry=geojson.LineString([pt1, pt2]),
+                properties={
+                    "is_high": edge_is_high,
+                    "rank": 1,
+                },
+            )
+        )
+
+    return line_features, label_features
 
 
 RANK_MINZOOM = {1: 0, 2: 3, 3: 4, 4: 5, 5: 7}
@@ -265,8 +376,17 @@ def build_airport_features(
 
 def build_pmtiles_fgb(cifp_path):
     print("Fetching NASR airport metadata...", flush=True)
+    os.makedirs("data", exist_ok=True)
     airport_metadata = load_nasr_metadata()
     nasr_facilities = load_nasr_facilities()
+    nasr_vfr_fixes = load_nasr_vfr_fixes() or {}
+    nasr_vfr_waypoints = nasr_vfr_fixes.get("vfr_waypoints") or []
+    nasr_sectional_fixes = nasr_vfr_fixes.get("sectional_fixes") or []
+    nasr_vfr_by_id: dict[str, dict] = {}
+    for item in nasr_vfr_waypoints:
+        item_id = (item.get("id") or "").strip()
+        if item_id and item_id not in nasr_vfr_by_id:
+            nasr_vfr_by_id[item_id] = item
 
     print("Loading CIFP...", flush=True)
     c = CIFP(cifp_path)
@@ -283,6 +403,7 @@ def build_pmtiles_fgb(cifp_path):
     c.parse_airway_points()
     c.parse_runways()
     c.parse_loc_gss()
+    c.parse_moras()
 
     print("Building lookup dictionaries...", flush=True)
     print("Extracting Airports...", flush=True)
@@ -370,16 +491,46 @@ def build_pmtiles_fgb(cifp_path):
 
     print("Extracting Waypoints...", flush=True)
     waypoint_features = []
+    vfr_waypoint_features = []
+    seen_vfr_keys: set[tuple[str, str]] = set()
+    cifp_compulsory_ids: set[str] = set()
     for wp in c.get_enroute_waypoints() + c.get_terminal_waypoints():
+        if hasattr(wp, "has_primary") and not wp.has_primary():
+            continue
         p = wp.to_dict()["primary"]
         if p.get("lat") is not None and p.get("lon") is not None:
             ident = (p.get("waypoint_id") or "").strip()
             fixes[ident] = (p.get("lon"), p.get("lat"), 0.0)
 
+            raw_type_field = p.get("type") or "   "
+            if len(raw_type_field) > 0 and raw_type_field[0] == "V":
+                key = (ident, "vfr")
+                if ident and key not in seen_vfr_keys:
+                    seen_vfr_keys.add(key)
+                    nasr_info = nasr_vfr_by_id.get(ident) or {}
+                    vfr_name = (nasr_info.get("name") or p.get("name_description") or "").strip()
+                    vfr_waypoint_features.append(
+                        geojson.Feature(
+                            geometry=geojson.Point((p.get("lon"), p.get("lat"), 0.0)),
+                            properties={
+                                "id": ident,
+                                "type": "vfr",
+                                "name": vfr_name,
+                                "charts": (nasr_info.get("charts") or "").strip(),
+                                "state": (nasr_info.get("state") or "").strip(),
+                                "compulsory": bool(nasr_info.get("compulsory", False)),
+                                "rank": 3,
+                            },
+                        )
+                    )
+                continue
+
             # Classify waypoint type from ARINC 424
-            raw_type = (p.get("type") or "").strip()
+            raw_type = raw_type_field.strip()
             if raw_type == "C":
                 wpt_type = "compulsory"
+                if ident:
+                    cifp_compulsory_ids.add(ident)
             elif raw_type == "R":
                 wpt_type = "rnav"
             else:
@@ -416,7 +567,56 @@ def build_pmtiles_fgb(cifp_path):
                 )
             )
 
+    for item in nasr_vfr_waypoints:
+        item_id = (item.get("id") or "").strip()
+        lat, lon = item.get("lat"), item.get("lon")
+        if not item_id or lat is None or lon is None:
+            continue
+        key = (item_id, "vfr")
+        if key in seen_vfr_keys:
+            continue
+        seen_vfr_keys.add(key)
+        vfr_waypoint_features.append(
+            geojson.Feature(
+                geometry=geojson.Point((float(lon), float(lat), 0.0)),
+                properties={
+                    "id": item_id,
+                    "type": "vfr",
+                    "name": (item.get("name") or "").strip(),
+                    "charts": (item.get("charts") or "").strip(),
+                    "state": (item.get("state") or "").strip(),
+                    "compulsory": bool(item.get("compulsory", False)),
+                    "rank": 3,
+                },
+            )
+        )
+
+    for item in nasr_sectional_fixes:
+        item_id = (item.get("id") or "").strip()
+        lat, lon = item.get("lat"), item.get("lon")
+        if not item_id or lat is None or lon is None:
+            continue
+        key = (item_id, "sectional_fix")
+        if key in seen_vfr_keys:
+            continue
+        seen_vfr_keys.add(key)
+        vfr_waypoint_features.append(
+            geojson.Feature(
+                geometry=geojson.Point((float(lon), float(lat), 0.0)),
+                properties={
+                    "id": item_id,
+                    "type": "sectional_fix",
+                    "name": (item.get("name") or "").strip(),
+                    "charts": (item.get("charts") or "").strip(),
+                    "state": (item.get("state") or "").strip(),
+                    "compulsory": bool(item.get("compulsory", False)) or (item_id in cifp_compulsory_ids),
+                    "rank": 4,
+                },
+            )
+        )
+
     save_fgb(waypoint_features, "data/waypoints.fgb")
+    save_fgb(vfr_waypoint_features, "data/vfr_waypoints.fgb")
 
     save_fgb(navaid_features, "data/navaids.fgb")
 
@@ -684,6 +884,11 @@ def build_pmtiles_fgb(cifp_path):
             )
 
     save_fgb(loc_features, "data/localizers.fgb")
+
+    print("Extracting Grid MORA...", flush=True)
+    mora_line_features, mora_label_features = build_grid_mora_features(c.get_moras())
+    save_fgb(mora_line_features, "data/grid_mora_lines.fgb")
+    save_fgb(mora_label_features, "data/grid_mora_labels.fgb")
 
     print("FlatGeobuf generation complete.", flush=True)
 

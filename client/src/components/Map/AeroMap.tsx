@@ -1,9 +1,12 @@
 import {
+	amber,
+	amberDark,
 	blue,
 	blueDark,
 	brown,
 	brownDark,
 	crimson,
+	crimsonDark,
 	cyan,
 	cyanDark,
 	gray,
@@ -12,6 +15,10 @@ import {
 	indigoDark,
 	purple,
 	purpleDark,
+	slate,
+	slateDark,
+	teal,
+	tealDark,
 } from "@radix-ui/colors";
 import {
 	Box,
@@ -137,6 +144,28 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 		});
 	}, []);
 
+	const addVfrPatterns = useCallback((map: Maplibre, isDark: boolean) => {
+		const color = isDark ? purpleDark.purple9 : purple.purple9;
+		const svgStr = `
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M-2 2L2 -2M-2 18L18 -2M14 18L18 14" stroke="${color}" stroke-width="0.9" stroke-opacity="0.45"/>
+        <circle cx="4" cy="4" r="1.1" fill="${color}" fill-opacity="0.8"/>
+        <circle cx="12" cy="12" r="1.1" fill="${color}" fill-opacity="0.8"/>
+      </svg>
+    `;
+		const img = new Image(16, 16);
+		const blob = new Blob([svgStr], {
+			type: "image/svg+xml;charset=utf-8",
+		});
+		const url = URL.createObjectURL(blob);
+		img.onload = () => {
+			if (map.hasImage("pat-wind-farm")) map.removeImage("pat-wind-farm");
+			map.addImage("pat-wind-farm", img, { pixelRatio: 1 });
+			URL.revokeObjectURL(url);
+		};
+		img.src = url;
+	}, []);
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const onMapLoad = useCallback(
 		(e: any) => {
@@ -144,8 +173,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			const svgHaloColor = isDarkMap ? "#000000" : "#ffffff";
 			addAeroIcons(e.target, svgHaloColor, 0.95);
 			addAirwayBgIcon(e.target, isDarkMap);
+			addVfrPatterns(e.target, isDarkMap);
 		},
-		[isDarkMap, addAirwayBgIcon],
+		[isDarkMap, addAirwayBgIcon, addVfrPatterns],
 	);
 
 	// Re-inject icons every time the base Map Style finishes mutating/swapping
@@ -162,8 +192,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				addAeroIcons(mapRef.current, svgHaloColor, 0.95);
 				addAirwayBgIcon(mapRef.current, isDarkMap);
 			}
+			if (!mapRef.current.hasImage("pat-wind-farm")) {
+				addVfrPatterns(mapRef.current, isDarkMap);
+			}
 		},
-		[isDarkMap, addAirwayBgIcon],
+		[isDarkMap, addAirwayBgIcon, addVfrPatterns],
 	);
 
 	// Reload icons when dark/light mode changes
@@ -172,7 +205,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 		const svgHaloColor = isDarkMap ? "#000000" : "#ffffff";
 		addAeroIcons(mapRef.current, svgHaloColor, 0.95);
 		addAirwayBgIcon(mapRef.current, isDarkMap);
-	}, [isDarkMap, addAirwayBgIcon]);
+		addVfrPatterns(mapRef.current, isDarkMap);
+	}, [isDarkMap, addAirwayBgIcon, addVfrPatterns]);
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const [hoverInfo, setHoverInfo] = useState<{
@@ -246,10 +280,13 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
 	const interactiveLayerIds = useMemo(
 		() => [
+			"grid-mora-labels",
 			"boundary-artcc-hit",
 			"boundary-cta-hit",
 			"boundary-special-rules-hit",
 			"boundary-special-rules-fill",
+			"wind-farms-fill",
+			"powerlines-hit",
 			"airspaces-class-b",
 			"airspaces-class-b-fill",
 			"airspaces-class-c",
@@ -263,6 +300,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			"airspaces-mode-c-hit",
 			"airspaces-class-e-fill",
 			"parachute-areas-fill",
+			"mtr-hit",
 			"airways-low-line",
 			"airways-high-line",
 			"airports-public",
@@ -271,6 +309,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			"airports-other",
 			"navaids-symbol",
 			"waypoints-symbol",
+			"vfr-waypoints-symbol",
+			"vfr-sectional-fixes-symbol",
+			"mountain-passes-symbol",
 			"localizers-symbol",
 			"obstacles-symbol",
 			"runways-fill",
@@ -829,6 +870,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				layout={{ visibility: "none" }}
 			/>
 			<Layer
+				id="anchor-grid-mora"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
 				id="anchor-boundaries"
 				type="background"
 				layout={{ visibility: "none" }}
@@ -840,6 +886,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			/>
 			<Layer
 				id="anchor-boundary-special"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-vfr-infra"
 				type="background"
 				layout={{ visibility: "none" }}
 			/>
@@ -879,6 +930,11 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				layout={{ visibility: "none" }}
 			/>
 			<Layer
+				id="anchor-mtrs"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
 				id="anchor-airways"
 				type="background"
 				layout={{ visibility: "none" }}
@@ -889,7 +945,17 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				layout={{ visibility: "none" }}
 			/>
 			<Layer
+				id="anchor-mountain-passes"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
 				id="anchor-waypoints"
+				type="background"
+				layout={{ visibility: "none" }}
+			/>
+			<Layer
+				id="anchor-vfr-waypoints"
 				type="background"
 				layout={{ visibility: "none" }}
 			/>
@@ -1011,7 +1077,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				<Layer
 					id="highlight-point"
 					type="circle"
-					beforeId="anchor-boundaries"
+					beforeId="anchor-grid-mora"
 					filter={["==", "$type", "Point"]}
 					paint={{
 						"circle-radius": 18,
@@ -1023,7 +1089,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				<Layer
 					id="highlight-line"
 					type="line"
-					beforeId="anchor-boundaries"
+					beforeId="anchor-grid-mora"
 					filter={["in", "$type", "LineString", "Polygon"]}
 					paint={{
 						"line-color": "#ffffff",
@@ -1073,11 +1139,79 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}airport_diagrams.pmtiles`}
 						attribution={`FAA NFDC CIFP/DOF${cycle ? ` (Cycle ${cycle})` : ""}`}
 					/>
+					<Source
+						id="src-vfr"
+						type="vector"
+						url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}vfr.pmtiles`}
+						attribution={`FAA NASR/ADDS/USWTDB/HIFLD/OSM${cycle ? ` (Cycle ${cycle})` : ""}`}
+					/>
 					<AirspaceOverlay visible={isTilted} layers={aeronauticalLayers} />
 				</>
 			)}
 			{aeronauticalLayers.showAll && (
 				<>
+					{/* Grid MORA */}
+					{aeronauticalLayers.gridMora && (
+						<>
+							<Layer
+								id="grid-mora-lines"
+								type="line"
+								source="src-enroute"
+								source-layer="grid_mora_lines"
+								beforeId="anchor-boundaries"
+								paint={{
+									"line-color": [
+										"case",
+										["boolean", ["get", "is_high"], false],
+										isDarkMap ? crimsonDark.crimson9 : crimson.crimson9,
+										isDarkMap ? tealDark.teal9 : teal.teal9,
+									] as unknown as maplibregl.ExpressionSpecification,
+									"line-width": 1,
+									"line-opacity": 0.35,
+								}}
+							/>
+							<Layer
+								id="grid-mora-labels"
+								type="symbol"
+								source="src-enroute"
+								source-layer="grid_mora_labels"
+								beforeId="anchor-boundaries"
+								minzoom={4}
+								layout={{
+									"text-field": [
+										"format",
+										["to-string", ["coalesce", ["get", "thousands"], ""]],
+										{ "font-scale": 1.0 },
+										["to-string", ["coalesce", ["get", "hundreds"], ""]],
+										{ "font-scale": 0.65, "vertical-align": "top" },
+									] as unknown as maplibregl.ExpressionSpecification,
+									"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+									"text-size": [
+										"interpolate",
+										["linear"],
+										["zoom"],
+										4,
+										11,
+										8,
+										15,
+									] as unknown as maplibregl.ExpressionSpecification,
+									"text-allow-overlap": false,
+									"text-ignore-placement": false,
+								}}
+								paint={{
+									"text-color": [
+										"case",
+										["boolean", ["get", "is_high"], false],
+										isDarkMap ? crimsonDark.crimson11 : crimson.crimson11,
+										isDarkMap ? tealDark.teal11 : teal.teal11,
+									] as unknown as maplibregl.ExpressionSpecification,
+									"text-halo-color": haloColor,
+									"text-halo-width": 1.5,
+								}}
+							/>
+						</>
+					)}
+
 					{/* Boundaries (ARTCC / FIR, CTA / ACC, Special Rules / ADIZ) */}
 					{aeronauticalLayers.showArtccMaster && (
 						<>
@@ -1260,7 +1394,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-vfr-infra"
 										filter={["==", ["get", "type"], "ADIZ"]}
 										paint={{ "line-width": 8, "line-opacity": 0 }}
 									/>
@@ -1269,7 +1403,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-vfr-infra"
 										filter={[
 											"in",
 											["get", "type"],
@@ -1282,7 +1416,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-vfr-infra"
 										filter={[
 											"in",
 											["get", "type"],
@@ -1316,7 +1450,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-vfr-infra"
 										filter={[
 											"in",
 											["get", "type"],
@@ -1334,7 +1468,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-boundary"
 										source-layer="boundary_airspace"
-										beforeId="anchor-diagrams"
+										beforeId="anchor-vfr-infra"
 										minzoom={4}
 										filter={[
 											"in",
@@ -1350,6 +1484,172 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											),
 											"text-halo-color": haloColor,
 											"text-halo-width": 1.5,
+										}}
+									/>
+								</>
+							)}
+						</>
+					)}
+
+					{/* VFR Infrastructure (Wind Farms & Powerlines) */}
+					{aeronauticalLayers.showVfrMaster && (
+						<>
+							{aeronauticalLayers.windFarms && (
+								<>
+									<Layer
+										id="wind-farms-fill"
+										type="fill"
+										source="src-vfr"
+										source-layer="wind_farms"
+										beforeId="anchor-diagrams"
+										minzoom={getZoom(5)}
+										filter={getZoomRankFilter({ 0: 2, 7: 3, 9: 6 })}
+										paint={{
+											"fill-pattern": "pat-wind-farm",
+											"fill-opacity": 0.65,
+										}}
+									/>
+									<Layer
+										id="wind-farms-outline"
+										type="line"
+										source="src-vfr"
+										source-layer="wind_farms"
+										beforeId="anchor-diagrams"
+										minzoom={getZoom(5)}
+										filter={getZoomRankFilter({ 0: 2, 7: 3, 9: 6 })}
+										paint={{
+											"line-color": isDarkMap
+												? purpleDark.purple9
+												: purple.purple9,
+											"line-width": 1.2,
+											"line-opacity": 0.7,
+										}}
+									/>
+									<Layer
+										id="wind-farms-label"
+										type="symbol"
+										source="src-vfr"
+										source-layer="wind_farms"
+										beforeId="anchor-diagrams"
+										minzoom={getZoom(8)}
+										maxzoom={12}
+										filter={getZoomRankFilter({ 0: 2, 7: 3, 9: 6 })}
+										layout={{
+											"text-field": [
+												"let",
+												"nm",
+												["to-string", ["coalesce", ["get", "name"], ""]],
+												"amsl",
+												["to-number", ["get", "max_amsl_ft"], 0],
+												"agl",
+												["to-number", ["get", "max_agl_ft"], 0],
+												"tip",
+												["to-number", ["get", "max_tip_ft"], 0],
+												[
+													"let",
+													"ht",
+													[
+														"case",
+														[
+															"all",
+															[">", ["var", "amsl"], 0],
+															[">", ["var", "agl"], 0],
+														],
+														[
+															"concat",
+															["to-string", ["var", "amsl"]],
+															" (",
+															["to-string", ["var", "agl"]],
+															")",
+														],
+														[">", ["var", "amsl"], 0],
+														["concat", ["to-string", ["var", "amsl"]], "'"],
+														[">", ["var", "agl"], 0],
+														[
+															"concat",
+															"(",
+															["to-string", ["var", "agl"]],
+															"' AGL)",
+														],
+														[">", ["var", "tip"], 0],
+														[
+															"concat",
+															"(",
+															["to-string", ["var", "tip"]],
+															"' AGL)",
+														],
+														"",
+													],
+													[
+														"case",
+														[
+															"all",
+															["!=", ["var", "nm"], ""],
+															["!=", ["var", "ht"], ""],
+														],
+														["concat", ["var", "nm"], "\n", ["var", "ht"]],
+														["!=", ["var", "nm"], ""],
+														["var", "nm"],
+														["var", "ht"],
+													],
+												],
+											] as unknown as maplibregl.ExpressionSpecification,
+											"text-font": [
+												"Open Sans Regular",
+												"Arial Unicode MS Regular",
+											],
+											"text-size": 10,
+											"text-allow-overlap": false,
+											"text-ignore-placement": false,
+											"text-optional": true,
+										}}
+										paint={{
+											"text-color": isDarkMap
+												? purpleDark.purple11
+												: purple.purple11,
+											"text-halo-color": haloColor,
+											"text-halo-width": 1.5,
+										}}
+									/>
+								</>
+							)}
+							{aeronauticalLayers.powerlines && (
+								<>
+									<Layer
+										id="powerlines-hit"
+										type="line"
+										source="src-vfr"
+										source-layer="powerlines"
+										beforeId="anchor-diagrams"
+										minzoom={getZoom(6)}
+										filter={getZoomRankFilter({ 0: 1, 6: 2, 7: 3, 9: 6 })}
+										paint={{ "line-width": 8, "line-opacity": 0 }}
+									/>
+									<Layer
+										id="powerlines-line"
+										type="line"
+										source="src-vfr"
+										source-layer="powerlines"
+										beforeId="anchor-diagrams"
+										minzoom={getZoom(6)}
+										filter={getZoomRankFilter({ 0: 1, 6: 2, 7: 3, 9: 6 })}
+										paint={{
+											"line-color": isDarkMap ? amberDark.amber9 : amber.amber9,
+											"line-width": [
+												"interpolate",
+												["linear"],
+												[
+													"to-number",
+													["coalesce", ["get", "voltage_kv"], 115],
+													115,
+												],
+												115,
+												1,
+												500,
+												1.6,
+											] as unknown as maplibregl.ExpressionSpecification,
+											"line-dasharray": [4, 3],
+											"line-opacity": 0.55,
 										}}
 									/>
 								</>
@@ -1439,7 +1739,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1455,7 +1755,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1489,7 +1789,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1502,7 +1802,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1518,7 +1818,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1552,7 +1852,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1565,7 +1865,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="line"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1582,7 +1882,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="fill"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										filter={[
 											"all",
 											["!=", ["get", "type"], "E"],
@@ -1595,7 +1895,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1614,7 +1914,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										minzoom={8}
 										filter={[
 											"all",
@@ -1633,7 +1933,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										type="symbol"
 										source="src-airspaces"
 										source-layer="airspaces"
-										beforeId="anchor-airways"
+										beforeId="anchor-mtrs"
 										minzoom={8}
 										filter={[
 											"all",
@@ -2112,6 +2412,148 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						</>
 					)}
 
+					{/* Military Training Routes (MTRs) */}
+					{aeronauticalLayers.showVfrMaster && aeronauticalLayers.mtrs && (
+						<>
+							<Layer
+								id="mtr-corridors-fill"
+								type="fill"
+								source="src-vfr"
+								source-layer="mtr_corridors"
+								beforeId="anchor-airways"
+								minzoom={getZoom(6)}
+								filter={getZoomRankFilter({ 0: 2, 4: 3, 6: 6 })}
+								paint={{
+									"fill-color": [
+										"match",
+										["get", "mtr_type"],
+										"IR",
+										isDarkMap ? indigoDark.indigo9 : indigo.indigo9,
+										"VR",
+										isDarkMap ? amberDark.amber9 : amber.amber9,
+										"SR",
+										isDarkMap ? tealDark.teal9 : teal.teal9,
+										isDarkMap ? slateDark.slate9 : slate.slate9,
+									] as unknown as maplibregl.ExpressionSpecification,
+									"fill-opacity": 0.08,
+								}}
+							/>
+							<Layer
+								id="mtr-hit"
+								type="line"
+								source="src-vfr"
+								source-layer="mtrs"
+								beforeId="anchor-airways"
+								minzoom={getZoom(4)}
+								filter={getZoomRankFilter({ 0: 2, 4: 3, 6: 6 })}
+								paint={{ "line-width": 10, "line-opacity": 0 }}
+							/>
+							<Layer
+								id="mtr-lines"
+								type="line"
+								source="src-vfr"
+								source-layer="mtrs"
+								beforeId="anchor-airways"
+								minzoom={getZoom(4)}
+								filter={getZoomRankFilter({ 0: 2, 4: 3, 6: 6 })}
+								paint={{
+									"line-color": [
+										"match",
+										["get", "mtr_type"],
+										"IR",
+										isDarkMap ? indigoDark.indigo9 : indigo.indigo9,
+										"VR",
+										isDarkMap ? amberDark.amber9 : amber.amber9,
+										"SR",
+										isDarkMap ? tealDark.teal9 : teal.teal9,
+										isDarkMap ? slateDark.slate9 : slate.slate9,
+									] as unknown as maplibregl.ExpressionSpecification,
+									"line-width": 1.4,
+									"line-dasharray": [6, 3],
+									"line-opacity": 0.75,
+								}}
+							/>
+							<Layer
+								id="mtr-labels"
+								type="symbol"
+								source="src-vfr"
+								source-layer="mtrs"
+								beforeId="anchor-airways"
+								minzoom={getZoom(6)}
+								filter={getZoomRankFilter({ 0: 2, 4: 3, 6: 6 })}
+								layout={{
+									"symbol-placement": "line",
+									"symbol-spacing": 250,
+									"text-field": [
+										"let",
+										"rid",
+										[
+											"case",
+											["!=", ["coalesce", ["get", "route_id"], ""], ""],
+											["to-string", ["get", "route_id"]],
+											["!=", ["coalesce", ["get", "name"], ""], ""],
+											["to-string", ["get", "name"]],
+											["to-string", ["coalesce", ["get", "ident"], ""]],
+										],
+										"lo",
+										["to-string", ["coalesce", ["get", "lower_alt"], ""]],
+										"hi",
+										["to-string", ["coalesce", ["get", "upper_alt"], ""]],
+										[
+											"concat",
+											["var", "rid"],
+											[
+												"case",
+												[
+													"all",
+													["!=", ["var", "lo"], ""],
+													["!=", ["var", "lo"], "-9998"],
+													["!=", ["var", "hi"], ""],
+													["!=", ["var", "hi"], "-9998"],
+												],
+												["concat", " ", ["var", "lo"], "-", ["var", "hi"]],
+												[
+													"all",
+													["!=", ["var", "lo"], ""],
+													["!=", ["var", "lo"], "-9998"],
+												],
+												["concat", " ", ["var", "lo"]],
+												[
+													"all",
+													["!=", ["var", "hi"], ""],
+													["!=", ["var", "hi"], "-9998"],
+												],
+												["concat", " ", ["var", "hi"]],
+												"",
+											],
+										],
+									] as unknown as maplibregl.ExpressionSpecification,
+									"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+									"text-size": 10,
+									"text-keep-upright": true,
+									"text-max-angle": 30,
+									"text-allow-overlap": false,
+									"text-ignore-placement": false,
+								}}
+								paint={{
+									"text-color": [
+										"match",
+										["get", "mtr_type"],
+										"IR",
+										isDarkMap ? indigoDark.indigo11 : indigo.indigo11,
+										"VR",
+										isDarkMap ? amberDark.amber11 : amber.amber11,
+										"SR",
+										isDarkMap ? tealDark.teal11 : teal.teal11,
+										isDarkMap ? slateDark.slate11 : slate.slate11,
+									] as unknown as maplibregl.ExpressionSpecification,
+									"text-halo-color": haloColor,
+									"text-halo-width": 1.5,
+								}}
+							/>
+						</>
+					)}
+
 					{/* Airways */}
 					{aeronauticalLayers.showAirwaysMaster && (
 						<>
@@ -2241,7 +2683,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 							type="symbol"
 							source="src-waypoints-obstacles"
 							source-layer="obstacles"
-							beforeId="anchor-waypoints"
+							beforeId="anchor-mountain-passes"
 							minzoom={10}
 							filter={getZoomRankFilter({ 0: 0, 7: 2, 9: 3, 11: 6 })}
 							layout={{
@@ -2294,6 +2736,66 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						/>
 					)}
 
+					{/* Mountain Passes */}
+					{aeronauticalLayers.showVfrMaster &&
+						aeronauticalLayers.mountainPasses && (
+							<Layer
+								id="mountain-passes-symbol"
+								type="symbol"
+								source="src-vfr"
+								source-layer="mountain_passes"
+								beforeId="anchor-waypoints"
+								minzoom={getZoom(7)}
+								filter={getZoomRankFilter({ 0: 1, 7: 3, 9: 6 })}
+								layout={{
+									"icon-image": "pass-mountain",
+									"icon-size": 0.65,
+									"icon-allow-overlap": false,
+									"icon-ignore-placement": false,
+									"icon-padding": 2,
+									"text-field": [
+										"let",
+										"nm",
+										["to-string", ["coalesce", ["get", "name"], ""]],
+										"hasElev",
+										[
+											"all",
+											["has", "elev_ft"],
+											["!=", ["get", "elev_ft"], null],
+											["!=", ["to-string", ["get", "elev_ft"]], ""],
+										],
+										"elev",
+										["to-string", ["to-number", ["get", "elev_ft"], 0]],
+										[
+											"case",
+											["all", ["!=", ["var", "nm"], ""], ["var", "hasElev"]],
+											["concat", ["var", "nm"], "\n", ["var", "elev"], "'"],
+											["!=", ["var", "nm"], ""],
+											["var", "nm"],
+											["var", "hasElev"],
+											["concat", ["var", "elev"], "'"],
+											"",
+										],
+									] as unknown as maplibregl.ExpressionSpecification,
+									"text-font": [
+										"Open Sans Regular",
+										"Arial Unicode MS Regular",
+									],
+									"text-size": 10,
+									"text-offset": [0, 1.1],
+									"text-anchor": "top",
+									"text-allow-overlap": false,
+									"text-ignore-placement": false,
+									"text-optional": true,
+								}}
+								paint={{
+									"text-color": isDarkMap ? brownDark.brown11 : brown.brown11,
+									"text-halo-color": haloColor,
+									"text-halo-width": 1.5,
+								}}
+							/>
+						)}
+
 					{/* Localizers */}
 					{/* {aeronauticalLayers.showAirportsMaster && aeronauticalLayers.publicAirports && (
             <Layer
@@ -2332,9 +2834,15 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 								type="symbol"
 								source="src-waypoints-obstacles"
 								source-layer="waypoints"
-								beforeId="anchor-navaids"
+								beforeId="anchor-vfr-waypoints"
 								minzoom={getZoom(4)}
-								filter={getZoomRankFilter({ 0: 2, 5: 3, 7: 4, 9: 6 })}
+								filter={
+									[
+										"all",
+										["!=", ["get", "type"], "vfr"],
+										getZoomRankFilter({ 0: 2, 5: 3, 7: 4, 9: 6 }),
+									] as maplibregl.ExpressionSpecification
+								}
 								layout={{
 									"icon-image": [
 										"match",
@@ -2374,6 +2882,95 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 									"text-halo-width": 1.5,
 								}}
 							/>
+						)}
+
+					{/* VFR Waypoints & Sectional Fixes */}
+					{aeronauticalLayers.showVfrMaster &&
+						aeronauticalLayers.vfrWaypoints && (
+							<>
+								<Layer
+									id="vfr-waypoints-symbol"
+									type="symbol"
+									source="src-vfr"
+									source-layer="vfr_waypoints"
+									beforeId="anchor-navaids"
+									minzoom={getZoom(5)}
+									filter={
+										[
+											"all",
+											["==", ["get", "type"], "vfr"],
+											getZoomRankFilter({ 0: 2, 6: 3, 8: 6 }),
+										] as maplibregl.ExpressionSpecification
+									}
+									layout={{
+										"icon-image": "wpt-vfr-checkpoint",
+										"icon-size": 0.7,
+										"icon-allow-overlap": false,
+										"icon-ignore-placement": false,
+										"text-field": ["get", "id"],
+										"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+										"text-size": 10,
+										"text-offset": [0, 1.2],
+										"text-anchor": "top",
+										"text-allow-overlap": false,
+										"text-ignore-placement": false,
+										"text-optional": true,
+									}}
+									paint={{
+										"text-color": isDarkMap
+											? crimsonDark.crimson11
+											: crimson.crimson11,
+										"text-halo-color": haloColor,
+										"text-halo-width": 1.5,
+									}}
+								/>
+								{!(
+									aeronauticalLayers.showWaypointsMaster &&
+									aeronauticalLayers.waypoints
+								) && (
+									<Layer
+										id="vfr-sectional-fixes-symbol"
+										type="symbol"
+										source="src-vfr"
+										source-layer="vfr_waypoints"
+										beforeId="anchor-navaids"
+										minzoom={getZoom(7)}
+										filter={
+											[
+												"all",
+												["==", ["get", "type"], "sectional_fix"],
+												getZoomRankFilter({ 0: 2, 7: 4, 9: 6 }),
+											] as maplibregl.ExpressionSpecification
+										}
+										layout={{
+											"icon-image": [
+												"case",
+												["boolean", ["get", "compulsory"], false],
+												"fix-compulsory",
+												"fix-non-compulsory",
+											] as unknown as maplibregl.ExpressionSpecification,
+											"icon-size": 0.7,
+											"icon-allow-overlap": false,
+											"icon-ignore-placement": false,
+											"text-field": ["get", "id"],
+											"text-font": [
+												"Open Sans Regular",
+												"Arial Unicode MS Regular",
+											],
+											"text-size": 9,
+											"text-offset": [0, 1.2],
+											"text-anchor": "top",
+											"text-allow-overlap": false,
+											"text-ignore-placement": false,
+										}}
+										paint={{
+											"text-color": waypointTextColor,
+											"text-halo-color": haloColor,
+											"text-halo-width": 1.5,
+										}}
+									/>
+								)}
+							</>
 						)}
 
 					{/* Navaids Points */}
@@ -2590,6 +3187,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 								"fix-compulsory-cyan",
 								"waypoint",
 								"fix-non-compulsory-cyan",
+								"vfr",
+								"wpt-vfr-checkpoint-cyan",
 								"vor",
 								"nav-vor-cyan",
 								"vortac",

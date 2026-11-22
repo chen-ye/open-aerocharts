@@ -9,12 +9,31 @@ from unittest.mock import MagicMock, patch
 import geopandas as gpd
 import pyproj
 
-from src.adds.convert import convert_airspaces, convert_boundary_airspace, convert_mode_c, normalize_boundary_limit
-from src.cifp.convert import RANK_MINZOOM, build_airport_features, compute_airport_rank
+from src.adds.convert import (
+    convert_airspaces,
+    convert_boundary_airspace,
+    convert_mode_c,
+    convert_obstacles,
+    normalize_boundary_limit,
+)
+from src.cifp.convert import (
+    RANK_MINZOOM,
+    build_airport_features,
+    build_grid_mora_features,
+    build_pmtiles_fgb,
+    compute_airport_rank,
+    format_mora_parts,
+    parse_mora_coord,
+)
 from src.nasr import fetch as nasr_fetch
 from src.nasr.facilities import classify_nasr_facility, parse_nasr_facilities, parse_nasr_runways
 from src.nasr.pja import convert_pja, parse_pja_csv
 from src.search.build_index import build_search_index
+from src.vfr import fetch as vfr_fetch
+from src.vfr.mtr import convert_mtrs
+from src.vfr.passes import convert_passes, parse_elevation_ft
+from src.vfr.powerlines import convert_powerlines
+from src.vfr.wind_farms import convert_wind_farms
 
 
 class TestNormalizeBoundaryLimit(unittest.TestCase):
@@ -33,6 +52,8 @@ class TestNormalizeBoundaryLimit(unittest.TestCase):
 
     def test_zero_not_treated_as_falsy(self) -> None:
         self.assertEqual(normalize_boundary_limit(0, "FT", "SFC"), "SFC")
+        self.assertEqual(normalize_boundary_limit(0, "FT", "HEI"), "SFC")
+        self.assertEqual(normalize_boundary_limit(0, None, "hei"), "SFC")
         self.assertEqual(normalize_boundary_limit(0, None, None), "SFC")
         self.assertEqual(normalize_boundary_limit(0, "FT", ""), "SFC")
         self.assertEqual(normalize_boundary_limit(0, "FT", "MSL"), "0")
@@ -44,6 +65,8 @@ class TestNormalizeBoundaryLimit(unittest.TestCase):
         self.assertEqual(normalize_boundary_limit(45.5, "FL", "STD"), "FL45.5")
         self.assertEqual(normalize_boundary_limit(700, "FT", "SFC"), "700 AGL")
         self.assertEqual(normalize_boundary_limit(700.5, "FT", "SFC"), "700.5 AGL")
+        self.assertEqual(normalize_boundary_limit(500, "FT", "HEI"), "500 AGL")
+        self.assertEqual(normalize_boundary_limit(1500.5, "FT", "hei"), "1500.5 AGL")
         self.assertEqual(normalize_boundary_limit(18000, "FT", "MSL"), "18000")
         self.assertEqual(normalize_boundary_limit(1234.5, "FT", "MSL"), "1234.5")
 
@@ -362,13 +385,21 @@ class TestNasrFetch(unittest.TestCase):
                     self.assertTrue(os.path.exists("data/nasr_metadata.json"))
                     self.assertTrue(os.path.exists("data/nasr_metadata.cycle"))
                     self.assertTrue(os.path.exists("data/pja_raw.geojson"))
+                    self.assertTrue(os.path.exists("data/nasr_facilities.json"))
+                    self.assertTrue(os.path.exists("data/nasr_vfr_fixes.json"))
+                    self.assertTrue(os.path.exists("data/nasr_mtr_raw.json"))
+
+                    with open("data/nasr_vfr_fixes.json") as f:
+                        self.assertEqual(json.load(f), {"vfr_waypoints": [], "sectional_fixes": []})
+                    with open("data/nasr_mtr_raw.json") as f:
+                        self.assertEqual(json.load(f), {"routes": {}, "points": {}})
 
                     with open("data/pja_raw.geojson") as f:
                         pja_fc = json.load(f)
                     self.assertEqual(len(pja_fc["features"]), 1)
                     self.assertEqual(pja_fc["features"][0]["properties"]["ident"], "PJA1")
 
-                    # Cache hit when all 4 files exist
+                    # Cache hit when all 6 files exist
                     nasr_fetch.get_airport_metadata()
                     self.assertEqual(mock_get.call_count, 1)
 
@@ -384,6 +415,99 @@ class TestNasrFetch(unittest.TestCase):
                     nasr_fetch.get_airport_metadata()
                     self.assertEqual(mock_get.call_count, 3)
                     self.assertTrue(os.path.exists("data/nasr_facilities.json"))
+
+                    # Remove nasr_vfr_fixes.json -> must re-download instead of skipping
+                    os.remove("data/nasr_vfr_fixes.json")
+                    nasr_fetch.get_airport_metadata()
+                    self.assertEqual(mock_get.call_count, 4)
+                    self.assertTrue(os.path.exists("data/nasr_vfr_fixes.json"))
+
+                    # Remove nasr_mtr_raw.json -> must re-download instead of skipping
+                    os.remove("data/nasr_mtr_raw.json")
+                    nasr_fetch.get_airport_metadata()
+                    self.assertEqual(mock_get.call_count, 5)
+                    self.assertTrue(os.path.exists("data/nasr_mtr_raw.json"))
+            finally:
+                os.chdir(orig_cwd)
+
+    def test_parse_nasr_fixes_csv_and_mtr_csvs(self) -> None:
+        fixes_csv = "\n".join(
+            [
+                "FIX_ID,LAT_DECIMAL,LONG_DECIMAL,FIX_USE_CODE,CHARTS,STATE_CODE,COMPULSORY,NAME",
+                "VPBAY,37.80,-122.40,VFR,SAN FRANCISCO TERMINAL AREA,CA,N,BAY BRIDGE",
+                "VPCOM,37.70,-122.30,VFR,SECTIONAL,CA,Y,",
+                "SECFX,37.60,-122.20,RP,VFR Flyway Planning,CA,LOW/HIGH,SOUTH TOWER",
+                "HELIFX,37.50,-122.10,CN,Helicopter Route,CA,NONE,HELI PT",
+                "ENRTX,37.40,-122.00,RP,ENROUTE LOW,CA,N,IGNORED",
+                ",37.30,-121.90,VFR,SECTIONAL,CA,N,MISSING ID",
+                "BADCO,, -121.80,VFR,SECTIONAL,CA,N,BAD COORDS",
+            ]
+        )
+        parsed_fixes = nasr_fetch.parse_nasr_fixes_csv(io.StringIO(fixes_csv))
+        self.assertEqual(len(parsed_fixes["vfr_waypoints"]), 2)
+        self.assertEqual(parsed_fixes["vfr_waypoints"][0]["id"], "VPBAY")
+        self.assertEqual(parsed_fixes["vfr_waypoints"][0]["name"], "BAY BRIDGE")
+        self.assertFalse(parsed_fixes["vfr_waypoints"][0]["compulsory"])
+        self.assertEqual(parsed_fixes["vfr_waypoints"][1]["id"], "VPCOM")
+        self.assertTrue(parsed_fixes["vfr_waypoints"][1]["compulsory"])
+        self.assertNotIn("name", parsed_fixes["vfr_waypoints"][1])
+
+        self.assertEqual([f["id"] for f in parsed_fixes["sectional_fixes"]], ["SECFX", "HELIFX"])
+        self.assertEqual(parsed_fixes["sectional_fixes"][0]["fix_use"], "RP")
+        self.assertTrue(parsed_fixes["sectional_fixes"][0]["compulsory"])
+        self.assertFalse(parsed_fixes["sectional_fixes"][1]["compulsory"])
+        self.assertEqual(parsed_fixes["sectional_fixes"][1]["name"], "HELI PT")
+
+        mtr_base_csv = "\n".join(
+            [
+                "ROUTE_TYPE_CODE,ROUTE_ID,ARTCC,FSS,TIME_OF_USE",
+                "VR,1205,ZOA,OAK,SR-SS",
+                "IR,,ZLA,LAX,CONT",
+            ]
+        )
+        mtr_pt_csv = "\n".join(
+            [
+                "ROUTE_TYPE_CODE,ROUTE_ID,ROUTE_PT_SEQ,LAT_DECIMAL,LONG_DECIMAL,ROUTE_PT_ID,SEGMENT_TEXT",
+                "VR,1205,20,37.50,-120.50,B,SEG B",
+                "VR,1205,5,37.20,-120.80,A,SEG A",
+                "VR,1205,10,bad,-120.70,BAD,SKIP",
+                "VR,,1,37.00,-120.00,NOID,SKIP",
+            ]
+        )
+        parsed_mtr = nasr_fetch.parse_nasr_mtr_csvs(io.StringIO(mtr_base_csv), io.StringIO(mtr_pt_csv))
+        self.assertEqual(
+            parsed_mtr["routes"],
+            {"VR1205": {"mtr_type": "VR", "artcc": "ZOA", "fss": "OAK", "time_of_use": "SR-SS"}},
+        )
+        self.assertEqual([pt["pt_id"] for pt in parsed_mtr["points"]["VR1205"]], ["A", "B"])
+        self.assertEqual([pt["seq"] for pt in parsed_mtr["points"]["VR1205"]], [5, 20])
+
+        zip_buf = io.BytesIO()
+        with zipfile.ZipFile(zip_buf, "w") as z:
+            z.writestr("APT_BASE.csv", "ARPT_ID,ICAO_ID,FUEL_TYPES,TWR_TYPE_CODE,FAR_139_TYPE_CODE\nSJC,KSJC,100LL,ATCT,I\n")
+            z.writestr("FIX_BASE.csv", fixes_csv)
+            z.writestr("MTR_BASE.csv", mtr_base_csv)
+            z.writestr("MTR_PT.csv", mtr_pt_csv)
+
+        mock_resp = MagicMock()
+        mock_resp.content = zip_buf.getvalue()
+        mock_resp.raise_for_status = MagicMock()
+
+        orig_cwd = os.getcwd()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            try:
+                os.chdir(tmpdir)
+                with (
+                    patch("src.nasr.fetch.find_latest_csv_zip_url", return_value=("https://example.test/nasr.zip", "2026-10-29")),
+                    patch("src.nasr.fetch.requests.get", return_value=mock_resp),
+                ):
+                    nasr_fetch.get_airport_metadata()
+                    loaded_vfr = nasr_fetch.load_nasr_vfr_fixes()
+                    loaded_mtr = nasr_fetch.load_nasr_mtr_data()
+                    self.assertEqual(len(loaded_vfr["vfr_waypoints"]), 2)
+                    self.assertEqual(len(loaded_vfr["sectional_fixes"]), 2)
+                    self.assertIn("VR1205", loaded_mtr["routes"])
+                    self.assertEqual(len(loaded_mtr["points"]["VR1205"]), 2)
             finally:
                 os.chdir(orig_cwd)
 
@@ -766,6 +890,7 @@ class TestCifpNasrMergeAndSearchIndex(unittest.TestCase):
                     cifp_path="DUMMY",
                     output_path=out_path,
                     nasr_facilities_path=fac_path,
+                    nasr_vfr_path="",
                 )
 
             fixes = index_data["fixes"]
@@ -775,6 +900,810 @@ class TestCifpNasrMergeAndSearchIndex(unittest.TestCase):
             self.assertEqual(fixes["SJC"]["type"], "navaid")
             self.assertEqual(fixes["MHM"]["type"], "navaid")
             self.assertNotIn("CLSD", fixes)
+
+    def test_build_search_index_vfr_vs_nrs_and_nasr_vfr_merge(self) -> None:
+        mock_cifp = MagicMock()
+        mock_cifp.get_airports.return_value = []
+        mock_cifp.get_heliports.return_value = []
+        mock_cifp.get_vhf_navaids.return_value = []
+        mock_cifp.get_ndb_navaids.return_value = []
+        mock_cifp.get_enroute_waypoints.return_value = [
+            _DummyCifpRecord({"waypoint_id": "VPVFR", "lat": 37.81, "lon": -122.48, "type": "V  "}),
+            _DummyCifpRecord({"waypoint_id": "NRSIX", "lat": 38.10, "lon": -121.50, "type": " V "}),
+            _DummyCifpRecord({"waypoint_id": "CMPFX", "lat": 37.50, "lon": -122.00, "type": "C  "}),
+        ]
+        mock_cifp.get_terminal_waypoints.return_value = [
+            _DummyCifpRecord(None, has_primary_flag=False),
+            _DummyCifpRecord({"waypoint_id": "TRVFR", "lat": 37.60, "lon": -122.30, "type": "VFR"}),
+        ]
+        mock_cifp.get_procedures.return_value = []
+        mock_cifp.get_airway_points.return_value = []
+
+        nasr_vfr_stub = {
+            "vfr_waypoints": [
+                {"id": "VPVFR", "lat": 37.81, "lon": -122.48, "name": "SHOULD NOT OVERWRITE CIFP"},
+                {"id": "NASVP", "lat": 37.45, "lon": -121.95, "name": "COYOTE CREEK"},
+            ],
+            "sectional_fixes": [
+                {"id": "SEC01", "lat": 37.30, "lon": -121.80, "name": "ALUM ROCK"},
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fac_path = os.path.join(tmpdir, "nasr_facilities.json")
+            vfr_path = os.path.join(tmpdir, "nasr_vfr_fixes.json")
+            out_path = os.path.join(tmpdir, "search_index.json")
+            with open(fac_path, "w") as f:
+                json.dump([], f)
+            with open(vfr_path, "w") as f:
+                json.dump(nasr_vfr_stub, f)
+
+            with patch("src.search.build_index.CIFP", return_value=mock_cifp):
+                index_data = build_search_index(
+                    cifp_path="DUMMY",
+                    output_path=out_path,
+                    nasr_facilities_path=fac_path,
+                    nasr_vfr_path=vfr_path,
+                )
+
+            fixes = index_data["fixes"]
+            self.assertEqual(fixes["VPVFR"]["type"], "vfr")
+            self.assertNotIn("name", fixes["VPVFR"])
+            self.assertEqual(fixes["TRVFR"]["type"], "vfr")
+            self.assertEqual(fixes["NRSIX"]["type"], "waypoint")
+            self.assertEqual(fixes["CMPFX"]["type"], "compulsory")
+            self.assertEqual(fixes["NASVP"], {"lat": 37.45, "lon": -121.95, "type": "vfr", "name": "COYOTE CREEK"})
+            self.assertNotIn("SEC01", fixes)
+
+
+class TestGridMoraAndCifpVfrWaypoints(unittest.TestCase):
+    def test_parse_mora_coord_and_format_parts(self) -> None:
+        self.assertEqual(parse_mora_coord("N36", "W090"), (36, -90))
+        self.assertEqual(parse_mora_coord("S29", "E150"), (-29, 150))
+        self.assertEqual(parse_mora_coord(" n00 ", " e000 "), (0, 0))
+        self.assertEqual(parse_mora_coord("N90", "W180"), (90, -180))
+
+        for bad_lat, bad_lon in [
+            ("", "W090"),
+            ("N", "W090"),
+            ("X36", "W090"),
+            ("N36", "Z090"),
+            ("N91", "W090"),
+            ("N36", "E181"),
+            ("NXX", "W090"),
+        ]:
+            with self.assertRaises(ValueError):
+                parse_mora_coord(bad_lat, bad_lon)
+
+        with self.assertRaises(ValueError):
+            parse_mora_coord(None, "W090")  # type: ignore[arg-type]
+
+        self.assertEqual(format_mora_parts(3500), ("3", "5", "35"))
+        self.assertEqual(format_mora_parts(14000), ("14", "0", "140"))
+        self.assertEqual(format_mora_parts(800), ("0", "8", "08"))
+        self.assertEqual(format_mora_parts(14900), ("14", "9", "149"))
+
+    def test_build_grid_mora_features_dedup_high_and_antimeridian(self) -> None:
+        moras = [
+            _DummyCifpRecord(None, has_primary_flag=False),
+            _DummyCifpRecord({"start_lat": "", "start_lon": "W090", "mora_1": 3000}),
+            _DummyCifpRecord(
+                {
+                    "start_lat": "N36",
+                    "start_lon": "W090",
+                    "mora_1": 5200,
+                    "mora_2": 14500,
+                    "mora_3": "UNK",
+                    "mora_4": 0,
+                    "mora_5": -100,
+                }
+            ),
+            _DummyCifpRecord(
+                {
+                    "start_lat": "S10",
+                    "start_lon": "E179",
+                    "mora_1": 4000,
+                    "mora_2": 14000,
+                }
+            ),
+        ]
+
+        line_features, label_features = build_grid_mora_features(moras)
+        self.assertEqual(len(label_features), 4)
+
+        by_cell = {f["properties"]["cell_id"]: f for f in label_features}
+        c1 = by_cell["N36W090"]
+        self.assertEqual(c1["geometry"]["coordinates"], [-89.5, 36.5])
+        self.assertEqual(c1["properties"]["display"], "52")
+        self.assertFalse(c1["properties"]["is_high"])
+        self.assertEqual(c1["properties"]["rank"], 1)
+
+        c2 = by_cell["N36W089"]
+        self.assertEqual(c2["geometry"]["coordinates"], [-88.5, 36.5])
+        self.assertEqual(c2["properties"]["thousands"], "14")
+        self.assertEqual(c2["properties"]["hundreds"], "5")
+        self.assertEqual(c2["properties"]["display"], "145")
+        self.assertTrue(c2["properties"]["is_high"])
+
+        # Anti-meridian wrap at E179 + 1 -> W180
+        self.assertIn("S10E179", by_cell)
+        self.assertIn("S10W180", by_cell)
+        self.assertEqual(by_cell["S10W180"]["geometry"]["coordinates"], [-179.5, -9.5])
+        self.assertTrue(by_cell["S10W180"]["properties"]["is_high"])
+
+        # Two adjacent cells in N36 share 1 vertical edge -> 7 unique edges; E179 & W180 don't share coords after wrap -> 8 edges
+        # Total = 15 deduplicated LineStrings; shared edge (-89, 36)->(-89, 37) must inherit is_high=True
+        self.assertEqual(len(line_features), 15)
+        shared = [f for f in line_features if sorted(tuple(pt) for pt in f["geometry"]["coordinates"]) == [(-89, 36), (-89, 37)]]
+        self.assertEqual(len(shared), 1)
+        self.assertTrue(shared[0]["properties"]["is_high"])
+
+    def test_build_pmtiles_fgb_vfr_vs_nrs_separation(self) -> None:
+        mock_cifp = MagicMock()
+        mock_cifp.get_airports.return_value = []
+        mock_cifp.get_heliports.return_value = []
+        mock_cifp.get_vhf_navaids.return_value = []
+        mock_cifp.get_ndb_navaids.return_value = []
+        mock_cifp.get_enroute_waypoints.return_value = [
+            _DummyCifpRecord({"waypoint_id": "VPBAY", "lat": 37.80, "lon": -122.40, "type": "V  ", "name_description": "CIFP BAY"}),
+            _DummyCifpRecord(
+                {"waypoint_id": "NRSPT", "lat": 38.00, "lon": -121.00, "type": " V ", "usage": "H", "name_description": "NRS PT"}
+            ),
+        ]
+        mock_cifp.get_terminal_waypoints.return_value = [
+            _DummyCifpRecord(
+                {"waypoint_id": "RNAVX", "lat": 37.50, "lon": -122.10, "type": "R  ", "usage": "L", "name_description": "RNAV PT"}
+            ),
+            _DummyCifpRecord(
+                {"waypoint_id": "SEC01", "lat": 37.30, "lon": -121.80, "type": "C  ", "usage": "L", "name_description": "ALUM ROCK"}
+            ),
+        ]
+        mock_cifp.get_procedures.return_value = []
+        mock_cifp.get_airway_points.return_value = []
+        mock_cifp.get_runways.return_value = []
+        mock_cifp.get_loc_gss.return_value = []
+        mock_cifp.get_moras.return_value = [
+            _DummyCifpRecord({"start_lat": "N37", "start_lon": "W123", "mora_1": 6500}),
+        ]
+
+        nasr_vfr_stub = {
+            "vfr_waypoints": [
+                {"id": "VPBAY", "lat": 37.80, "lon": -122.40, "name": "BAY BRIDGE", "charts": "SAN FRANCISCO", "state": "CA"},
+                {
+                    "id": "NASVP",
+                    "lat": 37.45,
+                    "lon": -121.95,
+                    "name": "COYOTE",
+                    "charts": "SAN FRANCISCO",
+                    "state": "CA",
+                    "compulsory": True,
+                },
+            ],
+            "sectional_fixes": [
+                {"id": "SEC01", "lat": 37.30, "lon": -121.80, "name": "ALUM ROCK", "charts": "SECTIONAL", "state": "CA"},
+            ],
+        }
+
+        orig_cwd = os.getcwd()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            try:
+                os.chdir(tmpdir)
+                with (
+                    patch("src.cifp.convert.CIFP", return_value=mock_cifp),
+                    patch("src.cifp.convert.load_nasr_metadata", return_value={}),
+                    patch("src.cifp.convert.load_nasr_facilities", return_value=[]),
+                    patch("src.cifp.convert.load_nasr_vfr_fixes", return_value=nasr_vfr_stub),
+                ):
+                    build_pmtiles_fgb("DUMMY")
+
+                wpt_gdf = gpd.read_file("data/waypoints.fgb", engine="pyogrio")
+                vfr_gdf = gpd.read_file("data/vfr_waypoints.fgb", engine="pyogrio")
+                mora_lines = gpd.read_file("data/grid_mora_lines.fgb", engine="pyogrio")
+                mora_labels = gpd.read_file("data/grid_mora_labels.fgb", engine="pyogrio")
+
+                # NRS " V " stays in waypoints.fgb as named; "V  " does NOT leak into waypoints.fgb
+                self.assertEqual(set(wpt_gdf["id"]), {"NRSPT", "RNAVX", "SEC01"})
+                nrs_row = wpt_gdf[wpt_gdf["id"] == "NRSPT"].iloc[0]
+                self.assertEqual(nrs_row["type"], "named")
+
+                # VPBAY is enriched from NASR and deduplicated; NASVP & SEC01 are appended
+                self.assertEqual(set(vfr_gdf["id"]), {"VPBAY", "NASVP", "SEC01"})
+                vpbay_row = vfr_gdf[vfr_gdf["id"] == "VPBAY"].iloc[0]
+                self.assertEqual(vpbay_row["type"], "vfr")
+                self.assertEqual(vpbay_row["name"], "BAY BRIDGE")
+                self.assertEqual(vpbay_row["charts"], "SAN FRANCISCO")
+                self.assertEqual(vpbay_row["rank"], 3)
+
+                nasvp_row = vfr_gdf[vfr_gdf["id"] == "NASVP"].iloc[0]
+                self.assertEqual(nasvp_row["type"], "vfr")
+                self.assertTrue(bool(nasvp_row["compulsory"]))
+
+                sec_row = vfr_gdf[vfr_gdf["id"] == "SEC01"].iloc[0]
+                self.assertEqual(sec_row["type"], "sectional_fix")
+                self.assertTrue(bool(sec_row["compulsory"]))
+                self.assertEqual(sec_row["rank"], 4)
+
+                self.assertEqual(len(mora_lines), 4)
+                self.assertEqual(len(mora_labels), 1)
+                self.assertEqual(mora_labels.iloc[0]["cell_id"], "N37W123")
+            finally:
+                os.chdir(orig_cwd)
+
+
+class TestVfrMtrConversion(unittest.TestCase):
+    def test_convert_mtrs_backfill_and_corridor_edge_cases(self) -> None:
+        adds_geojson = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-120.0, 36.0], [-119.5, 36.0]]},
+                    "properties": {
+                        "MTR_TYPE": 1,
+                        "IDENT": "100",
+                        "LOWER_VAL": 0,
+                        "LOWER_UOM": "FT",
+                        "LOWER_CODE": "HEI",
+                        "UPPER_VAL": 1500,
+                        "UPPER_UOM": "FT",
+                        "UPPER_CODE": "HEI",
+                        "WIDTHLEFT": 0,
+                        "WIDTHRIGHT": 0,
+                    },
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-121.0, 38.0], [-120.5, 38.0]]},
+                    "properties": {
+                        "MTR_TYPE": "VR",
+                        "IDENT": "VR101",
+                        "LOWER_VAL": 500,
+                        "LOWER_UOM": "FT",
+                        "LOWER_CODE": "SFC",
+                        "UPPER_VAL": 5000,
+                        "UPPER_UOM": "FT",
+                        "UPPER_CODE": "MSL",
+                        "WIDTHLEFT": 5,
+                        "WIDTHRIGHT": 0,
+                    },
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-122.0, 36.0], [-121.5, 36.0]]},
+                    "properties": {
+                        "MTR_TYPE": 2,
+                        "IDENT": "202",
+                        "LOWER_VAL": 0,
+                        "LOWER_UOM": "FT",
+                        "LOWER_CODE": "SFC",
+                        "UPPER_VAL": 3000,
+                        "UPPER_UOM": "FT",
+                        "UPPER_CODE": "MSL",
+                        "WIDTHLEFT": 0,
+                        "WIDTHRIGHT": 4,
+                    },
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-120.0, 37.0], [-119.5, 37.0]]},
+                    "properties": {
+                        "MTR_TYPE": 0,
+                        "IDENT": "IR303",
+                        "LOWER_VAL": 1000,
+                        "LOWER_UOM": "FT",
+                        "LOWER_CODE": "MSL",
+                        "UPPER_VAL": 12000,
+                        "UPPER_UOM": "FT",
+                        "UPPER_CODE": "MSL",
+                        "WIDTHLEFT": 35,
+                        "WIDTHRIGHT": 25,
+                    },
+                },
+            ],
+        }
+        nasr_mtr = {
+            "routes": {
+                "VR101": {"mtr_type": "VR", "artcc": "ZOA", "fss": "OAK", "time_of_use": "SR-SS"},
+                "VR999": {"mtr_type": "VR", "artcc": "ZLA", "fss": "LAX", "time_of_use": "CONT"},
+            },
+            "points": {
+                # Duplicate of ADDS route -> must not duplicate in mtrs.fgb
+                "VR101": [
+                    {"seq": 1, "lat": 38.0, "lon": -121.0},
+                    {"seq": 2, "lat": 38.0, "lon": -120.5},
+                ],
+                # Backfill route (unsorted seqs) -> must appear with source="nasr"
+                "VR999": [
+                    {"seq": 20, "lat": 35.5, "lon": -117.5},
+                    {"seq": 10, "lat": 35.0, "lon": -118.0},
+                ],
+                # Single unique point -> must be skipped
+                "VR000": [
+                    {"seq": 1, "lat": 34.0, "lon": -118.0},
+                    {"seq": 2, "lat": 34.0, "lon": -118.0},
+                ],
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_path = os.path.join(tmpdir, "mtr_raw.geojson")
+            nasr_path = os.path.join(tmpdir, "nasr_mtr_raw.json")
+            mtrs_out = os.path.join(tmpdir, "mtrs.fgb")
+            corridors_out = os.path.join(tmpdir, "mtr_corridors.fgb")
+            with open(raw_path, "w") as f:
+                json.dump(adds_geojson, f)
+            with open(nasr_path, "w") as f:
+                json.dump(nasr_mtr, f)
+
+            convert_mtrs(raw_path=raw_path, nasr_mtr_path=nasr_path, mtrs_output=mtrs_out, corridors_output=corridors_out)
+
+            gdf_m = gpd.read_file(mtrs_out, engine="pyogrio")
+            self.assertEqual(set(gdf_m["route_id"]), {"VR100", "VR101", "SR202", "IR303", "VR999"})
+
+            vr100 = gdf_m[gdf_m["route_id"] == "VR100"].iloc[0]
+            self.assertEqual(vr100["lower_alt"], "SFC")
+            self.assertEqual(vr100["upper_alt"], "1500 AGL")
+            self.assertEqual(vr100["rank"], 3)
+
+            vr101 = gdf_m[gdf_m["route_id"] == "VR101"].iloc[0]
+            self.assertEqual(vr101["artcc"], "ZOA")
+            self.assertEqual(vr101["fss"], "OAK")
+            self.assertEqual(vr101["time_of_use"], "SR-SS")
+
+            sr202 = gdf_m[gdf_m["route_id"] == "SR202"].iloc[0]
+            self.assertEqual(sr202["rank"], 4)
+
+            vr999 = gdf_m[gdf_m["route_id"] == "VR999"].iloc[0]
+            self.assertEqual(vr999["source"], "nasr")
+            self.assertEqual(vr999["mtr_type"], "VR")
+            self.assertEqual(vr999["artcc"], "ZLA")
+            self.assertEqual(list(vr999.geometry.coords), [(-118.0, 35.0), (-117.5, 35.5)])
+
+            ir303_line = gdf_m[gdf_m["route_id"] == "IR303"].iloc[0]
+            self.assertEqual(ir303_line["width_left"], 35.0)
+            self.assertEqual(ir303_line["width_right"], 25.0)
+
+            gdf_c = gpd.read_file(corridors_out, engine="pyogrio")
+            # VR100 has (0, 0) width -> no corridor polygon
+            self.assertEqual(set(gdf_c["route_id"]), {"VR101", "SR202", "IR303"})
+
+            # Single-side 0: VR101 (left=5, right=0) extends north of lat 38.0 only
+            c_101 = gdf_c[gdf_c["route_id"] == "VR101"].iloc[0].geometry
+            self.assertIn(c_101.geom_type, ("Polygon", "MultiPolygon"))
+            self.assertGreaterEqual(c_101.bounds[1], 37.998)
+            self.assertGreater(c_101.bounds[3], 38.07)
+
+            # Single-side 0: SR202 (left=0, right=4) extends south of lat 36.0 only
+            c_202 = gdf_c[gdf_c["route_id"] == "SR202"].iloc[0].geometry
+            self.assertIn(c_202.geom_type, ("Polygon", "MultiPolygon"))
+            self.assertLessEqual(c_202.bounds[3], 36.002)
+            self.assertLess(c_202.bounds[1], 35.94)
+
+            # Clamped > 20 NM: IR303 (35, 25 -> 20, 20 NM = 37040 m per side)
+            c_303 = gdf_c[gdf_c["route_id"] == "IR303"].iloc[0].geometry
+            geod = pyproj.Geod(ellps="WGS84")
+            north_dist_m = geod.inv(-119.75, 37.0, -119.75, c_303.bounds[3])[2]
+            south_dist_m = geod.inv(-119.75, 37.0, -119.75, c_303.bounds[1])[2]
+            self.assertAlmostEqual(north_dist_m, 20.0 * 1852.0, delta=400.0)
+            self.assertAlmostEqual(south_dist_m, 20.0 * 1852.0, delta=400.0)
+
+    def test_convert_mtrs_empty_inputs_graceful(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mtrs_out = os.path.join(tmpdir, "mtrs.fgb")
+            corridors_out = os.path.join(tmpdir, "mtr_corridors.fgb")
+            convert_mtrs(
+                raw_path=os.path.join(tmpdir, "missing.geojson"),
+                nasr_mtr_path=os.path.join(tmpdir, "missing.json"),
+                mtrs_output=mtrs_out,
+                corridors_output=corridors_out,
+            )
+            self.assertFalse(os.path.exists(mtrs_out))
+            self.assertFalse(os.path.exists(corridors_out))
+
+
+class TestVfrPassesConversion(unittest.TestCase):
+    def test_parse_elevation_ft(self) -> None:
+        self.assertEqual(parse_elevation_ft("2072 ft"), 2072)
+        self.assertEqual(parse_elevation_ft("2072 feet"), 2072)
+        self.assertEqual(parse_elevation_ft("2,072'"), 2072)
+        self.assertEqual(parse_elevation_ft("1890"), 6201)
+        self.assertEqual(parse_elevation_ft("1,890 m"), 6201)
+        self.assertEqual(parse_elevation_ft("1890 meters"), 6201)
+        self.assertEqual(parse_elevation_ft(1000), 3281)
+        self.assertEqual(parse_elevation_ft("bad;2072 ft"), 2072)
+        self.assertEqual(parse_elevation_ft("1890;2072 ft"), 6201)
+        self.assertEqual(parse_elevation_ft("99999 ft;1500 ft"), 1500)
+        self.assertIsNone(parse_elevation_ft(None))
+        self.assertIsNone(parse_elevation_ft(True))
+        self.assertIsNone(parse_elevation_ft(""))
+        self.assertIsNone(parse_elevation_ft("-500 ft"))
+        self.assertIsNone(parse_elevation_ft("26000 ft"))
+        self.assertIsNone(parse_elevation_ft(float("nan")))
+
+    def test_convert_passes_wkt_dedup_and_unnamed_skip(self) -> None:
+        sparql_json = {
+            "results": {
+                "bindings": [
+                    {
+                        "geom": {"value": "POINT(-120.3200 39.3100)"},
+                        "name": {"value": "Donner Pass"},
+                        "ele": None,
+                    },
+                    {
+                        "geom": {"value": "LINESTRING(-120.3210 39.3105, -120.3190 39.3110)"},
+                        "name": {"value": "donner pass"},
+                        "ele": {"value": "2072;7056 ft"},
+                    },
+                    {
+                        "geom": {"value": "POLYGON((-119.30 37.90, -119.20 37.90, -119.20 37.95, -119.30 37.95, -119.30 37.90))"},
+                        "name": {"value": "Tioga Pass"},
+                        "ele": {"value": "9943 ft"},
+                    },
+                    {
+                        "geom": {"value": "POINT(-118.00 36.00)"},
+                        "name": {"value": "   "},
+                        "ele": {"value": "5000 ft"},
+                    },
+                    {
+                        "geom": {"value": "POINT(-115.00 40.00)"},
+                        "name": {"value": "Donner Pass"},
+                        "ele": {},
+                    },
+                ]
+            }
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_path = os.path.join(tmpdir, "passes_raw.json")
+            out_path = os.path.join(tmpdir, "mountain_passes.fgb")
+            with open(raw_path, "w") as f:
+                json.dump(sparql_json, f)
+
+            convert_passes(raw_path=raw_path, output=out_path)
+            self.assertTrue(os.path.exists(out_path))
+            gdf = gpd.read_file(out_path, engine="pyogrio")
+
+            # Unnamed pass skipped; nearby Donner Pass merged (upgraded to ele=2072 m -> 6798 ft); distant Donner Pass kept
+            self.assertEqual(len(gdf), 3)
+
+            tioga = gdf[gdf["name"] == "Tioga Pass"].iloc[0]
+            self.assertEqual(tioga["elev_ft"], 9943)
+            self.assertEqual(tioga["rank"], 3)
+            self.assertEqual(tioga.geometry.geom_type, "Point")
+            self.assertAlmostEqual(tioga.geometry.x, -119.25, delta=0.06)
+
+            donners = gdf[gdf["name"].str.lower() == "donner pass"]
+            self.assertEqual(len(donners), 2)
+            upgraded = donners[donners["elev_ft"].notna()].iloc[0]
+            self.assertEqual(upgraded["elev_ft"], 6798)
+            self.assertEqual(upgraded["rank"], 3)
+
+            unrated = donners[donners["elev_ft"].isna()].iloc[0]
+            self.assertEqual(unrated["rank"], 4)
+
+
+class TestVfrWindFarmsConversion(unittest.TestCase):
+    def test_convert_wind_farms_clustering_collinear_naming_and_dof(self) -> None:
+        # Three collinear turbines spaced ~1km apart along lat 35.10
+        collinear_pts = [(-118.30, 35.10), (-118.29, 35.10), (-118.28, 35.10)]
+        uswtdb_fc = {
+            "type": "FeatureCollection",
+            "features": [
+                # Valid 3-turbine collinear farm with "unknown " prefix -> "Tehachapi Ridge"
+                *[
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                        "properties": {"p_name": "unknown Tehachapi Ridge", "t_state": "ca", "t_cap": 2000, "t_ttlh": 150},
+                    }
+                    for lon, lat in collinear_pts
+                ],
+                # Only 2 turbines -> skipped (< 3)
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [-121.70, 38.10]},
+                    "properties": {"p_name": "Too Small", "t_state": "CA", "p_cap": 5.0},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [-121.69, 38.10]},
+                    "properties": {"p_name": "Too Small", "t_state": "CA", "p_cap": 5.0},
+                },
+                # "unknown " prefix stripped and bare "unknown" -> "Wind Farm"
+                *[
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [-116.50 + i * 0.005, 33.90]},
+                        "properties": {"p_name": "unknown San Gorgonio", "t_state": "CA", "t_cap": 2000},
+                    }
+                    for i in range(3)
+                ],
+                *[
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [-115.50 + i * 0.005, 34.10]},
+                        "properties": {"p_name": "unknown", "t_state": "CA", "t_cap": 1500},
+                    }
+                    for i in range(3)
+                ],
+            ],
+        }
+
+        dof_fc = {
+            "type": "FeatureCollection",
+            "features": [
+                # Matches Tehachapi Ridge cluster -> enriches max_amsl_ft=4600, max_agl_ft=500
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [-118.29, 35.10]},
+                    "properties": {"Type_Code": "WINDMILL", "AMSL": 4600, "AGL": 500, "Lighting": "R"},
+                },
+                # Non-WINDMILL obstacle at same location -> must be ignored
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [-118.29, 35.10]},
+                    "properties": {"Type_Code": "TOWER", "AMSL": 9999, "AGL": 999, "Lighting": "R"},
+                },
+                # Unmatched WINDMILL obstacles outside USWTDB -> must NOT synthesize DOF-only farms
+                *[
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [-100.00 + i * 0.01, 32.00]},
+                        "properties": {"Type_Code": "WINDMILL", "AMSL": 2500, "AGL": 450, "Lighting": "R"},
+                    }
+                    for i in range(3)
+                ],
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            uswtdb_path = os.path.join(tmpdir, "uswtdb_raw.geojson")
+            dof_raw_path = os.path.join(tmpdir, "dof_raw.geojson")
+            obstacles_path = os.path.join(tmpdir, "obstacles.fgb")
+            out_path = os.path.join(tmpdir, "wind_farms.fgb")
+            with open(uswtdb_path, "w") as f:
+                json.dump(uswtdb_fc, f)
+            with open(dof_raw_path, "w") as f:
+                json.dump(dof_fc, f)
+
+            convert_obstacles(raw_path=dof_raw_path, output=obstacles_path)
+            convert_wind_farms(raw_path=uswtdb_path, obstacles_path=obstacles_path, output=out_path)
+
+            gdf = gpd.read_file(out_path, engine="pyogrio")
+            self.assertEqual(len(gdf), 3)
+
+            tehachapi = gdf[gdf["name"] == "Tehachapi Ridge"].iloc[0]
+            self.assertEqual(tehachapi.geometry.geom_type, "Polygon")
+            self.assertTrue(tehachapi.geometry.is_valid)
+            self.assertEqual(tehachapi["state"], "CA")
+            self.assertEqual(tehachapi["turbines"], 3)
+            self.assertAlmostEqual(tehachapi["capacity_mw"], 6.0)
+            self.assertEqual(tehachapi["max_amsl_ft"], 4600)
+            self.assertEqual(tehachapi["max_agl_ft"], 500)
+            self.assertEqual(tehachapi["max_tip_ft"], round(150 * 3.28084))
+            self.assertEqual(tehachapi["source"], "uswtdb")
+            self.assertEqual(tehachapi["rank"], 4)
+
+            san_gorgonio = gdf[gdf["name"] == "San Gorgonio"].iloc[0]
+            self.assertAlmostEqual(san_gorgonio["capacity_mw"], 6.0)
+
+            bare_unknown = gdf[gdf["name"] == "Wind Farm"].iloc[0]
+            self.assertEqual(bare_unknown["source"], "uswtdb")
+            self.assertAlmostEqual(bare_unknown["capacity_mw"], 4.5)
+
+
+class TestVfrPowerlinesConversion(unittest.TestCase):
+    def test_convert_powerlines_filters_and_minzoom_ranks(self) -> None:
+        raw_fc = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-122.0, 37.0], [-121.9, 37.1]]},
+                    "properties": {"STATUS": "IN SERVICE", "TYPE": "AC; OVERHEAD", "VOLTAGE": 138, "VOLT_CLASS": "100-161", "OWNER": "PGE"},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-122.1, 37.0], [-122.0, 37.1]]},
+                    "properties": {"STATUS": "IN SERVICE", "TYPE": "AC; OVERHEAD", "VOLTAGE": 230, "VOLT_CLASS": "220-287", "OWNER": "PGE"},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-122.2, 37.0], [-122.1, 37.1]]},
+                    "properties": {"STATUS": "IN SERVICE", "TYPE": "AC; OVERHEAD", "VOLTAGE": 500, "VOLT_CLASS": "500", "OWNER": "SCE"},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-122.3, 37.0], [-122.2, 37.1]]},
+                    "properties": {"STATUS": "INACTIVE", "TYPE": "OVERHEAD", "VOLTAGE": 500},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-122.4, 37.0], [-122.3, 37.1]]},
+                    "properties": {"STATUS": "proposed", "TYPE": "OVERHEAD", "VOLTAGE": 345},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-122.5, 37.0], [-122.4, 37.1]]},
+                    "properties": {"STATUS": "IN SERVICE", "TYPE": "AC; UNDERGROUND", "VOLTAGE": 345},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": [[-122.6, 37.0], [-122.5, 37.1]]},
+                    "properties": {"STATUS": "IN SERVICE", "TYPE": "OVERHEAD", "VOLTAGE": 69},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [-122.7, 37.0]},
+                    "properties": {"STATUS": "IN SERVICE", "TYPE": "OVERHEAD", "VOLTAGE": 345},
+                },
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_path = os.path.join(tmpdir, "powerlines_raw.geojson")
+            out_path = os.path.join(tmpdir, "powerlines.geojson")
+            with open(raw_path, "w") as f:
+                json.dump(raw_fc, f)
+
+            convert_powerlines(raw_path=raw_path, output=out_path)
+            with open(out_path) as f:
+                out_fc = json.load(f)
+
+            feats = out_fc["features"]
+            self.assertEqual(len(feats), 3)
+            # Sorted by rank ascending (500kV -> rank 2, 230kV -> rank 3, 138kV -> rank 4)
+            self.assertEqual(
+                [(ft["properties"]["voltage_kv"], ft["properties"]["rank"], ft["tippecanoe"]["minzoom"]) for ft in feats],
+                [
+                    (500, 2, 6),
+                    (230, 3, 7),
+                    (138, 4, 9),
+                ],
+            )
+
+
+class TestVfrFetch(unittest.TestCase):
+    def test_fetch_passes_qlever_cache_and_fail_loud(self) -> None:
+        qlever_resp = MagicMock()
+        qlever_resp.status_code = 200
+        qlever_resp.json.return_value = {
+            "results": {
+                "bindings": [
+                    {
+                        "node": {"value": "https://www.openstreetmap.org/node/1"},
+                        "name": {"value": "Echo Summit"},
+                        "ele": {"value": "2249"},
+                        "geom": {"value": "POINT(-120.03 38.81)"},
+                    }
+                ]
+            }
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_path = os.path.join(tmpdir, "passes_raw.geojson")
+
+            # 1. QLever success + cycle cache hit
+            with (
+                patch("src.vfr.fetch.requests.request", return_value=qlever_resp) as mock_req,
+                patch("src.vfr.fetch.time.sleep"),
+            ):
+                vfr_fetch.fetch_passes("2026-10-29", output=out_path)
+                self.assertEqual(mock_req.call_count, 1)
+                with open(out_path) as f:
+                    data = json.load(f)
+                self.assertEqual(len(data["features"]), 1)
+                self.assertEqual(data["features"][0]["properties"]["source"], "osm")
+
+                # Cache hit for same cycle
+                vfr_fetch.fetch_passes("2026-10-29", output=out_path)
+                self.assertEqual(mock_req.call_count, 1)
+
+            # 2. QLever failure after 3 retries fails loudly without overwriting cache or writing empty FC
+            err_resp = MagicMock()
+            err_resp.status_code = 500
+            out_fail = os.path.join(tmpdir, "passes_fail.geojson")
+            with (
+                patch("src.vfr.fetch.requests.request", return_value=err_resp) as mock_req,
+                patch("src.vfr.fetch.time.sleep"),
+                self.assertRaises(RuntimeError),
+            ):
+                vfr_fetch.fetch_passes("2026-11-26", output=out_fail)
+            self.assertEqual(mock_req.call_count, 3)
+            self.assertFalse(os.path.exists(out_fail))
+
+    def test_fetch_uswtdb_and_powerlines_retries_and_fail_loud(self) -> None:
+        uswtdb_zip_buf = io.BytesIO()
+        with zipfile.ZipFile(uswtdb_zip_buf, "w") as zf:
+            zf.writestr(
+                "uswtdb.geojson",
+                json.dumps(
+                    {
+                        "type": "FeatureCollection",
+                        "features": [
+                            {
+                                "type": "Feature",
+                                "geometry": {"type": "Point", "coordinates": [-118.0, 35.0]},
+                                "properties": {"p_name": "F1"},
+                            }
+                        ],
+                    }
+                ),
+            )
+        uswtdb_ok = MagicMock()
+        uswtdb_ok.status_code = 200
+        uswtdb_ok.content = uswtdb_zip_buf.getvalue()
+        err_resp = MagicMock()
+        err_resp.status_code = 503
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            uswtdb_out = os.path.join(tmpdir, "uswtdb_raw.geojson")
+            with (
+                patch("src.vfr.fetch.requests.request", side_effect=[err_resp, uswtdb_ok]) as mock_req,
+                patch("src.vfr.fetch.time.sleep"),
+            ):
+                vfr_fetch.fetch_uswtdb("2026-10-29", output=uswtdb_out)
+                self.assertEqual(mock_req.call_count, 2)
+                with open(uswtdb_out) as f:
+                    self.assertEqual(len(json.load(f)["features"]), 1)
+
+            uswtdb_fail = os.path.join(tmpdir, "uswtdb_fail.geojson")
+            with (
+                patch("src.vfr.fetch.requests.request", return_value=err_resp) as mock_req,
+                patch("src.vfr.fetch.time.sleep"),
+                self.assertRaises(RuntimeError),
+            ):
+                vfr_fetch.fetch_uswtdb("2026-10-29", output=uswtdb_fail)
+            self.assertEqual(mock_req.call_count, 3)
+            self.assertFalse(os.path.exists(uswtdb_fail))
+
+            # Powerlines: retry on first page + keyset pagination across 2 pages
+            page1_ok = MagicMock()
+            page1_ok.status_code = 200
+            page1_ok.json.return_value = {
+                "type": "FeatureCollection",
+                "properties": {"exceededTransferLimit": True},
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "LineString", "coordinates": [[-120, 37], [-119, 37]]},
+                        "properties": {"OBJECTID_1": 10, "VOLTAGE": 230},
+                    }
+                ],
+            }
+            page2_ok = MagicMock()
+            page2_ok.status_code = 200
+            page2_ok.json.return_value = {
+                "type": "FeatureCollection",
+                "properties": {"exceededTransferLimit": False},
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "LineString", "coordinates": [[-119, 37], [-118, 37]]},
+                        "properties": {"OBJECTID_1": 20, "VOLTAGE": 500},
+                    }
+                ],
+            }
+
+            pl_out = os.path.join(tmpdir, "powerlines_raw.geojson")
+            with (
+                patch("src.adds.fetch.requests.get", side_effect=[err_resp, page1_ok, page2_ok]) as mock_get,
+                patch("src.adds.fetch.time.sleep"),
+            ):
+                vfr_fetch.fetch_powerlines("2026-10-29", output=pl_out)
+                self.assertEqual(mock_get.call_count, 3)
+                with open(pl_out) as f:
+                    self.assertEqual(len(json.load(f)["features"]), 2)
+
+            pl_fail = os.path.join(tmpdir, "powerlines_fail.geojson")
+            with (
+                patch("src.adds.fetch.requests.get", return_value=err_resp) as mock_get,
+                patch("src.adds.fetch.time.sleep"),
+                self.assertRaises(RuntimeError),
+            ):
+                vfr_fetch.fetch_powerlines("2026-10-29", output=pl_fail)
+            self.assertEqual(mock_get.call_count, 3)
+            self.assertFalse(os.path.exists(pl_fail))
 
 
 if __name__ == "__main__":
