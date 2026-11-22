@@ -3,8 +3,8 @@ import { MapLibreOverlay } from "@deck.gl/maplibre";
 import { PMTilesSource } from "@loaders.gl/pmtiles";
 import { PathLayer, PolygonLayer, TileLayer } from "deck.gl";
 import type React from "react";
-import { useEffect, useMemo } from "react";
-import { useControl } from "react-map-gl/maplibre";
+import { useEffect, useMemo, useRef } from "react";
+import { useControl, useMap } from "react-map-gl/maplibre";
 import type { AeronauticalLayerState } from "../../types/AeronauticalLayerState";
 import { getAirspaceColorRgb } from "../../utils/airspaceColors";
 
@@ -17,13 +17,39 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 	visible,
 	layers,
 }) => {
-	const overlay = useControl<MapLibreOverlay>(
-		() =>
-			new MapLibreOverlay({
-				interleaved: true,
-				layers: [],
-			}),
-	);
+	const { showAirspaceMaster, controlledAirspace, suaMoa, trsa } = layers;
+	const { current: mapRef } = useMap();
+	const overlayElRef = useRef<HTMLElement | null>(null);
+
+	const overlay = useControl<MapLibreOverlay>(() => {
+		const ctrl = new MapLibreOverlay({
+			interleaved: true,
+			layers: [],
+		});
+		const origOnAdd = ctrl.onAdd.bind(ctrl);
+		ctrl.onAdd = (map) => {
+			const el = origOnAdd(map);
+			overlayElRef.current = el;
+			return el;
+		};
+		return ctrl;
+	});
+
+	// Ensure deck.gl's interleaved control element and layer group are removed even if
+	// unmount happens while MapLibre has in-flight tiles (!map.isStyleLoaded()), and repaint 2D.
+	useEffect(() => {
+		return () => {
+			overlayElRef.current?.remove();
+			overlayElRef.current = null;
+			const rawMap = mapRef?.getMap();
+			if (!rawMap?.getStyle()) return;
+			if (rawMap.getLayer("deck-maplibre-layer-group-last")) {
+				rawMap.removeLayer("deck-maplibre-layer-group-last");
+			} else {
+				rawMap.triggerRepaint();
+			}
+		};
+	}, [mapRef]);
 
 	const pmTilesSource = useMemo(() => {
 		const tileUrl = `${window.location.origin}${import.meta.env.BASE_URL}airspaces.pmtiles`;
@@ -46,12 +72,7 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 
 			zoomOffset: window.devicePixelRatio === 1 ? -1 : 0,
 			updateTriggers: {
-				renderSubLayers: [
-					layers.showAirspaceMaster,
-					layers.controlledAirspace,
-					layers.suaMoa,
-					layers.trsa,
-				],
+				renderSubLayers: [showAirspaceMaster, controlledAirspace, suaMoa, trsa],
 			},
 			// We want to render outlines at altitude (upper_m).
 			// Since MVTLayer features are 2D, we must modify them in renderSubLayers.
@@ -68,14 +89,14 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 				// Filter features based on layer state
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const filteredFeatures = data.features.filter((f: any) => {
-					if (!layers.showAirspaceMaster) return false;
+					if (!showAirspaceMaster) return false;
 					const cls = f.properties.airspace_class;
 					const isSua = f.properties.is_sua;
 
-					if (isSua) return layers.suaMoa;
+					if (isSua) return suaMoa;
 					if (cls === "B" || cls === "C" || cls === "D")
-						return layers.controlledAirspace;
-					if (cls === "TRSA") return layers.trsa;
+						return controlledAirspace;
+					if (cls === "TRSA") return trsa;
 					return false;
 				});
 
@@ -175,7 +196,19 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 		overlay.setProps({
 			layers: [layer],
 		});
-	}, [overlay, visible, pmTilesSource, layers]);
+		if (!visible) {
+			mapRef?.getMap()?.triggerRepaint();
+		}
+	}, [
+		overlay,
+		mapRef,
+		visible,
+		pmTilesSource,
+		showAirspaceMaster,
+		controlledAirspace,
+		suaMoa,
+		trsa,
+	]);
 
 	return null;
 };

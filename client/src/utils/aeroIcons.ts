@@ -40,19 +40,79 @@ const colorMap = {
 	"obs-minor-lit": plum.plum9,
 };
 
-/**
- * Load all aeronautical SVG icons into the map with a halo outline effect.
- * @param map - MapLibre map instance
- * @param haloColor - CSS color for the halo outline (e.g. '#ffffff' for light maps, '#1a1a2e' for dark maps)
- * @param haloOpacity - Opacity of the halo (0-1)
- */
-export const addAeroIcons = (
-	map: Maplibre,
-	haloColor = "#ffffff",
-	haloOpacity = 0.95,
-	shouldApply?: () => boolean,
-) => {
-	const loadIcon = (id: string, svgContent: string) => {
+type CachedIcon = {
+	id: string;
+	image: ImageData | HTMLImageElement;
+};
+
+const decodedIconCache = new Map<string, Promise<CachedIcon[]>>();
+
+const loadImageElement = (svg: string): Promise<HTMLImageElement> =>
+	new Promise((resolve, reject) => {
+		const img = new Image(32, 32);
+		const blob = new Blob([svg], {
+			type: "image/svg+xml;charset=utf-8",
+		});
+		const url = URL.createObjectURL(blob);
+		img.onload = () => {
+			URL.revokeObjectURL(url);
+			resolve(img);
+		};
+		img.onerror = (err) => {
+			URL.revokeObjectURL(url);
+			reject(err);
+		};
+		img.src = url;
+	});
+
+const rasterizeIcon = async (
+	svg: string,
+): Promise<ImageData | HTMLImageElement> => {
+	const img = await loadImageElement(svg);
+	if (typeof document === "undefined") return img;
+	const canvas = document.createElement("canvas");
+	canvas.width = 32;
+	canvas.height = 32;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) return img;
+	ctx.drawImage(img, 0, 0, 32, 32);
+	return ctx.getImageData(0, 0, 32, 32);
+};
+
+const CYAN_ICON_IDS = new Set([
+	"fix-compulsory",
+	"fix-non-compulsory",
+	"wpt-rnav-solid",
+	"wpt-vfr-checkpoint",
+	"nav-vor",
+	"nav-vortac",
+	"nav-vordme",
+	"nav-tacan",
+	"nav-dme",
+	"nav-ndb-dme",
+	"nav-ndb",
+	"apt-ifr-civil",
+	"apt-civil-paved-small",
+]);
+
+function buildIconsForTheme(
+	haloColor: string,
+	haloOpacity: number,
+): Promise<CachedIcon[]> {
+	const tasks: Promise<CachedIcon | null>[] = [];
+
+	const enqueue = (id: string, svg: string) => {
+		tasks.push(
+			rasterizeIcon(svg)
+				.then((image) => ({ id, image }))
+				.catch(() => null),
+		);
+	};
+
+	for (const [path, svgContent] of Object.entries(iconGlob)) {
+		const id = path.split("/").pop()?.replace(".svg", "");
+		if (!id || typeof svgContent !== "string") continue;
+
 		// Inject the halo filter into the SVG content
 		let finalSvg = svgContent;
 		const svgMatch = svgContent.match(/<svg[^>]*>/);
@@ -84,44 +144,10 @@ export const addAeroIcons = (
 			.replace(/fill="currentColor"/g, `fill="${color}"`)
 			.replace(/stroke="currentColor"/g, `stroke="${color}"`);
 
-		const img = new Image(32, 32);
-		const blob = new Blob([finalColoredSvg], {
-			type: "image/svg+xml;charset=utf-8",
-		});
-		const url = URL.createObjectURL(blob);
-		img.onload = () => {
-			URL.revokeObjectURL(url);
-			if (shouldApply && !shouldApply()) return;
-			// Remove existing image if present (for theme switches)
-			if (map.hasImage(id)) {
-				map.removeImage(id);
-			}
-			map.addImage(id, img);
-		};
-		img.onerror = () => {
-			URL.revokeObjectURL(url);
-		};
-		img.src = url;
+		enqueue(id, finalColoredSvg);
 
 		// Generate Cyan Variant for Flight Plan
-		const cyanIds = [
-			"fix-compulsory",
-			"fix-non-compulsory",
-			"wpt-rnav-solid",
-			"wpt-vfr-checkpoint",
-			"nav-vor",
-			"nav-vortac",
-			"nav-vordme",
-			"nav-tacan",
-			"nav-dme",
-			"nav-ndb-dme",
-			"nav-ndb",
-			"apt-ifr-civil",
-			"apt-civil-paved-small",
-		];
-		if (cyanIds.includes(id)) {
-			// Replace blacks/grays or currentColor with Cyan 9 (#00A2C7)
-			// Note: Since we normalized to currentColor, we should replace fill="currentColor"
+		if (CYAN_ICON_IDS.has(id)) {
 			const hex = cyan.cyan9;
 			const cyanSvg = finalSvg
 				.replace(/stroke="[^"]*"/g, `stroke="${hex}"`)
@@ -129,31 +155,61 @@ export const addAeroIcons = (
 				.replace(/fill="currentColor"/g, `fill="${hex}"`)
 				.replace(/stroke="currentColor"/g, `stroke="${hex}"`);
 
-			const imgCyan = new Image(32, 32);
-			const blobCyan = new Blob([cyanSvg], {
-				type: "image/svg+xml;charset=utf-8",
-			});
-			const urlCyan = URL.createObjectURL(blobCyan);
-			imgCyan.onload = () => {
-				URL.revokeObjectURL(urlCyan);
-				if (shouldApply && !shouldApply()) return;
-				const cyanId = `${id}-cyan`;
-				if (map.hasImage(cyanId)) {
-					map.removeImage(cyanId);
-				}
-				map.addImage(cyanId, imgCyan);
-			};
-			imgCyan.onerror = () => {
-				URL.revokeObjectURL(urlCyan);
-			};
-			imgCyan.src = urlCyan;
-		}
-	};
-
-	for (const [path, svgContent] of Object.entries(iconGlob)) {
-		const id = path.split("/").pop()?.replace(".svg", "");
-		if (id && typeof svgContent === "string") {
-			loadIcon(id, svgContent);
+			enqueue(`${id}-cyan`, cyanSvg);
 		}
 	}
+
+	const expectedCount = tasks.length;
+	return Promise.all(tasks).then((results) => {
+		const loaded = results.filter((item): item is CachedIcon => item !== null);
+		if (loaded.length < expectedCount) {
+			console.warn(
+				`Loaded ${loaded.length}/${expectedCount} aeronautical icons for ${haloColor}; skipping permanent cache`,
+			);
+			decodedIconCache.delete(`${haloColor}:${haloOpacity}`);
+		}
+		return loaded;
+	});
+}
+
+/**
+ * Load all aeronautical SVG icons into the map with a halo outline effect.
+ * @param map - MapLibre map instance
+ * @param haloColor - CSS color for the halo outline (e.g. '#ffffff' for light maps, '#1a1a2e' for dark maps)
+ * @param haloOpacity - Opacity of the halo (0-1)
+ */
+export const addAeroIcons = (
+	map: Maplibre,
+	haloColor = "#ffffff",
+	haloOpacity = 0.95,
+	shouldApply?: () => boolean,
+) => {
+	const cacheKey = `${haloColor}:${haloOpacity}`;
+	let promise = decodedIconCache.get(cacheKey);
+	if (!promise) {
+		const expectedTasksPromise = buildIconsForTheme(haloColor, haloOpacity);
+		promise = expectedTasksPromise.then((icons) => {
+			if (icons.length === 0) {
+				decodedIconCache.delete(cacheKey);
+			}
+			return icons;
+		});
+		decodedIconCache.set(cacheKey, promise);
+	}
+
+	promise
+		.then((icons) => {
+			if (shouldApply && !shouldApply()) return;
+			if (!map.getStyle()) return;
+			for (const { id, image } of icons) {
+				if (map.hasImage(id)) {
+					map.removeImage(id);
+				}
+				map.addImage(id, image);
+			}
+		})
+		.catch((err) => {
+			decodedIconCache.delete(cacheKey);
+			console.warn("Failed to load aeronautical icons", err);
+		});
 };

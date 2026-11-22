@@ -3,6 +3,11 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import {
+	getChromiumLaunchArgs,
+	resolveGpuMode,
+	waitForMapCanvasPixels,
+} from "./playwright-gpu.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(__dirname, "..");
@@ -66,14 +71,11 @@ async function main() {
 
 		await waitForServer(BASE_URL, server);
 
+		const gpuMode = resolveGpuMode();
+		console.log(`Updating thumbnail with Chromium WebGL backend: ${gpuMode}`);
 		browser = await chromium.launch({
 			headless: true,
-			args: [
-				"--use-gl=angle",
-				"--use-angle=swiftshader",
-				"--enable-webgl",
-				"--ignore-gpu-blocklist",
-			],
+			args: getChromiumLaunchArgs(gpuMode),
 		});
 
 		const context = await browser.newContext({
@@ -157,32 +159,12 @@ async function main() {
 
 		await page.goto(TARGET_URL, { waitUntil: "domcontentloaded" });
 
-		await page.waitForSelector("canvas.maplibregl-canvas", { timeout: 30000 });
-
 		await page.addStyleTag({
 			content:
 				".settings-panel-container, .map-feature-panel, .desktop-only, .mobile-only, .maplibregl-control-container { display: none !important; }",
 		});
 
-		await page.waitForFunction(
-			() => {
-				const canvas = document.querySelector("canvas.maplibregl-canvas");
-				if (!canvas || canvas.width === 0 || canvas.height === 0) return false;
-				const probe = document.createElement("canvas");
-				probe.width = 16;
-				probe.height = 16;
-				const ctx = probe.getContext("2d");
-				if (!ctx) return false;
-				ctx.drawImage(canvas, 0, 0, 16, 16);
-				const { data } = ctx.getImageData(0, 0, 16, 16);
-				for (let i = 3; i < data.length; i += 4) {
-					if (data[i] > 0) return true;
-				}
-				return false;
-			},
-			null,
-			{ timeout: 30000 },
-		);
+		await waitForMapCanvasPixels(page);
 
 		await page
 			.waitForLoadState("networkidle", { timeout: 30000 })

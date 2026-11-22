@@ -55,6 +55,43 @@ import { FeatureList } from "./FeatureList";
 
 maplibregl.setWorkerUrl(workerUrl);
 
+const CANVAS_CONTEXT_ATTRIBUTES = { antialias: true };
+const INITIAL_VIEW_STATE = {
+	longitude: -121.596667, // San Martin Airport
+	latitude: 37.081667,
+	zoom: 8,
+	pitch: 0,
+};
+const MAP_CONTAINER_STYLE: React.CSSProperties = {
+	width: "100%",
+	height: "100%",
+};
+const TERRAIN_SPEC: maplibregl.TerrainSpecification = {
+	source: "terrain",
+	exaggeration: 1.2,
+};
+const BASEMAP_DIMMER_DATA = {
+	type: "FeatureCollection" as const,
+	features: [
+		{
+			type: "Feature" as const,
+			geometry: {
+				type: "Polygon" as const,
+				coordinates: [
+					[
+						[-180, -90],
+						[180, -90],
+						[180, 90],
+						[-180, 90],
+						[-180, -90],
+					],
+				],
+			},
+			properties: {},
+		},
+	],
+};
+
 interface AeroMapProps {
 	basemapUrlOrId: string;
 	showTerrain: boolean;
@@ -134,6 +171,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				img.onload = () => {
 					URL.revokeObjectURL(url);
 					if (shouldApply && !shouldApply()) return;
+					if (!map.getStyle()) return;
 					if (map.hasImage(def.id)) map.removeImage(def.id);
 					map.addImage(def.id, img, {
 						stretchX: [[8, 16]],
@@ -169,6 +207,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			img.onload = () => {
 				URL.revokeObjectURL(url);
 				if (shouldApply && !shouldApply()) return;
+				if (!map.getStyle()) return;
 				if (map.hasImage("pat-wind-farm")) map.removeImage("pat-wind-farm");
 				map.addImage("pat-wind-farm", img, { pixelRatio: 1 });
 			};
@@ -190,6 +229,12 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 		styleEpochRef.current += 1;
 	}
 
+	React.useEffect(() => {
+		return () => {
+			iconGenRef.current += 1;
+		};
+	}, []);
+
 	const injectMapIcons = useCallback(
 		(map: Maplibre) => {
 			const gen = ++iconGenRef.current;
@@ -207,6 +252,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 	const onMapLoad = useCallback(
 		(e: any) => {
 			mapRef.current = e.target;
+			setIsTilted(e.target.getPitch() > 10);
 			lastInjectedEpochRef.current = styleEpochRef.current;
 			injectMapIcons(e.target);
 		},
@@ -220,8 +266,12 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			const map = mapRef.current ?? (e.target as Maplibre | undefined);
 			if (!map || !map.getStyle()) return;
 
+			setIsTilted(map.getPitch() > 10);
+
 			const missingIcons =
-				!map.hasImage("airway-bg-blue") || !map.hasImage("pat-wind-farm");
+				!map.hasImage("apt-ifr-civil") ||
+				!map.hasImage("airway-bg-blue") ||
+				!map.hasImage("pat-wind-farm");
 			const needsEpochInject =
 				missingIcons && lastInjectedEpochRef.current !== styleEpochRef.current;
 			const themeMismatch = injectedThemeRef.current !== isDarkMap;
@@ -259,7 +309,30 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 		lngLat: [number, number];
 		features: any[];
 	} | null>(null);
-	const [isTilted, setIsTilted] = useState(false);
+	const [isTilted, setIsTilted] = useState(() => {
+		if (typeof window === "undefined") return false;
+		const pitch = Number(
+			window.location.hash.replace(/^#/, "").split("/")[4] ?? 0,
+		);
+		return Number.isFinite(pitch) && pitch > 10;
+	});
+
+	const show3dAirspace =
+		isTilted &&
+		aeronauticalLayers.showAll &&
+		aeronauticalLayers.showAirspaceMaster &&
+		(aeronauticalLayers.controlledAirspace ||
+			aeronauticalLayers.suaMoa ||
+			aeronauticalLayers.trsa);
+
+	const [hasMountedAirspaceOverlay, setHasMountedAirspaceOverlay] =
+		useState(show3dAirspace);
+
+	React.useEffect(() => {
+		if (show3dAirspace && !hasMountedAirspaceOverlay) {
+			setHasMountedAirspaceOverlay(true);
+		}
+	}, [show3dAirspace, hasMountedAirspaceOverlay]);
 
 	const selectedFeatures =
 		propSelectedFeatures !== undefined
@@ -268,17 +341,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 	const setSelectedFeatures = onSelectFeatures || setLocalSelectedFeatures;
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const onMove = useCallback(
-		(e: any) => {
-			const pitch = e.target.getPitch();
-			if (pitch > 10 && !isTilted) {
-				setIsTilted(true);
-			} else if (pitch <= 10 && isTilted) {
-				setIsTilted(false);
-			}
-		},
-		[isTilted],
-	);
+	const onMove = useCallback((e: any) => {
+		setIsTilted(e.target.getPitch() > 10);
+	}, []);
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const onMouseMove = useCallback(
@@ -831,9 +896,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 
 	return (
 		<ReactMap
-			canvasContextAttributes={{
-				antialias: true,
-			}}
+			canvasContextAttributes={CANVAS_CONTEXT_ATTRIBUTES}
 			onLoad={onMapLoad}
 			onStyleData={onStyleData}
 			onMouseMove={onMouseMove}
@@ -844,22 +907,17 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			interactiveLayerIds={
 				aeronauticalLayers.showAll ? interactiveLayerIds : []
 			}
-			initialViewState={{
-				longitude: -121.596667, // San Martin Airport
-				latitude: 37.081667,
-				zoom: 8,
-				pitch: 0,
-			}}
+			initialViewState={INITIAL_VIEW_STATE}
 			maxPitch={85}
 			// projection={{ type: 'globe' }}
 			mapStyle={mapStyle}
 			styleDiffing={false}
-			style={{ width: "100%", height: "100%" }}
+			style={MAP_CONTAINER_STYLE}
 			hash={true}
 			mapLib={maplibregl}
 			terrain={
 				showTerrain
-					? { source: "terrain", exaggeration: 1.2 }
+					? TERRAIN_SPEC
 					: (null as unknown as maplibregl.TerrainSpecification)
 			}
 		>
@@ -1065,27 +1123,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			<Source
 				id="basemap-dimmer-source"
 				type="geojson"
-				data={{
-					type: "FeatureCollection",
-					features: [
-						{
-							type: "Feature",
-							geometry: {
-								type: "Polygon",
-								coordinates: [
-									[
-										[-180, -90],
-										[180, -90],
-										[180, 90],
-										[-180, 90],
-										[-180, -90],
-									],
-								],
-							},
-							properties: {},
-						},
-					],
-				}}
+				data={BASEMAP_DIMMER_DATA}
 			>
 				<Layer
 					id="basemap-dimmer-layer"
@@ -1191,8 +1229,10 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						url={`pmtiles://${window.location.origin}${import.meta.env.BASE_URL}vfr.pmtiles`}
 						attribution={`FAA NASR/ADDS/USWTDB/HIFLD/OSM${cycle ? ` (Cycle ${cycle})` : ""}`}
 					/>
-					<AirspaceOverlay visible={isTilted} layers={aeronauticalLayers} />
 				</>
+			)}
+			{hasMountedAirspaceOverlay && (
+				<AirspaceOverlay visible={show3dAirspace} layers={aeronauticalLayers} />
 			)}
 			{aeronauticalLayers.showAll && (
 				<>

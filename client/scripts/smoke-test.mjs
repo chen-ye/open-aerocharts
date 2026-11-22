@@ -4,6 +4,11 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import {
+	getChromiumLaunchArgs,
+	resolveGpuMode,
+	waitForMapCanvasPixels,
+} from "./playwright-gpu.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(__dirname, "..");
@@ -69,26 +74,15 @@ async function waitForServer(url, serverProcess, timeoutMs = 30000) {
 	throw new Error(`Timed out waiting for preview server at ${url}`);
 }
 
-async function waitForMapCanvasPixels(page) {
-	await page.waitForSelector("canvas.maplibregl-canvas", { timeout: 30000 });
-	await page.waitForFunction(
-		() => {
-			const canvas = document.querySelector("canvas.maplibregl-canvas");
-			if (!canvas || canvas.width === 0 || canvas.height === 0) return false;
-			const probe = document.createElement("canvas");
-			probe.width = 16;
-			probe.height = 16;
-			const ctx = probe.getContext("2d");
-			if (!ctx) return false;
-			ctx.drawImage(canvas, 0, 0, 16, 16);
-			const { data } = ctx.getImageData(0, 0, 16, 16);
-			for (let i = 3; i < data.length; i += 4) {
-				if (data[i] > 0) return true;
-			}
-			return false;
-		},
-		null,
-		{ timeout: 30000 },
+async function cleanGoto(page, url) {
+	await page.goto("about:blank", { waitUntil: "domcontentloaded" });
+	await page.goto(url, { waitUntil: "domcontentloaded" });
+}
+
+async function waitForTwoFrames(page) {
+	await page.evaluate(
+		() =>
+			new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
 	);
 }
 
@@ -150,15 +144,12 @@ async function main() {
 
 		await waitForServer(baseUrl, server);
 
+		const gpuMode = resolveGpuMode();
+		console.log(`Running smoke test with Chromium WebGL backend: ${gpuMode}`);
+
 		browser = await chromium.launch({
 			headless: true,
-			args: [
-				"--use-gl=angle",
-				"--use-angle=swiftshader",
-				"--enable-webgl",
-				"--enable-webgl2",
-				"--ignore-gpu-blocklist",
-			],
+			args: getChromiumLaunchArgs(gpuMode),
 		});
 
 		const context = await browser.newContext({
@@ -222,6 +213,14 @@ async function main() {
 			waitUntil: "domcontentloaded",
 		});
 		await waitForMapCanvasPixels(page);
+		const overlayCount2d = await page
+			.locator(".maplibregl-ctrl-top-left div")
+			.count();
+		if (overlayCount2d !== 0) {
+			throw new Error(
+				`Expected AirspaceOverlay to stay deferred in 2D, found ${overlayCount2d} top-left controls`,
+			);
+		}
 
 		const ghLinkAudit = await page.evaluate(() => {
 			const link = document.querySelector('a[aria-label="View on GitHub"]');
@@ -262,30 +261,6 @@ async function main() {
 			}
 		}
 
-		await vfrSectionalBtn.click();
-		await page.waitForFunction(() => {
-			const p = new URLSearchParams(window.location.search);
-			return (
-				p.get("terrain") === "true" && p.get("basemap")?.includes("/dark/")
-			);
-		});
-		if ((await vfrSectionalBtn.getAttribute("aria-pressed")) !== "true") {
-			throw new Error("VFR Sectional preset should be active");
-		}
-
-		await vfrTerminalBtn.click();
-		await page.waitForFunction(
-			() => new URLSearchParams(window.location.search).get("density") === "2",
-		);
-		if ((await vfrTerminalBtn.getAttribute("aria-pressed")) !== "true") {
-			throw new Error("VFR Terminal preset should be active");
-		}
-
-		await helicopterBtn.click();
-		if ((await helicopterBtn.getAttribute("aria-pressed")) !== "true") {
-			throw new Error("Helicopter preset should be active");
-		}
-
 		await ifrLowBtn.click();
 		await page.waitForFunction(() => {
 			const p = new URLSearchParams(window.location.search);
@@ -313,8 +288,9 @@ async function main() {
 			throw new Error("IFR High preset should be active");
 		}
 
-		// Reload the synced IFR High URL and verify active preset persists
-		await page.goto(page.url(), { waitUntil: "domcontentloaded" });
+		// Reload the synced IFR High URL cleanly (cleanGoto avoids same-document #hash no-ops)
+		const syncedIfrHighUrl = page.url();
+		await cleanGoto(page, syncedIfrHighUrl);
 		await waitForMapCanvasPixels(page);
 		if (
 			(await page
@@ -337,20 +313,11 @@ async function main() {
 			throw new Error("Manual IFR Usage edit should clear IFR High highlight");
 		}
 
-		await page.getByRole("button", { name: "Clean" }).click();
-		if (
-			(await page
-				.getByRole("button", { name: "Clean" })
-				.getAttribute("aria-pressed")) !== "true"
-		) {
-			throw new Error("Clean preset should be active");
-		}
-
-		// Restore VFR Sectional, test Light <-> Dark basemap swap, then restore VFR Sectional
-		await page.getByRole("button", { name: "VFR Sectional" }).click();
+		// Test Light <-> Dark basemap swap clears preset highlight and preset click restores it
+		await page.getByRole("button", { name: "IFR High" }).click();
 		await page.waitForFunction(
 			() =>
-				new URLSearchParams(window.location.search).get("terrain") === "true",
+				new URLSearchParams(window.location.search).get("wptUsage") === "high",
 		);
 		await page.getByRole("combobox").click();
 		await page.getByRole("option", { name: "Protomaps Light" }).click();
@@ -361,19 +328,26 @@ async function main() {
 		);
 		if (
 			(await page
-				.getByRole("button", { name: "VFR Sectional" })
+				.getByRole("button", { name: "IFR High" })
 				.getAttribute("aria-pressed")) !== "false"
 		) {
 			throw new Error(
-				"Switching basemap to Protomaps Light should clear VFR Sectional highlight",
+				"Switching basemap to Protomaps Light should clear IFR High highlight",
 			);
 		}
-		await page.getByRole("button", { name: "VFR Sectional" }).click();
-		await page.waitForFunction(() =>
-			new URLSearchParams(window.location.search)
-				.get("basemap")
-				?.includes("/dark/"),
+		await page.getByRole("button", { name: "IFR High" }).click();
+		await page.waitForFunction(
+			() => !new URLSearchParams(window.location.search).has("basemap"),
 		);
+
+		await page.getByRole("button", { name: "Clean" }).click();
+		if (
+			(await page
+				.getByRole("button", { name: "Clean" })
+				.getAttribute("aria-pressed")) !== "true"
+		) {
+			throw new Error("Clean preset should be active");
+		}
 
 		// Toggle Settings panel
 		await page.getByRole("button", { name: "Close Settings" }).click();
@@ -391,25 +365,95 @@ async function main() {
 		await page.getByText("Fixes (2)").waitFor({ timeout: 5000 });
 
 		// 2. 3D tilted view (pitch > 10 mounts deck.gl MapLibreOverlay) + preset switching
-		await page.goto(`${baseUrl}#11/37.6213/-122.3790/0/55`, {
-			waitUntil: "domcontentloaded",
-		});
+		// Run terrain-enabled presets after the clean reload and 3D transition so SwiftShader
+		// does not accumulate a multi-preset terrain mesh/FBO backlog before readback checks.
+		await cleanGoto(page, `${baseUrl}#11/37.6213/-122.3790/0/55`);
+		await page
+			.locator(".maplibregl-ctrl-top-left div")
+			.first()
+			.waitFor({ state: "attached", timeout: 15000 });
 		await waitForMapCanvasPixels(page);
 		await page.getByRole("button", { name: "VFR Sectional" }).click();
-		await page.waitForFunction(
-			() =>
-				new URLSearchParams(window.location.search).get("terrain") === "true",
-		);
-		await page.waitForTimeout(300);
+		await page.waitForFunction(() => {
+			const p = new URLSearchParams(window.location.search);
+			return (
+				p.get("terrain") === "true" && p.get("basemap")?.includes("/dark/")
+			);
+		});
+		if (
+			(await page
+				.getByRole("button", { name: "VFR Sectional" })
+				.getAttribute("aria-pressed")) !== "true"
+		) {
+			throw new Error("VFR Sectional preset should be active");
+		}
+		await waitForTwoFrames(page);
+
 		await page.getByRole("button", { name: "IFR High" }).click();
 		await page.waitForFunction(
 			() =>
 				new URLSearchParams(window.location.search).get("wptUsage") ===
 					"high" && !new URLSearchParams(window.location.search).has("terrain"),
 		);
-		await page.waitForTimeout(300);
+		await waitForTwoFrames(page);
+		if ((await page.locator(".maplibregl-ctrl-top-left div").count()) === 0) {
+			throw new Error(
+				"Expected AirspaceOverlay to remain mounted in 3D IFR High (SUA/MOA enabled)",
+			);
+		}
+
 		await page.getByRole("button", { name: "Clean" }).click();
-		await page.waitForTimeout(300);
+		await waitForTwoFrames(page);
+		if ((await page.locator(".maplibregl-ctrl-top-left div").count()) === 0) {
+			throw new Error(
+				"Expected AirspaceOverlay to remain latched after first 3D tilt on Clean",
+			);
+		}
+
+		// 3. Remaining 2D terrain presets (VFR Terminal & Helicopter) + density=2->0 reset check
+		await cleanGoto(page, `${baseUrl}#11.5/37.4638/-122.0056`);
+		await waitForMapCanvasPixels(page);
+		await page.getByRole("button", { name: "VFR Terminal" }).click();
+		await page.waitForFunction(
+			() => new URLSearchParams(window.location.search).get("density") === "2",
+		);
+		if (
+			(await page
+				.getByRole("button", { name: "VFR Terminal" })
+				.getAttribute("aria-pressed")) !== "true"
+		) {
+			throw new Error("VFR Terminal preset should be active");
+		}
+
+		await page.getByRole("button", { name: "Helicopter" }).click();
+		if (
+			(await page
+				.getByRole("button", { name: "Helicopter" })
+				.getAttribute("aria-pressed")) !== "true"
+		) {
+			throw new Error("Helicopter preset should be active");
+		}
+
+		await page.getByRole("button", { name: "IFR Low" }).click();
+		await page.waitForFunction(() => {
+			const p = new URLSearchParams(window.location.search);
+			return (
+				p.get("wptUsage") === "low" &&
+				!p.has("terrain") &&
+				!p.has("basemap") &&
+				!p.has("density")
+			);
+		});
+		if (
+			(await page
+				.getByRole("button", { name: "IFR Low" })
+				.getAttribute("aria-pressed")) !== "true"
+		) {
+			throw new Error("IFR Low preset should be active after Helicopter");
+		}
+
+		await page.getByRole("button", { name: "Clean" }).click();
+		await waitForTwoFrames(page);
 
 		if (
 			pageErrors.length > 0 ||
