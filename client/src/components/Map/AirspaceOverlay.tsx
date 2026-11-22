@@ -31,13 +31,6 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 	const { showAirspaceMaster, controlledAirspace, suaMoa, trsa } = layers;
 	const { current: mapRef } = useMap();
 	const overlayElRef = useRef<HTMLElement | null>(null);
-	const latestLayersRef = useRef<
-		(
-			| AirspaceWallLayer
-			| PolygonLayer<AirspaceCap3d>
-			| PathLayer<AirspaceEdge3d>
-		)[]
-	>([]);
 	const [data3d, setData3d] = useState<ParsedAirspaces3d | null>(null);
 
 	const overlay = useControl<MapLibreOverlay>(() => {
@@ -112,15 +105,10 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 		return data3d.edges.filter((e) => (e.mask & visibleMask) !== 0);
 	}, [data3d, visibleMask]);
 
-	useEffect(() => {
-		if (!data3d) {
-			latestLayersRef.current = [];
-			overlay.setProps({ layers: [] });
-			return;
-		}
-
+	const deckLayers = useMemo(() => {
+		if (!data3d) return [];
 		const isRendered = visible && visibleMask !== 0;
-		const nextLayers = [
+		return [
 			new AirspaceWallLayer({
 				id: "airspace-3d-walls",
 				data: data3d.walls,
@@ -178,42 +166,7 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 				},
 			}),
 		];
-
-		latestLayersRef.current = nextLayers;
-		overlay.setProps({ layers: nextLayers });
-
-		const rawMap = mapRef?.getMap();
-		rawMap?.triggerRepaint();
-
-		// @deck.gl/maplibre skips adding deck-maplibre-layer-group-last while tiles are
-		// in-flight (!map.isStyleLoaded()) and only retries on styledata, not tile completion.
-		// Falling back to afterMapLibreRender draws outside MapLibre's depthRangeFor3D!
-		if (rawMap && !rawMap.getLayer("deck-maplibre-layer-group-last")) {
-			const ensureGroupAttached = () => {
-				if (
-					rawMap.isStyleLoaded() &&
-					!rawMap.getLayer("deck-maplibre-layer-group-last") &&
-					latestLayersRef.current.length > 0
-				) {
-					overlay.setProps({ layers: [...latestLayersRef.current] });
-					rawMap.triggerRepaint();
-				}
-				if (rawMap.getLayer("deck-maplibre-layer-group-last")) {
-					rawMap.off("sourcedata", ensureGroupAttached);
-					rawMap.off("idle", ensureGroupAttached);
-				}
-			};
-			rawMap.on("sourcedata", ensureGroupAttached);
-			rawMap.on("idle", ensureGroupAttached);
-			return () => {
-				rawMap.off("sourcedata", ensureGroupAttached);
-				rawMap.off("idle", ensureGroupAttached);
-			};
-		}
-		return undefined;
 	}, [
-		overlay,
-		mapRef,
 		data3d,
 		visible,
 		visibleMask,
@@ -222,6 +175,35 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 		visibleCaps,
 		visibleEdges,
 	]);
+
+	useEffect(() => {
+		overlay.setProps({ layers: deckLayers });
+		const rawMap = mapRef?.getMap();
+		rawMap?.triggerRepaint();
+
+		if (!rawMap || deckLayers.length === 0) return undefined;
+
+		// @deck.gl/maplibre skips adding deck-maplibre-layer-group-last while tiles are
+		// in-flight (!map.isStyleLoaded()) and only retries on styledata, not tile completion.
+		const syncLayerGroup = () => {
+			if (
+				rawMap.isStyleLoaded() &&
+				!rawMap.getLayer("deck-maplibre-layer-group-last")
+			) {
+				overlay.setProps({ layers: deckLayers });
+				rawMap.triggerRepaint();
+			}
+		};
+
+		rawMap.on("styledata", syncLayerGroup);
+		rawMap.on("sourcedata", syncLayerGroup);
+		rawMap.on("idle", syncLayerGroup);
+		return () => {
+			rawMap.off("styledata", syncLayerGroup);
+			rawMap.off("sourcedata", syncLayerGroup);
+			rawMap.off("idle", syncLayerGroup);
+		};
+	}, [overlay, mapRef, deckLayers]);
 
 	return null;
 };
