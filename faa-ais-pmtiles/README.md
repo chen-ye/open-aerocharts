@@ -37,22 +37,23 @@ vector PMTiles.
 
 ## Data Flow Mapping
 
-| Feature                 | Primary Datasource | Intermediate Format         | Final PMTile Archive          |
-| :---------------------- | :----------------- | :-------------------------- | :---------------------------- |
-| **Airports**            | CIFP (ARINC 424)   | `data/airports.geojson`*    | `airports_navaids.pmtiles`    |
-| **Navaids (VHF/NDB)**   | CIFP (ARINC 424)   | `data/navaids.fgb`          | `airports_navaids.pmtiles`    |
-| **Airspaces (B/C/D)**   | NFDC Shapefiles    | `data/airspaces.fgb`        | `airspaces.pmtiles`           |
-| **Airspaces (SUA)**     | ADDS ArcGIS        | `data/airspaces.fgb`        | `airspaces.pmtiles`           |
-| **Airspaces (Class E)** | NFDC Shapefiles    | `data/airspaces.fgb`        | `enroute.pmtiles`             |
-| **Airways**             | CIFP (ARINC 424)   | `data/airways.fgb`          | `enroute.pmtiles`             |
-| **Procedures**          | CIFP (ARINC 424)   | `data/procedures.fgb`       | `enroute.pmtiles`             |
-| **Runways**             | CIFP + ADDS        | `data/runways.fgb`          | `airport_diagrams.pmtiles`    |
-| **Localizers**          | CIFP (ARINC 424)   | `data/localizers.fgb`       | `airports_navaids.pmtiles`    |
-| **Waypoints**           | CIFP (ARINC 424)   | `data/waypoints.fgb`        | `waypoints_obstacles.pmtiles` |
-| **Holding Patterns**    | ADDS ArcGIS         | `data/holding_patterns.fgb` | `waypoints_obstacles.pmtiles` |
-| **Obstacles**           | ADDS ArcGIS         | `data/obstacles.fgb`        | `waypoints_obstacles.pmtiles` |
-| **Parachute Areas**     | NASR (PJA_BASE.csv) | `data/parachute_areas.fgb`  | `waypoints_obstacles.pmtiles` |
-| **Diagrams (Taxi)**     | ADDS ArcGIS         | `data/am_taxiways.fgb`      | `airport_diagrams.pmtiles`    |
+| Feature                  | Primary Datasource                       | Intermediate Format         | Final Output / PMTile Archive        |
+| :----------------------- | :--------------------------------------- | :-------------------------- | :----------------------------------- |
+| **Airports & Heliports** | NASR (`APT_BASE`/`APT_RWY`) + CIFP       | `data/airports.geojson`*    | `airports_navaids.pmtiles`           |
+| **Navaids (VHF/NDB)**    | CIFP (ARINC 424)                         | `data/navaids.fgb`          | `airports_navaids.pmtiles`           |
+| **Airspaces (B/C/D)**    | NFDC Shapefiles                          | `data/airspaces.fgb`        | `airspaces.pmtiles`                  |
+| **Airspaces (SUA)**      | ADDS ArcGIS                              | `data/airspaces.fgb`        | `airspaces.pmtiles`                  |
+| **Airspaces (Class E)**  | NFDC Shapefiles                          | `data/airspaces.fgb`        | `enroute.pmtiles`                    |
+| **Airways**              | CIFP (ARINC 424)                         | `data/airways.fgb`          | `enroute.pmtiles`                    |
+| **Procedures**           | CIFP (ARINC 424)                         | `data/procedures.fgb`       | `enroute.pmtiles`                    |
+| **Runways**              | CIFP + ADDS                              | `data/runways.fgb`          | `airport_diagrams.pmtiles`           |
+| **Localizers**           | CIFP (ARINC 424)                         | `data/localizers.fgb`       | `airports_navaids.pmtiles`           |
+| **Waypoints**            | CIFP (ARINC 424)                         | `data/waypoints.fgb`        | `waypoints_obstacles.pmtiles`        |
+| **Holding Patterns**     | ADDS ArcGIS                              | `data/holding_patterns.fgb` | `waypoints_obstacles.pmtiles`        |
+| **Obstacles**            | ADDS ArcGIS                              | `data/obstacles.fgb`        | `waypoints_obstacles.pmtiles`        |
+| **Parachute Areas**      | NASR (`PJA_BASE.csv`)                    | `data/parachute_areas.fgb`  | `waypoints_obstacles.pmtiles`        |
+| **Diagrams (Taxi)**      | ADDS ArcGIS                              | `data/am_taxiways.fgb`      | `airport_diagrams.pmtiles`           |
+| **Search Index**         | NASR (`APT_BASE.csv`) + CIFP (ARINC 424) | —                           | `../client/public/search_index.json` |
 
 _\*Runways are merged from ADDS (high-fidelity) and CIFP (polygonized), deduplicated, and served in the high-zoom diagrams layer._
 
@@ -66,22 +67,30 @@ ranks._
 ### 1. Airports
 
 - **Layer**: `airports`
-- **Rank 1**: Major International
-- **Rank 2**: Regional/Municipal
+- **Rank 1**: Major International Hubs (FAR 139 Index D/E) / Large Military (`>= 10,000'`)
+- **Rank 2**: Regional/Commercial (FAR 139 A/B/C), Towered (`ATCT*`), or `>= 7,500'` Public/Military
+- **Rank 3**: Public `K*` / `>= 4,000'` Airports & Seaplanes; Public/IFR/Military Heliports
+- **Rank 4**: Remaining Public Fields & Public Ultralights/Gliderports/Balloonports; `>= 3,000'` or IFR Private Fields
+- **Rank 5**: Remaining Private Strips, Private/Medical Heliports, and Private Special-Use Fields
 
 ```typescript
 interface AirportProperties {
   id: string; // e.g., "KSJC"
-  name: string; // e.g., "SAN JOSE INTL"
+  name: string; // e.g., "MINETA SAN JOSE INTL"
   type: "airport";
   facility_type:
     | "private"
     | "civil_hard"
     | "civil_soft"
     | "seaplane"
-    | "military";
+    | "seaplane_private"
+    | "military"
+    | "heliport"
+    | "ultralight"
+    | "gliderport"
+    | "balloonport";
   surface: "S" | "H" | "W"; // Soft, Hard, Water
-  rank: 1 | 2 | 3 | 4; // 1=Major, 4=Minor
+  rank: 1 | 2 | 3 | 4 | 5; // 1=Major, 5=Minor
   longest_runway: number; // in feet
   is_military: boolean;
   is_ifr: boolean;
@@ -270,9 +279,9 @@ Example:
    
    - **`src/cifp/`**: Handling of FAA CIFP (ARINC 424) datasets.
    - **`src/adds/`**: Handling of ADDS ArcGIS and NFDC Shapefile datasets.
-   - **`src/nasr/`**: Handling of FAA NASR 28-day data (e.g. airport metadata).
+   - **`src/nasr/`**: Handling of FAA NASR 28-day CSV datasets (`APT_BASE.csv`, `APT_RWY.csv`, `PJA_BASE.csv`) for operational facilities, runways, metadata, and parachute jump areas.
    - **`src/runways/`**: Logic for generating runway polygons from threshold data.
-   - **`src/pmtiles/`**: Orchestration of the build pipeline.
+   - **`src/pmtiles/`**: Orchestration of the build pipeline (including `build-search-index` during Step 2).
    - **`src/tools/`**: Utilities for inspection and validation.
-   - **`src/search/`**: Search index generation.
+   - **`src/search/`**: Search index generation (`uv run build-search-index`).
    

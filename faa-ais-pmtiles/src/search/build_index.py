@@ -1,5 +1,5 @@
 """
-Builds a searchable index of airports, navaids, and fixes from the CIFP dataset.
+Builds a searchable index of airports, navaids, and fixes from NASR and CIFP datasets.
 
 Generates a JSON file mapping identifiers to their coordinates and metadata,
 optimized for client-side search.
@@ -13,24 +13,45 @@ from collections import defaultdict
 from cifparse import CIFP
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python -m src.build_search_index <FAACIFP18_file>")
-        sys.exit(1)
-
-    cifp_path = sys.argv[1]
-    output_dir = "../client/public"
-    output_path = os.path.join(output_dir, "search_index.json")
-
-    if not os.path.exists(output_dir):
+def build_search_index(
+    cifp_path: str = "FAACIFP18",
+    output_path: str = "../client/public/search_index.json",
+    nasr_facilities_path: str = "data/nasr_facilities.json",
+) -> dict:
+    output_dir = os.path.dirname(output_path)
+    if output_dir and not os.path.exists(output_dir):
         print(f"Output directory {output_dir} does not exist. Creating it.")
         os.makedirs(output_dir, exist_ok=True)
+
+    fixes = {}  # ident -> {lat, lon, type, name}
+    seen_nasr_ids: set[str] = set()
+
+    if nasr_facilities_path and os.path.exists(nasr_facilities_path):
+        print(f"Loading NASR facilities from {nasr_facilities_path}...", flush=True)
+        with open(nasr_facilities_path) as f:
+            nasr_facilities = json.load(f)
+        for fac in nasr_facilities:
+            ident = (fac.get("id") or "").strip()
+            lat, lon = fac.get("lat"), fac.get("lon")
+            if ident and lat is not None and lon is not None:
+                seen_nasr_ids.add(ident)
+                for alias_key in ("arpt_id", "icao_id"):
+                    alias = (fac.get(alias_key) or "").strip()
+                    if alias:
+                        seen_nasr_ids.add(alias)
+                fixes[ident] = {
+                    "lat": float(lat),
+                    "lon": float(lon),
+                    "type": "airport",
+                    "name": fac.get("name"),
+                }
 
     print(f"Loading CIFP from {cifp_path}...", flush=True)
     c = CIFP(cifp_path)
 
     print("Parsing data...", flush=True)
     c.parse_airports()
+    c.parse_heliports()
     c.parse_vhf_navaids()
     c.parse_ndb_navaids()
     c.parse_enroute_waypoints()
@@ -38,21 +59,36 @@ def main():
     c.parse_procedures()
     c.parse_airway_points()
 
-    fixes = {}  # ident -> {lat, lon, type, name}
-
     print("Indexing fixes...", flush=True)
 
-    # Airports
+    # CIFP Airports (fallback / non-NASR records; before navaids so navaids win 3-letter collisions)
     for a in c.get_airports():
+        if not a.has_primary():
+            continue
         p = a.to_dict()["primary"]
-        ident = p.get("airport_id", "").strip()
+        ident = (p.get("airport_id") or "").strip()
         lat, lon = p.get("lat"), p.get("lon")
-        if ident and lat is not None and lon is not None:
+        if ident and lat is not None and lon is not None and ident not in fixes and ident not in seen_nasr_ids:
             fixes[ident] = {
                 "lat": float(lat),
                 "lon": float(lon),
                 "type": "airport",
                 "name": p.get("airport_name"),
+            }
+
+    # CIFP Heliports (fallback / non-NASR records; before navaids)
+    for h in c.get_heliports():
+        if not h.has_primary():
+            continue
+        p = h.to_dict()["primary"]
+        ident = (p.get("heliport_id") or "").strip()
+        lat, lon = p.get("lat"), p.get("lon")
+        if ident and lat is not None and lon is not None and ident not in fixes and ident not in seen_nasr_ids:
+            fixes[ident] = {
+                "lat": float(lat),
+                "lon": float(lon),
+                "type": "airport",
+                "name": p.get("heliport_name"),
             }
 
     # Navaids
@@ -171,11 +207,18 @@ def main():
         pts.sort(key=lambda x: x["seq"])
         final_airways[aid] = [p["id"] for p in pts]
 
+    index_data = {"fixes": fixes, "procedures": final_procs, "airways": final_airways}
     print(f"Writing index to {output_path}...", flush=True)
     with open(output_path, "w") as f:
-        json.dump({"fixes": fixes, "procedures": final_procs, "airways": final_airways}, f)
+        json.dump(index_data, f)
 
     print(f"Done. Index size: {os.path.getsize(output_path) / 1024 / 1024:.2f} MB")
+    return index_data
+
+
+def main():
+    cifp_path = sys.argv[1] if len(sys.argv) > 1 else "FAACIFP18"
+    build_search_index(cifp_path=cifp_path)
 
 
 if __name__ == "__main__":

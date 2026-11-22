@@ -10,8 +10,11 @@ import geopandas as gpd
 import pyproj
 
 from src.adds.convert import convert_airspaces, convert_boundary_airspace, convert_mode_c, normalize_boundary_limit
+from src.cifp.convert import RANK_MINZOOM, build_airport_features, compute_airport_rank
 from src.nasr import fetch as nasr_fetch
+from src.nasr.facilities import classify_nasr_facility, parse_nasr_facilities, parse_nasr_runways
 from src.nasr.pja import convert_pja, parse_pja_csv
+from src.search.build_index import build_search_index
 
 
 class TestNormalizeBoundaryLimit(unittest.TestCase):
@@ -365,7 +368,7 @@ class TestNasrFetch(unittest.TestCase):
                     self.assertEqual(len(pja_fc["features"]), 1)
                     self.assertEqual(pja_fc["features"][0]["properties"]["ident"], "PJA1")
 
-                    # Cache hit when all 3 files exist
+                    # Cache hit when all 4 files exist
                     nasr_fetch.get_airport_metadata()
                     self.assertEqual(mock_get.call_count, 1)
 
@@ -374,8 +377,404 @@ class TestNasrFetch(unittest.TestCase):
                     nasr_fetch.get_airport_metadata()
                     self.assertEqual(mock_get.call_count, 2)
                     self.assertTrue(os.path.exists("data/pja_raw.geojson"))
+                    self.assertTrue(os.path.exists("data/nasr_facilities.json"))
+
+                    # Remove nasr_facilities.json -> must re-download instead of skipping
+                    os.remove("data/nasr_facilities.json")
+                    nasr_fetch.get_airport_metadata()
+                    self.assertEqual(mock_get.call_count, 3)
+                    self.assertTrue(os.path.exists("data/nasr_facilities.json"))
             finally:
                 os.chdir(orig_cwd)
+
+
+class _DummyCifpRecord:
+    def __init__(self, primary: dict | None, has_primary_flag: bool = True) -> None:
+        self._primary = primary
+        self._has_primary = has_primary_flag
+
+    def has_primary(self) -> bool:
+        return self._has_primary
+
+    def to_dict(self) -> dict:
+        return {"primary": self._primary}
+
+
+class TestNasrFacilitiesAndRunways(unittest.TestCase):
+    def test_parse_nasr_runways_composite_keys_surface_tokens_and_land_filter(self) -> None:
+        rwy_csv = "\n".join(
+            [
+                "SITE_NO,SITE_TYPE_CODE,RWY_ID,RWY_LEN,SURFACE_TYPE_CODE",
+                "001,A,09/27,2400,TURF",
+                "001,A,H1,60,CONC",
+                "001,A,18W/36W,12000,WATER",
+                "001,H,H1,80,ROOF-TOP",
+                "002,A,01/19,5000,PFC",
+                "003,A,04/22,3200,GRVL-TRTD",
+                "004,A,10/28,4100,TRTD",
+                "005,,05/23,3500,ASPH",
+            ]
+        )
+
+        runways = parse_nasr_runways(io.StringIO(rwy_csv))
+
+        # Grass A strip must ignore on-airport concrete H1 and WATER lane
+        self.assertEqual(
+            runways[("001", "A")],
+            {"longest_runway": 2400, "has_hard_surface": False, "has_water_surface": False, "surface": "S"},
+        )
+        # Co-located H site stays isolated from A site
+        self.assertEqual(
+            runways[("001", "H")],
+            {"longest_runway": 80, "has_hard_surface": True, "has_water_surface": False, "surface": "H"},
+        )
+        # Co-located C site with no rows does not fall back to A site
+        self.assertNotIn("001", runways)
+
+        # PFC is hard; GRVL-TRTD is soft; standalone TRTD is hard
+        self.assertEqual(runways[("002", "A")]["surface"], "H")
+        self.assertEqual(runways[("003", "A")]["surface"], "S")
+        self.assertEqual(runways[("004", "A")]["surface"], "H")
+
+        # Blank SITE_TYPE_CODE registers SITE_NO fallback
+        self.assertEqual(runways["005"]["surface"], "H")
+        self.assertEqual(runways["005"]["longest_runway"], 3500)
+
+        # Missing path-like string fails loudly instead of silently returning empty
+        with self.assertRaises(FileNotFoundError):
+            parse_nasr_runways("nonexistent_apt_rwy.csv")
+
+    def test_parse_nasr_facilities_classification_towers_and_closed_exclusion(self) -> None:
+        base_csv = "\n".join(
+            [
+                "SITE_NO,SITE_TYPE_CODE,ARPT_ID,ICAO_ID,ARPT_NAME,OWNERSHIP_TYPE_CODE,FACILITY_USE_CODE,LAT_DECIMAL,LONG_DECIMAL,ELEV,ARPT_STATUS,FAR_139_TYPE_CODE,FUEL_TYPES,TWR_TYPE_CODE",
+                "001,A,E16,KE16,SAN MARTIN,PU,PU,37.08,-121.59,281,O,,100LL,NON-ATCT",
+                "002,A,GRASS,,GRASS STRIP,PU,PU,37.10,-121.60,100,O,,,NON-ATCT",
+                "003,A,PRIV,,PRIVATE FIELD,PR,PR,37.12,-121.61,150,O,,,NON-ATCT",
+                "004,A,NUQ,KNUQ,MOFFETT,MR,PU,37.41,-122.05,32,O,,A,ATCT-TRACON",
+                "005,H,JRA,KJRA,WEST 30TH ST,PU,PU,40.75,-74.00,7,O,,A,NON-ATCT",
+                "006,H,MH1,,MED HELIPAD,PR,PR,37.20,-121.80,200,O,,,NON-ATCT",
+                "007,H,MHL,,MIL HELIPORT,MA,PR,37.21,-121.81,210,O,,,ATCT-RAPCON",
+                "008,V,VRT,,VERTIPORT,PU,PU,37.22,-121.82,12,O,,,NON-ATCT",
+                "009,C,SEA1,,PUBLIC SEAPLANE,PU,PU,47.60,-122.33,0,O,,,NON-ATCT",
+                "010,C,L11,,PEBBLY BEACH,PR,PR,33.33,-118.31,0,O,,,NON-ATCT",
+                "011,U,0CL8,,TERA,PR,PR,35.59,-117.63,2510,O,,,NON-ATCT",
+                "012,G,CA69,,AVENAL,PR,PR,36.00,-120.14,782,O,,,NON-ATCT",
+                "013,B,BAL1,,BALLOON FIELD,PU,PU,35.10,-106.60,5100,O,,,ATCT-A/C",
+                "014,A,CLSD,,CLOSED STRIP,PU,PU,37.50,-122.10,10,CI,,100LL,ATCT-RATCF",
+                "015,H,CLSP,,CLOSED PAD,PR,PR,37.51,-122.11,10,CP,,,NON-ATCT",
+            ]
+        )
+        rwy_csv = "\n".join(
+            [
+                "SITE_NO,SITE_TYPE_CODE,RWY_ID,RWY_LEN,SURFACE_TYPE_CODE",
+                "001,A,14/32,3095,ASPH",
+                "002,A,09/27,2200,GRVL-TRTD",
+                "002,A,H1,50,CONC",
+                "002,A,18W/36W,9000,WATER",
+                "004,A,14L/32R,9200,PFC",
+                "010,C,NW/SE,15000,WATER",
+            ]
+        )
+
+        facs, meta = parse_nasr_facilities(io.StringIO(base_csv), io.StringIO(rwy_csv))
+        by_id = {f["id"]: f for f in facs}
+
+        # Closed CI / CP must be excluded from both facilities and metadata
+        self.assertNotIn("CLSD", by_id)
+        self.assertNotIn("CLSP", by_id)
+        self.assertNotIn("CLSD", meta)
+        self.assertNotIn("CLSP", meta)
+
+        self.assertEqual(by_id["KE16"]["facility_type"], "civil_hard")
+        self.assertFalse(by_id["KE16"]["has_tower"])
+        self.assertTrue(by_id["KE16"]["has_fuel"])
+
+        self.assertEqual(by_id["GRASS"]["facility_type"], "civil_soft")
+        self.assertEqual(by_id["GRASS"]["longest_runway"], 2200)
+        self.assertEqual(by_id["GRASS"]["surface"], "S")
+
+        self.assertEqual(by_id["PRIV"]["facility_type"], "private")
+
+        self.assertEqual(by_id["KNUQ"]["facility_type"], "military")
+        self.assertTrue(by_id["KNUQ"]["is_military"])
+        self.assertTrue(by_id["KNUQ"]["has_tower"])
+        self.assertEqual(by_id["KNUQ"]["surface"], "H")
+
+        self.assertEqual(by_id["KJRA"]["facility_type"], "heliport")
+        self.assertFalse(by_id["KJRA"]["is_military"])
+        self.assertEqual(by_id["MH1"]["facility_type"], "heliport")
+        self.assertEqual(by_id["MHL"]["facility_type"], "heliport")
+        self.assertTrue(by_id["MHL"]["is_military"])
+        self.assertTrue(by_id["MHL"]["has_tower"])
+        self.assertEqual(by_id["VRT"]["facility_type"], "heliport")
+
+        self.assertEqual(by_id["SEA1"]["facility_type"], "seaplane")
+        self.assertEqual(by_id["SEA1"]["surface"], "W")
+        self.assertEqual(by_id["L11"]["facility_type"], "seaplane_private")
+        self.assertEqual(by_id["L11"]["surface"], "W")
+        self.assertEqual(by_id["L11"]["longest_runway"], 15000)
+
+        self.assertEqual(by_id["0CL8"]["facility_type"], "ultralight")
+        self.assertEqual(by_id["CA69"]["facility_type"], "gliderport")
+        self.assertEqual(by_id["BAL1"]["facility_type"], "balloonport")
+        self.assertTrue(by_id["BAL1"]["has_tower"])
+
+        # Direct classification checks across ownerships
+        self.assertEqual(classify_nasr_facility("H", "PR", "CG", "H"), ("heliport", True))
+        self.assertEqual(classify_nasr_facility("A", "PR", "MN", "S"), ("military", True))
+
+
+class TestCifpNasrMergeAndSearchIndex(unittest.TestCase):
+    def test_merge_heliport_pads_ranking_caps_and_cifp_fallbacks(self) -> None:
+        nasr_facilities = [
+            {
+                "id": "KSFO",
+                "arpt_id": "SFO",
+                "icao_id": "KSFO",
+                "name": "SAN FRANCISCO INTL",
+                "lat": 37.62,
+                "lon": -122.37,
+                "elevation": 13.0,
+                "facility_use": "PU",
+                "longest_runway": 11870,
+                "surface": "H",
+                "facility_type": "civil_hard",
+                "is_military": False,
+                "has_fuel": True,
+                "has_tower": True,
+                "far_139": "I E S",
+            },
+            {
+                "id": "KJRA",
+                "name": "WEST 30TH ST",
+                "lat": 40.75,
+                "lon": -74.00,
+                "elevation": 7.0,
+                "facility_use": "PU",
+                "longest_runway": 45,
+                "surface": "H",
+                "facility_type": "heliport",
+                "is_military": False,
+                "has_fuel": True,
+                "has_tower": False,
+                "far_139": "",
+            },
+            {
+                "id": "S76",
+                "name": "BROOKS SEAPLANE",
+                "lat": 47.70,
+                "lon": -116.80,
+                "elevation": 2128.0,
+                "facility_use": "PU",
+                "longest_runway": 15000,
+                "surface": "W",
+                "facility_type": "seaplane",
+                "is_military": False,
+                "has_fuel": False,
+                "has_tower": False,
+                "far_139": "",
+            },
+            {
+                "id": "L11",
+                "name": "PEBBLY BEACH",
+                "lat": 33.33,
+                "lon": -118.31,
+                "elevation": 0.0,
+                "facility_use": "PR",
+                "longest_runway": 15000,
+                "surface": "W",
+                "facility_type": "seaplane_private",
+                "is_military": False,
+                "has_fuel": False,
+                "has_tower": False,
+                "far_139": "",
+            },
+            {
+                "id": "CA69",
+                "name": "AVENAL",
+                "lat": 36.00,
+                "lon": -120.14,
+                "elevation": 782.0,
+                "facility_use": "PR",
+                "longest_runway": 8000,
+                "surface": "S",
+                "facility_type": "gliderport",
+                "is_military": False,
+                "has_fuel": False,
+                "has_tower": False,
+                "far_139": "",
+            },
+        ]
+
+        cifp_airports = [
+            _DummyCifpRecord(
+                {
+                    "airport_id": "KSFO",
+                    "airport_name": "SAN FRANCISCO INTL",
+                    "lat": 37.62,
+                    "lon": -122.37,
+                    "elevation": 13.0,
+                    "longest_surface": "H",
+                    "usage": "C",
+                    "longest": 11870,
+                    "is_ifr": True,
+                }
+            ),
+            _DummyCifpRecord(
+                {
+                    "airport_id": "SFO",
+                    "airport_name": "SAN FRANCISCO INTL",
+                    "lat": 37.62,
+                    "lon": -122.37,
+                    "elevation": 13.0,
+                    "longest_surface": "H",
+                    "usage": "C",
+                    "longest": 11870,
+                    "is_ifr": True,
+                }
+            ),
+            _DummyCifpRecord(
+                {
+                    "airport_id": "XNON",
+                    "airport_name": "CIFP ONLY FIELD",
+                    "lat": 38.0,
+                    "lon": -121.0,
+                    "elevation": 50.0,
+                    "longest_surface": "H",
+                    "usage": "C",
+                    "longest": 5000,
+                    "is_ifr": True,
+                }
+            ),
+        ]
+        cifp_heliports = [
+            _DummyCifpRecord(None, has_primary_flag=False),
+            _DummyCifpRecord(
+                {
+                    "heliport_id": "KJRA",
+                    "heliport_name": "WEST 30TH ST",
+                    "lat": 40.75,
+                    "lon": -74.00,
+                    "elevation": 7.0,
+                    "usage": "C",
+                    "is_ifr": False,
+                }
+            ),
+            _DummyCifpRecord(
+                {
+                    "heliport_id": "KJRA",
+                    "heliport_name": "WEST 30TH ST",
+                    "lat": 40.75,
+                    "lon": -74.00,
+                    "elevation": 7.0,
+                    "usage": "C",
+                    "is_ifr": True,
+                }
+            ),
+            _DummyCifpRecord(
+                {
+                    "heliport_id": "XHLP",
+                    "heliport_name": "CIFP ONLY PAD",
+                    "lat": 39.0,
+                    "lon": -120.0,
+                    "elevation": 100.0,
+                    "usage": "P",
+                    "is_ifr": False,
+                }
+            ),
+        ]
+
+        feats, fixes = build_airport_features(cifp_airports, cifp_heliports, nasr_facilities, {})
+
+        # FAR 139 "I E S" -> rank 1, minzoom 0
+        self.assertEqual(feats["KSFO"]["properties"]["rank"], 1)
+        self.assertEqual(feats["KSFO"]["tippecanoe"]["minzoom"], 0)
+        self.assertTrue(feats["KSFO"]["properties"]["is_ifr"])
+
+        # Multi-pad heliport boolean-ORs is_ifr across H1/H2
+        self.assertEqual(feats["KJRA"]["properties"]["facility_type"], "heliport")
+        self.assertTrue(feats["KJRA"]["properties"]["is_ifr"])
+        self.assertEqual(feats["KJRA"]["properties"]["rank"], 3)
+        self.assertEqual(feats["KJRA"]["tippecanoe"]["minzoom"], 4)
+
+        # 15,000' water lanes must NOT leak into rank 2
+        self.assertEqual(feats["S76"]["properties"]["rank"], 3)
+        self.assertEqual(feats["L11"]["properties"]["rank"], 4)
+
+        # Private 8,000' gliderport stays rank 5 (minzoom 7 <= 10)
+        self.assertEqual(feats["CA69"]["properties"]["rank"], 5)
+        self.assertEqual(feats["CA69"]["tippecanoe"]["minzoom"], 7)
+        self.assertLessEqual(feats["CA69"]["tippecanoe"]["minzoom"], 10)
+
+        # CIFP-only fallbacks retained
+        self.assertEqual(feats["XNON"]["properties"]["facility_type"], "civil_hard")
+        self.assertEqual(feats["XHLP"]["properties"]["facility_type"], "heliport")
+        self.assertEqual(feats["XHLP"]["properties"]["rank"], 5)
+
+        # Canonical IDs only in fixes (no stripped 3-letter SFO/JRA aliases or duplicate fallback)
+        self.assertIn("KSFO", fixes)
+        self.assertNotIn("SFO", fixes)
+        self.assertNotIn("SFO", feats)
+        self.assertIn("KJRA", fixes)
+        self.assertNotIn("JRA", fixes)
+
+        for rank, mz in RANK_MINZOOM.items():
+            self.assertLessEqual(mz, 10)
+        self.assertEqual(compute_airport_rank("KXYZ", "civil_hard", "PU", 5000, False, "", False, False), 3)
+
+    def test_build_search_index_seeds_nasr_and_preserves_navaid_precedence(self) -> None:
+        base_csv = "\n".join(
+            [
+                "SITE_NO,SITE_TYPE_CODE,ARPT_ID,ICAO_ID,ARPT_NAME,OWNERSHIP_TYPE_CODE,FACILITY_USE_CODE,LAT_DECIMAL,LONG_DECIMAL,ELEV,ARPT_STATUS,FAR_139_TYPE_CODE,FUEL_TYPES,TWR_TYPE_CODE",
+                "001,A,SJC,KSJC,SAN JOSE INTL,PU,PU,37.36,-121.92,62,O,I D,100LL,ATCT",
+                "002,H,JRA,KJRA,WEST 30TH ST,PU,PU,40.75,-74.00,7,O,,,NON-ATCT",
+                "003,U,0CL8,,TERA,PR,PR,35.59,-117.63,2510,O,,,NON-ATCT",
+                "004,H,MHM,,MINCHUMINA HELIPORT,PR,PR,63.88,-152.30,680,O,,,NON-ATCT",
+                "005,A,CLSD,,CLOSED FIELD,PU,PU,37.50,-122.10,10,CI,,,NON-ATCT",
+            ]
+        )
+        nasr_facilities, _ = parse_nasr_facilities(io.StringIO(base_csv))
+
+        mock_cifp = MagicMock()
+        mock_cifp.get_airports.return_value = [
+            _DummyCifpRecord({"airport_id": "KSJC", "airport_name": "SAN JOSE INTL", "lat": 37.36, "lon": -121.92}),
+        ]
+        mock_cifp.get_heliports.return_value = [
+            _DummyCifpRecord(None, has_primary_flag=False),
+            _DummyCifpRecord({"heliport_id": "KJRA", "heliport_name": "WEST 30TH ST", "lat": 40.75, "lon": -74.00}),
+        ]
+        mock_cifp.get_vhf_navaids.return_value = [
+            _DummyCifpRecord({"vhf_id": "SJC", "vhf_name": "SAN JOSE", "lat": 37.37, "lon": -121.93}),
+        ]
+        mock_cifp.get_ndb_navaids.return_value = [
+            _DummyCifpRecord({"ndb_id": "MHM", "ndb_name": "MINCHUMINA NDB", "lat": 63.88, "lon": -152.31}),
+        ]
+        mock_cifp.get_enroute_waypoints.return_value = []
+        mock_cifp.get_terminal_waypoints.return_value = []
+        mock_cifp.get_procedures.return_value = []
+        mock_cifp.get_airway_points.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fac_path = os.path.join(tmpdir, "nasr_facilities.json")
+            out_path = os.path.join(tmpdir, "search_index.json")
+            with open(fac_path, "w") as f:
+                json.dump(nasr_facilities, f)
+
+            with patch("src.search.build_index.CIFP", return_value=mock_cifp):
+                index_data = build_search_index(
+                    cifp_path="DUMMY",
+                    output_path=out_path,
+                    nasr_facilities_path=fac_path,
+                )
+
+            fixes = index_data["fixes"]
+            self.assertEqual(fixes["KJRA"]["type"], "airport")
+            self.assertEqual(fixes["0CL8"]["type"], "airport")
+            self.assertEqual(fixes["KSJC"]["type"], "airport")
+            self.assertEqual(fixes["SJC"]["type"], "navaid")
+            self.assertEqual(fixes["MHM"]["type"], "navaid")
+            self.assertNotIn("CLSD", fixes)
 
 
 if __name__ == "__main__":

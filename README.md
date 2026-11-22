@@ -76,7 +76,7 @@ The project is split into two packages:
 - [ ] Flight Planning route fidelity/visualization improvements
 - [ ] Flight Planning navlog support
 - [ ] Flight Planning capability improvements
-- [ ] Fully support all aeronautical layers (more airports, TRSA, Mode C, Localizers, VOR compass roses, etc.)
+- [ ] Fully support remaining aeronautical layers (Localizers, VOR compass roses, etc.)
 - [ ] Show weather/radar + METAR/TAF/FRS
 - [ ] Show TFRs/other SWIM data
 - [ ] Show Airport/Runway info

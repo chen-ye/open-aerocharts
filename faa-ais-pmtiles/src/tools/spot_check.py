@@ -110,6 +110,33 @@ def main():
             "layer": "waypoints",
             "matches": {"id": "VINCO"},
         },
+        {
+            "name": "Heliport KJRA in airports_navaids at Z8",
+            "file": "airports_navaids.pmtiles",
+            "z": 8,
+            "x": 75,
+            "y": 96,
+            "layer": "airports",
+            "matches": {"id": "KJRA", "facility_type": "heliport"},
+        },
+        {
+            "name": "Gliderport CA69 in airports_navaids at Z10",
+            "file": "airports_navaids.pmtiles",
+            "z": 10,
+            "x": 170,
+            "y": 402,
+            "layer": "airports",
+            "matches": {"id": "CA69", "facility_type": "gliderport"},
+        },
+        {
+            "name": "Ultralight 0CL8 in airports_navaids at Z10",
+            "file": "airports_navaids.pmtiles",
+            "z": 10,
+            "x": 177,
+            "y": 403,
+            "layer": "airports",
+            "matches": {"id": "0CL8", "facility_type": "ultralight"},
+        },
     ]
 
     failed = False
