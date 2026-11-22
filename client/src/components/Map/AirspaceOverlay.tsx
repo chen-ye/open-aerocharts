@@ -1,5 +1,5 @@
 import { Fp64Extension } from "@deck.gl/extensions";
-import { MapboxOverlay } from "@deck.gl/mapbox";
+import { MapLibreOverlay } from "@deck.gl/maplibre";
 import { PMTilesSource } from "@loaders.gl/pmtiles";
 import { PathLayer, PolygonLayer, TileLayer } from "deck.gl";
 import type React from "react";
@@ -17,9 +17,9 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 	visible,
 	layers,
 }) => {
-	const overlay = useControl<MapboxOverlay>(
+	const overlay = useControl<MapLibreOverlay>(
 		() =>
-			new MapboxOverlay({
+			new MapLibreOverlay({
 				interleaved: true,
 				layers: [],
 			}),

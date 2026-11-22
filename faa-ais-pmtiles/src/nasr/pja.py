@@ -150,7 +150,7 @@ def convert_pja(
         try:
             lon = float(coords[0])
             lat = float(coords[1])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
 
         if not (math.isfinite(lat) and math.isfinite(lon)):
