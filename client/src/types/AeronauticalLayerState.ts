@@ -28,10 +28,10 @@ export interface AeronauticalLayerState {
 	showWaypointsMaster: boolean;
 	navaids: boolean;
 	waypoints: boolean;
+	vfrWaypoints: boolean;
 
 	// VFR Elements
 	showVfrMaster: boolean;
-	vfrWaypoints: boolean;
 	mtrs: boolean;
 	mountainPasses: boolean;
 	windFarms: boolean;
@@ -73,9 +73,9 @@ export const defaultAeronauticalState: AeronauticalLayerState = {
 	showWaypointsMaster: true,
 	navaids: true,
 	waypoints: true,
+	vfrWaypoints: true,
 
 	showVfrMaster: true,
-	vfrWaypoints: true,
 	mtrs: true,
 	mountainPasses: true,
 	windFarms: true,

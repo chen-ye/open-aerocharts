@@ -203,9 +203,23 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 	) => {
 		setLayers((prev: AeronauticalLayerState) => {
 			if (
+				masterKey === "showWaypointsMaster" &&
+				value &&
+				!prev.navaids &&
+				!prev.waypoints &&
+				!prev.vfrWaypoints
+			) {
+				return {
+					...prev,
+					showWaypointsMaster: true,
+					navaids: true,
+					waypoints: true,
+					vfrWaypoints: true,
+				};
+			}
+			if (
 				masterKey === "showVfrMaster" &&
 				value &&
-				!prev.vfrWaypoints &&
 				!prev.mtrs &&
 				!prev.mountainPasses &&
 				!prev.windFarms &&
@@ -214,7 +228,6 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 				return {
 					...prev,
 					showVfrMaster: true,
-					vfrWaypoints: true,
 					mtrs: true,
 					mountainPasses: true,
 					windFarms: true,
@@ -515,13 +528,22 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 								onChange={(c: boolean) => updateLayer("navaids", c)}
 							/>
 							<ToggleRow
-								label="Waypoints"
+								label="IFR Waypoints"
 								legend={
 									<IconBadge icon={waypointIcon} color={indigo.indigo9} />
 								}
 								checked={layers.waypoints}
 								disabled={!layers.showWaypointsMaster}
 								onChange={(c: boolean) => updateLayer("waypoints", c)}
+							/>
+							<ToggleRow
+								label="VFR Waypoints"
+								legend={
+									<IconBadge icon={vfrWaypointIcon} color={crimson.crimson9} />
+								}
+								checked={layers.vfrWaypoints}
+								disabled={!layers.showWaypointsMaster}
+								onChange={(c: boolean) => updateLayer("vfrWaypoints", c)}
 							/>
 						</Flex>
 					</Box>
@@ -542,15 +564,6 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 							/>
 						</Flex>
 						<Flex direction="column" gap="2">
-							<ToggleRow
-								label="VFR Waypoints"
-								legend={
-									<IconBadge icon={vfrWaypointIcon} color={crimson.crimson9} />
-								}
-								checked={layers.vfrWaypoints}
-								disabled={!layers.showVfrMaster}
-								onChange={(c: boolean) => updateLayer("vfrWaypoints", c)}
-							/>
 							<ToggleRow
 								label="Military Training Routes"
 								legend={

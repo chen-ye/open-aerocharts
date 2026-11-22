@@ -2885,7 +2885,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						)}
 
 					{/* VFR Waypoints & Sectional Fixes */}
-					{aeronauticalLayers.showVfrMaster &&
+					{aeronauticalLayers.showWaypointsMaster &&
 						aeronauticalLayers.vfrWaypoints && (
 							<>
 								<Layer
@@ -2904,13 +2904,24 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 									}
 									layout={{
 										"icon-image": "wpt-vfr-checkpoint",
-										"icon-size": 0.7,
+										"icon-size": [
+											"interpolate",
+											["linear"],
+											["zoom"],
+											5,
+											0.4,
+											10,
+											0.55,
+										] as unknown as maplibregl.ExpressionSpecification,
 										"icon-allow-overlap": false,
 										"icon-ignore-placement": false,
 										"text-field": ["get", "id"],
-										"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
-										"text-size": 10,
-										"text-offset": [0, 1.2],
+										"text-font": [
+											"Open Sans Regular",
+											"Arial Unicode MS Regular",
+										],
+										"text-size": 9,
+										"text-offset": [0, 1.0],
 										"text-anchor": "top",
 										"text-allow-overlap": false,
 										"text-ignore-placement": false,
@@ -2924,10 +2935,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										"text-halo-width": 1.5,
 									}}
 								/>
-								{!(
-									aeronauticalLayers.showWaypointsMaster &&
-									aeronauticalLayers.waypoints
-								) && (
+								{!aeronauticalLayers.waypoints && (
 									<Layer
 										id="vfr-sectional-fixes-symbol"
 										type="symbol"
@@ -3205,7 +3213,13 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 								"apt-ifr-civil-cyan",
 								"fix-non-compulsory-cyan", // default
 							] as unknown as maplibregl.ExpressionSpecification,
-							"icon-size": 0.8,
+							"icon-size": [
+								"match",
+								["get", "type"],
+								"vfr",
+								0.65,
+								0.8,
+							] as unknown as maplibregl.ExpressionSpecification,
 							"icon-allow-overlap": true,
 							"icon-ignore-placement": true,
 						}}
