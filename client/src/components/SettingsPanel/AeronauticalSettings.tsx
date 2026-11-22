@@ -44,8 +44,8 @@ const LegendBadge = ({
 
 const IconBadge = ({ icon, color }: { icon: string; color: string }) => (
 	<Box
-		width="14px"
-		height="14px"
+		width="1em"
+		height="1em"
 		style={{
 			backgroundColor: color,
 			WebkitMask: `url("${icon}") no-repeat center / contain`,
@@ -59,38 +59,41 @@ const IconBadge = ({ icon, color }: { icon: string; color: string }) => (
 const CircleSwatch = ({
 	color,
 	dashArray,
+	dashOffset,
 	innerBand = false,
 }: {
 	color: string;
 	dashArray?: string;
+	dashOffset?: string | number;
 	innerBand?: boolean;
 }) => (
 	<svg
-		width="14"
-		height="14"
-		viewBox="0 0 14 14"
+		width="1em"
+		height="1em"
+		viewBox="0 0 16 16"
 		aria-hidden="true"
-		style={{ display: "block", flexShrink: 0 }}
+		style={{ display: "block", flexShrink: 0, overflow: "visible" }}
 	>
 		{innerBand && (
 			<circle
-				cx="7"
-				cy="7"
-				r="4.2"
+				cx="8"
+				cy="8"
+				r="5.5"
 				fill="none"
 				stroke={color}
 				strokeOpacity={0.3}
-				strokeWidth="2.2"
+				strokeWidth="2.5"
 			/>
 		)}
 		<circle
-			cx="7"
-			cy="7"
-			r="5.5"
+			cx="8"
+			cy="8"
+			r="7.25"
 			fill="none"
 			stroke={color}
 			strokeWidth="1.5"
 			strokeDasharray={dashArray}
+			strokeDashoffset={dashOffset}
 		/>
 	</svg>
 );
@@ -352,7 +355,8 @@ export const AeronauticalSettings: React.FC<AeronauticalSettingsProps> = ({
 									<CircleSwatch
 										color="var(--airspace-parachute-color)"
 										innerBand={true}
-										dashArray="2.5 2"
+										dashArray="3.2 2.5"
+										dashOffset={1.6}
 									/>
 								}
 								checked={layers.parachuteArea}
