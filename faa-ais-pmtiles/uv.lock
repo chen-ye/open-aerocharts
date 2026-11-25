@@ -76,11 +76,7 @@ wheels = [
 [[package]]
 name = "cifparse"
 version = "2.0.9"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2d/8b/1d477891863881429cbdfbaef5bc393e6670df73161a95da9f22450e5a21/cifparse-2.0.9.tar.gz", hash = "sha256:b3c9f8400be4b13c701fa2509d2921887d7716bf79e13511902d010ad9ccfe51", size = 113670, upload-time = "2025-11-07T20:00:50.269Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/5d/75169ff2c54f46dedd45ea36aabc8e47440c204462c8e198e27308401085/cifparse-2.0.9-py3-none-any.whl", hash = "sha256:4943367a46bbd97026e0f0125a03ae6d138eae3c291d9eaff619fc0621fa20d8", size = 232530, upload-time = "2025-11-07T20:00:48.658Z" },
-]
+source = { git = "https://github.com/chen-ye/cifparse.git?rev=08accf1a94d9314a77566d36dd0e2d1383faf14c#08accf1a94d9314a77566d36dd0e2d1383faf14c" }
 
 [[package]]
 name = "faa-ais-pmtiles"
@@ -104,7 +100,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cifparse", specifier = ">=2.0.9" },
+    { name = "cifparse", git = "https://github.com/chen-ye/cifparse.git?rev=08accf1a94d9314a77566d36dd0e2d1383faf14c" },
     { name = "geojson", specifier = ">=3.3.0" },
     { name = "geopandas", specifier = ">=1.2.0" },
     { name = "pillow", specifier = ">=13.0.0" },

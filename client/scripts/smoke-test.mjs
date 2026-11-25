@@ -161,10 +161,16 @@ async function main() {
 		const pageErrors = [];
 		const consoleErrors = [];
 		const failedLocalRequests = [];
+		const searchIndexRequests = [];
 
 		page.on("pageerror", (err) => pageErrors.push(String(err)));
 		page.on("console", (msg) => {
 			if (msg.type() === "error") consoleErrors.push(msg.text());
+		});
+		page.on("request", (req) => {
+			if (new URL(req.url()).pathname.endsWith("/search_index.json")) {
+				searchIndexRequests.push(req.url());
+			}
 		});
 		page.on("response", (res) => {
 			if (res.url().startsWith(localOrigin) && res.status() >= 400) {
@@ -354,11 +360,21 @@ async function main() {
 		await page.getByRole("button", { name: "Close Settings" }).click();
 		await page.getByRole("button", { name: "Open Settings" }).waitFor();
 
-		// Open Flight Plan panel, wait for search index, and plot a route
+		// Open Flight Plan panel, wait for lazy search index load, and plot a route
+		if (searchIndexRequests.length !== 0) {
+			throw new Error(
+				`Expected search_index.json to stay deferred until Flight Plan opens, saw ${searchIndexRequests.length} request(s)`,
+			);
+		}
 		await page.getByRole("button", { name: "Flight Plan" }).click();
 		await page.getByText(/Database loaded \(\d+ points\)/).waitFor({
 			timeout: 15000,
 		});
+		if (searchIndexRequests.length < 1) {
+			throw new Error(
+				"Expected opening Flight Plan to fetch search_index.json",
+			);
+		}
 		await page
 			.getByPlaceholder("KSJC TECKY4.VLREE EBAYE KLAX")
 			.fill("KSJC KLAX");
@@ -373,6 +389,13 @@ async function main() {
 			.locator(".maplibregl-ctrl-top-left div")
 			.first()
 			.waitFor({ state: "attached", timeout: 15000 });
+		await waitForMapCanvasPixels(page);
+		// Pan across 3D airspace viewport to exercise padded culling updates
+		await page.mouse.move(640, 360);
+		await page.mouse.down();
+		await page.mouse.move(340, 260, { steps: 8 });
+		await page.mouse.up();
+		await waitForTwoFrames(page);
 		await waitForMapCanvasPixels(page);
 		await page.getByRole("button", { name: "VFR Sectional" }).click();
 		await page.waitForFunction(() => {

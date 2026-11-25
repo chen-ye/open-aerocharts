@@ -1,18 +1,24 @@
 import { MapLibreOverlay } from "@deck.gl/maplibre";
 import { PathLayer, PolygonLayer } from "deck.gl";
+import type { Map as MapLibreMap } from "maplibre-gl";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useControl, useMap } from "react-map-gl/maplibre";
 import { AirspaceWallLayer } from "../../layers/AirspaceWallLayer";
 import type { AeronauticalLayerState } from "../../types/AeronauticalLayerState";
 import {
 	type AirspaceCap3d,
 	type AirspaceEdge3d,
+	computePaddedCullBounds,
+	EMPTY_AIRSPACES_3D,
+	type GeoViewportBounds,
 	getAirspace3dPalette,
 	getAirspace3dVisibleMask,
+	isViewInsideCullBounds,
 	loadAirspaces3d,
 	type ParsedAirspaces3d,
 	pickAirspaceMaskColorRgb,
+	selectVisibleAirspaces3d,
 } from "../../utils/airspaces3d";
 
 interface AirspaceOverlayProps {
@@ -23,6 +29,16 @@ interface AirspaceOverlayProps {
 
 const AIRSPACE_FILL_ALPHA = 35;
 
+function readViewportBounds(map: MapLibreMap): GeoViewportBounds {
+	const b = map.getBounds();
+	return {
+		west: b.getWest(),
+		south: b.getSouth(),
+		east: b.getEast(),
+		north: b.getNorth(),
+	};
+}
+
 export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 	visible,
 	layers,
@@ -32,6 +48,10 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 	const { current: mapRef } = useMap();
 	const overlayElRef = useRef<HTMLElement | null>(null);
 	const [data3d, setData3d] = useState<ParsedAirspaces3d | null>(null);
+	const [cullBounds, setCullBounds] = useState<
+		GeoViewportBounds | null | undefined
+	>(undefined);
+	const cullBoundsRef = useRef<GeoViewportBounds | null | undefined>(undefined);
 
 	const overlay = useControl<MapLibreOverlay>(() => {
 		const ctrl = new MapLibreOverlay({
@@ -82,6 +102,44 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 		};
 	}, []);
 
+	useLayoutEffect(() => {
+		const rawMap = mapRef?.getMap();
+		if (!visible || !rawMap) return;
+		const view = readViewportBounds(rawMap);
+		if (
+			cullBoundsRef.current === undefined ||
+			!isViewInsideCullBounds(view, cullBoundsRef.current)
+		) {
+			const next = computePaddedCullBounds(view);
+			cullBoundsRef.current = next;
+			setCullBounds(next);
+		}
+	}, [mapRef, visible]);
+
+	useEffect(() => {
+		const rawMap = mapRef?.getMap();
+		if (!visible || !rawMap) return undefined;
+
+		const syncCullBounds = () => {
+			const view = readViewportBounds(rawMap);
+			if (
+				cullBoundsRef.current === undefined ||
+				!isViewInsideCullBounds(view, cullBoundsRef.current)
+			) {
+				const next = computePaddedCullBounds(view);
+				cullBoundsRef.current = next;
+				setCullBounds(next);
+			}
+		};
+
+		rawMap.on("move", syncCullBounds);
+		rawMap.on("resize", syncCullBounds);
+		return () => {
+			rawMap.off("move", syncCullBounds);
+			rawMap.off("resize", syncCullBounds);
+		};
+	}, [mapRef, visible]);
+
 	const visibleMask = useMemo(
 		() =>
 			getAirspace3dVisibleMask({
@@ -95,24 +153,21 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 
 	const palette = useMemo(() => getAirspace3dPalette(AIRSPACE_FILL_ALPHA), []);
 
-	const visibleCaps = useMemo(() => {
-		if (!data3d || visibleMask === 0) return [];
-		return data3d.caps.filter((c) => (c.mask & visibleMask) !== 0);
-	}, [data3d, visibleMask]);
-
-	const visibleEdges = useMemo(() => {
-		if (!data3d || visibleMask === 0) return [];
-		return data3d.edges.filter((e) => (e.mask & visibleMask) !== 0);
-	}, [data3d, visibleMask]);
+	const selected3d = useMemo(() => {
+		if (!data3d || cullBounds === undefined || visibleMask === 0) {
+			return EMPTY_AIRSPACES_3D;
+		}
+		return selectVisibleAirspaces3d(data3d, visibleMask, cullBounds);
+	}, [data3d, visibleMask, cullBounds]);
 
 	const deckLayers = useMemo(() => {
-		if (!data3d) return [];
+		if (!data3d || cullBounds === undefined) return [];
 		const isRendered = visible && visibleMask !== 0;
 		return [
 			new AirspaceWallLayer({
 				id: "airspace-3d-walls",
-				data: data3d.walls,
-				visible: isRendered,
+				data: selected3d.walls,
+				visible: isRendered && selected3d.walls.length > 0,
 				visibleMask,
 				terrainScale: showTerrain ? 1 : 0,
 				palette,
@@ -124,8 +179,8 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 			}),
 			new PolygonLayer<AirspaceCap3d>({
 				id: "airspace-3d-caps",
-				data: visibleCaps,
-				visible: isRendered,
+				data: selected3d.caps,
+				visible: isRendered && selected3d.caps.length > 0,
 				getPolygon: (c) => (showTerrain ? c.polygonTerrain : c.polygonFlat),
 				getFillColor: (c) =>
 					[
@@ -149,8 +204,8 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 			}),
 			new PathLayer<AirspaceEdge3d>({
 				id: "airspace-3d-edges",
-				data: visibleEdges,
-				visible: isRendered,
+				data: selected3d.edges,
+				visible: isRendered && selected3d.edges.length > 0,
 				getPath: (e) => (showTerrain ? e.pathTerrain : e.pathFlat),
 				getColor: (e) =>
 					pickAirspaceMaskColorRgb(e.mask, visibleMask) ?? [150, 150, 150],
@@ -168,12 +223,12 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 		];
 	}, [
 		data3d,
+		cullBounds,
 		visible,
 		visibleMask,
 		showTerrain,
 		palette,
-		visibleCaps,
-		visibleEdges,
+		selected3d,
 	]);
 
 	useEffect(() => {

@@ -1,4 +1,4 @@
-import { getAirspaceColorRgb } from "./airspaceColors";
+import { getAirspaceColorRgb } from "./airspaceColors.ts";
 
 export const AIRSPACE_3D_MAGIC = "A3D1";
 export const AIRSPACE_3D_VERSION = 2;
@@ -15,13 +15,27 @@ export const AIRSPACE_3D_BIT = {
 const AGL_TOP_EDGE_BIT = 4;
 const AGL_BOT_EDGE_BIT = 8;
 
-export interface AirspaceCap3d {
+export interface BBox2d {
+	minLon: number;
+	minLat: number;
+	maxLon: number;
+	maxLat: number;
+}
+
+export interface GeoViewportBounds {
+	west: number;
+	south: number;
+	east: number;
+	north: number;
+}
+
+export interface AirspaceCap3d extends BBox2d {
 	polygonFlat: [number, number, number][][];
 	polygonTerrain: [number, number, number][][];
 	mask: number;
 }
 
-export interface AirspaceEdge3d {
+export interface AirspaceEdge3d extends BBox2d {
 	pathFlat: [number, number, number][];
 	pathTerrain: [number, number, number][];
 	mask: number;
@@ -40,11 +54,46 @@ export interface AirspaceWallBinaryData {
 	};
 }
 
+export interface AirspaceWallChainIndex {
+	count: number;
+	startSeg: Uint32Array;
+	segCount: Uint32Array;
+	masks: Uint8Array;
+	minLon: Float64Array;
+	minLat: Float64Array;
+	maxLon: Float64Array;
+	maxLat: Float64Array;
+}
+
 export interface ParsedAirspaces3d {
 	caps: AirspaceCap3d[];
 	edges: AirspaceEdge3d[];
 	walls: AirspaceWallBinaryData;
+	wallChains: AirspaceWallChainIndex;
 }
+
+export interface SelectedAirspaces3d {
+	caps: AirspaceCap3d[];
+	edges: AirspaceEdge3d[];
+	walls: AirspaceWallBinaryData;
+}
+
+export const EMPTY_AIRSPACES_3D: SelectedAirspaces3d = {
+	caps: [],
+	edges: [],
+	walls: {
+		length: 0,
+		attributes: {
+			instanceSourcePositions: { value: new Float64Array(0), size: 3 },
+			instanceTargetPositions: { value: new Float64Array(0), size: 3 },
+			instanceElevations: { value: new Float32Array(0), size: 1 },
+			instanceMasks: { value: new Float32Array(0), size: 1 },
+			instanceSourceTerrain: { value: new Float32Array(0), size: 1 },
+			instanceTargetTerrain: { value: new Float32Array(0), size: 1 },
+			instanceAglFlags: { value: new Float32Array(0), size: 1 },
+		},
+	},
+};
 
 export type RgbaFloatTuple = [number, number, number, number];
 
@@ -144,6 +193,11 @@ export function parseAirspaces3dBinary(buffer: ArrayBuffer): ParsedAirspaces3d {
 			? new Array(numRings)
 			: polygonFlat;
 
+		let capMinLon = Infinity;
+		let capMinLat = Infinity;
+		let capMaxLon = -Infinity;
+		let capMaxLat = -Infinity;
+
 		for (let r = 0; r < numRings; r++) {
 			const numPts = view.getUint32(offset, true);
 			offset += 4;
@@ -156,6 +210,10 @@ export function parseAirspaces3dBinary(buffer: ArrayBuffer): ParsedAirspaces3d {
 				const lat = view.getInt32(offset + 4, true) / AIRSPACE_3D_COORD_SCALE;
 				const terrainM = view.getInt16(offset + 8, true);
 				offset += 10;
+				if (lon < capMinLon) capMinLon = lon;
+				if (lon > capMaxLon) capMaxLon = lon;
+				if (lat < capMinLat) capMinLat = lat;
+				if (lat > capMaxLat) capMaxLat = lat;
 				ringFlat[p] = [lon, lat, z];
 				if (isAgl) {
 					ringTerrain[p] = [lon, lat, z + terrainM];
@@ -166,7 +224,15 @@ export function parseAirspaces3dBinary(buffer: ArrayBuffer): ParsedAirspaces3d {
 				polygonTerrain[r] = ringTerrain;
 			}
 		}
-		caps[c] = { polygonFlat, polygonTerrain, mask };
+		caps[c] = {
+			polygonFlat,
+			polygonTerrain,
+			mask,
+			minLon: capMinLon,
+			minLat: capMinLat,
+			maxLon: capMaxLon,
+			maxLat: capMaxLat,
+		};
 	}
 
 	// Pass 1 over wall chains: count total wall segments to allocate typed arrays once.
@@ -187,6 +253,13 @@ export function parseAirspaces3dBinary(buffer: ArrayBuffer): ParsedAirspaces3d {
 	const sourceTerrain = new Float32Array(totalSegments);
 	const targetTerrain = new Float32Array(totalSegments);
 	const aglFlagsArr = new Float32Array(totalSegments);
+	const chainStartSeg = new Uint32Array(numWallChains);
+	const chainSegCount = new Uint32Array(numWallChains);
+	const chainMasks = new Uint8Array(numWallChains);
+	const chainMinLon = new Float64Array(numWallChains);
+	const chainMinLat = new Float64Array(numWallChains);
+	const chainMaxLon = new Float64Array(numWallChains);
+	const chainMaxLat = new Float64Array(numWallChains);
 	const edges: AirspaceEdge3d[] = [];
 
 	offset = wallChainsStart;
@@ -218,6 +291,12 @@ export function parseAirspaces3dBinary(buffer: ArrayBuffer): ParsedAirspaces3d {
 
 		const botZFlat = z0 === 0 ? 2 : z0;
 
+		const chainFirstSeg = segIdx;
+		let cMinLon = Infinity;
+		let cMinLat = Infinity;
+		let cMaxLon = -Infinity;
+		let cMaxLat = -Infinity;
+
 		let prevLon = 0;
 		let prevLat = 0;
 		let prevTerrain = 0;
@@ -227,6 +306,11 @@ export function parseAirspaces3dBinary(buffer: ArrayBuffer): ParsedAirspaces3d {
 			const lat = view.getInt32(offset + 4, true) / AIRSPACE_3D_COORD_SCALE;
 			const terrainM = view.getInt16(offset + 8, true);
 			offset += 10;
+
+			if (lon < cMinLon) cMinLon = lon;
+			if (lon > cMaxLon) cMaxLon = lon;
+			if (lat < cMinLat) cMinLat = lat;
+			if (lat > cMaxLat) cMaxLat = lat;
 
 			if (topFlat) {
 				topFlat[p] = [lon, lat, z1];
@@ -262,11 +346,35 @@ export function parseAirspaces3dBinary(buffer: ArrayBuffer): ParsedAirspaces3d {
 			prevTerrain = terrainM;
 		}
 
+		chainStartSeg[w] = chainFirstSeg;
+		chainSegCount[w] = segIdx - chainFirstSeg;
+		chainMasks[w] = wallMask;
+		chainMinLon[w] = cMinLon;
+		chainMinLat[w] = cMinLat;
+		chainMaxLon[w] = cMaxLon;
+		chainMaxLat[w] = cMaxLat;
+
 		if (topFlat && topTerrain) {
-			edges.push({ pathFlat: topFlat, pathTerrain: topTerrain, mask: topMask });
+			edges.push({
+				pathFlat: topFlat,
+				pathTerrain: topTerrain,
+				mask: topMask,
+				minLon: cMinLon,
+				minLat: cMinLat,
+				maxLon: cMaxLon,
+				maxLat: cMaxLat,
+			});
 		}
 		if (botFlat && botTerrain) {
-			edges.push({ pathFlat: botFlat, pathTerrain: botTerrain, mask: botMask });
+			edges.push({
+				pathFlat: botFlat,
+				pathTerrain: botTerrain,
+				mask: botMask,
+				minLon: cMinLon,
+				minLat: cMinLat,
+				maxLon: cMaxLon,
+				maxLat: cMaxLat,
+			});
 		}
 	}
 
@@ -285,7 +393,221 @@ export function parseAirspaces3dBinary(buffer: ArrayBuffer): ParsedAirspaces3d {
 				instanceAglFlags: { value: aglFlagsArr, size: 1 },
 			},
 		},
+		wallChains: {
+			count: numWallChains,
+			startSeg: chainStartSeg,
+			segCount: chainSegCount,
+			masks: chainMasks,
+			minLon: chainMinLon,
+			minLat: chainMinLat,
+			maxLon: chainMaxLon,
+			maxLat: chainMaxLat,
+		},
 	};
+}
+
+export function normalizeLonIntervals(
+	west: number,
+	east: number,
+): [number, number][] {
+	const span = east - west;
+	if (!Number.isFinite(span) || span >= 360) {
+		return [[-180, 180]];
+	}
+	if (span < 0) {
+		// Defensive handle for raw antimeridian bounds where east < west
+		return [
+			[Math.max(-180, west), 180],
+			[-180, Math.min(180, east)],
+		];
+	}
+	const w = ((((west + 180) % 360) + 360) % 360) - 180;
+	const e = w + span;
+	if (e <= 180) {
+		return [[w, e]];
+	}
+	return [
+		[w, 180],
+		[-180, e - 360],
+	];
+}
+
+export function computePaddedCullBounds(
+	view: GeoViewportBounds,
+): GeoViewportBounds | null {
+	const spanLon = view.east - view.west;
+	if (!Number.isFinite(spanLon) || spanLon >= 180) {
+		return null;
+	}
+	const clampedSpanLon = Math.max(0.01, spanLon);
+	const clampedSpanLat = Math.max(0.01, view.north - view.south);
+	const padLon = Math.min(20, Math.max(0.25, clampedSpanLon * 0.5));
+	const padLat = Math.min(20, Math.max(0.25, clampedSpanLat * 0.5));
+	return {
+		west: view.west - padLon,
+		south: Math.max(-90, view.south - padLat),
+		east: view.east + padLon,
+		north: Math.min(90, view.north + padLat),
+	};
+}
+
+export function isViewInsideCullBounds(
+	view: GeoViewportBounds,
+	cull: GeoViewportBounds | null,
+): boolean {
+	const viewSpanLon = Math.max(0.01, view.east - view.west);
+	if (cull === null) {
+		// Stay unculled while wide; re-tighten once user zooms below 90° span.
+		return viewSpanLon >= 90;
+	}
+	if (
+		view.west < cull.west ||
+		view.east > cull.east ||
+		view.south < cull.south ||
+		view.north > cull.north
+	) {
+		return false;
+	}
+	const viewSpanLat = Math.max(0.01, view.north - view.south);
+	const cullSpanLon = cull.east - cull.west;
+	const cullSpanLat = cull.north - cull.south;
+	if (
+		cullSpanLon > Math.max(1.5, viewSpanLon * 4) ||
+		cullSpanLat > Math.max(1.5, viewSpanLat * 4)
+	) {
+		return false;
+	}
+	return true;
+}
+
+function overlapsLonIntervals(
+	minLon: number,
+	maxLon: number,
+	intervals: [number, number][],
+): boolean {
+	for (let i = 0; i < intervals.length; i++) {
+		const [w, e] = intervals[i];
+		if (maxLon >= w && minLon <= e) return true;
+	}
+	return false;
+}
+
+export function selectVisibleAirspaces3d(
+	parsed: ParsedAirspaces3d,
+	visibleMask: number,
+	cullBounds: GeoViewportBounds | null,
+): SelectedAirspaces3d {
+	if (visibleMask === 0) {
+		return EMPTY_AIRSPACES_3D;
+	}
+
+	const lonIntervals = cullBounds
+		? normalizeLonIntervals(cullBounds.west, cullBounds.east)
+		: null;
+	const south = cullBounds ? cullBounds.south : -90;
+	const north = cullBounds ? cullBounds.north : 90;
+
+	const caps = parsed.caps.filter(
+		(c) =>
+			(c.mask & visibleMask) !== 0 &&
+			c.maxLat >= south &&
+			c.minLat <= north &&
+			(!lonIntervals || overlapsLonIntervals(c.minLon, c.maxLon, lonIntervals)),
+	);
+
+	const edges = parsed.edges.filter(
+		(e) =>
+			(e.mask & visibleMask) !== 0 &&
+			e.maxLat >= south &&
+			e.minLat <= north &&
+			(!lonIntervals || overlapsLonIntervals(e.minLon, e.maxLon, lonIntervals)),
+	);
+
+	const { wallChains, walls: srcWalls } = parsed;
+	const chainCount = wallChains.count;
+	const matchedChains: number[] = [];
+	let totalSelectedSegs = 0;
+
+	for (let i = 0; i < chainCount; i++) {
+		const segCount = wallChains.segCount[i];
+		if (segCount === 0 || (wallChains.masks[i] & visibleMask) === 0) {
+			continue;
+		}
+		if (
+			cullBounds &&
+			(wallChains.maxLat[i] < south ||
+				wallChains.minLat[i] > north ||
+				(lonIntervals &&
+					!overlapsLonIntervals(
+						wallChains.minLon[i],
+						wallChains.maxLon[i],
+						lonIntervals,
+					)))
+		) {
+			continue;
+		}
+		matchedChains.push(i);
+		totalSelectedSegs += segCount;
+	}
+
+	let walls: AirspaceWallBinaryData;
+	if (totalSelectedSegs === 0) {
+		walls = EMPTY_AIRSPACES_3D.walls;
+	} else if (totalSelectedSegs === srcWalls.length) {
+		walls = srcWalls;
+	} else {
+		const srcAttr = srcWalls.attributes;
+		const srcPos = srcAttr.instanceSourcePositions.value;
+		const dstPos = srcAttr.instanceTargetPositions.value;
+		const srcElev = srcAttr.instanceElevations.value;
+		const srcMask = srcAttr.instanceMasks.value;
+		const srcSrcTerr = srcAttr.instanceSourceTerrain.value;
+		const srcDstTerr = srcAttr.instanceTargetTerrain.value;
+		const srcAgl = srcAttr.instanceAglFlags.value;
+
+		const outSrcPos = new Float64Array(totalSelectedSegs * 3);
+		const outDstPos = new Float64Array(totalSelectedSegs * 3);
+		const outElev = new Float32Array(totalSelectedSegs);
+		const outMask = new Float32Array(totalSelectedSegs);
+		const outSrcTerr = new Float32Array(totalSelectedSegs);
+		const outDstTerr = new Float32Array(totalSelectedSegs);
+		const outAgl = new Float32Array(totalSelectedSegs);
+
+		let outSeg = 0;
+		for (let idx = 0; idx < matchedChains.length; idx++) {
+			const c = matchedChains[idx];
+			const start = wallChains.startSeg[c];
+			const count = wallChains.segCount[c];
+			const end = start + count;
+			const start3 = start * 3;
+			const end3 = end * 3;
+			const out3 = outSeg * 3;
+
+			outSrcPos.set(srcPos.subarray(start3, end3), out3);
+			outDstPos.set(dstPos.subarray(start3, end3), out3);
+			outElev.set(srcElev.subarray(start, end), outSeg);
+			outMask.set(srcMask.subarray(start, end), outSeg);
+			outSrcTerr.set(srcSrcTerr.subarray(start, end), outSeg);
+			outDstTerr.set(srcDstTerr.subarray(start, end), outSeg);
+			outAgl.set(srcAgl.subarray(start, end), outSeg);
+			outSeg += count;
+		}
+
+		walls = {
+			length: totalSelectedSegs,
+			attributes: {
+				instanceSourcePositions: { value: outSrcPos, size: 3 },
+				instanceTargetPositions: { value: outDstPos, size: 3 },
+				instanceElevations: { value: outElev, size: 1 },
+				instanceMasks: { value: outMask, size: 1 },
+				instanceSourceTerrain: { value: outSrcTerr, size: 1 },
+				instanceTargetTerrain: { value: outDstTerr, size: 1 },
+				instanceAglFlags: { value: outAgl, size: 1 },
+			},
+		};
+	}
+
+	return { caps, edges, walls };
 }
 
 const cachedLoads = new Map<string, Promise<ParsedAirspaces3d>>();

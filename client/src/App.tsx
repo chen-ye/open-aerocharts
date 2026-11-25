@@ -1,5 +1,5 @@
 import { Theme } from "@radix-ui/themes";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FlightPlanPanel } from "./components/FlightPlanPanel/FlightPlanPanel";
 import { AeroMap } from "./components/Map/AeroMap";
 import { MobileBottomSheet } from "./components/MobileBottomSheet/MobileBottomSheet";
@@ -62,6 +62,9 @@ function App() {
 	const [index, setIndex] = useState<SearchIndex | null>(null);
 	const [indexLoading, setIndexLoading] = useState(false);
 	const [cycle, setCycle] = useState<string | null>(null);
+	const indexLoadedRef = useRef(false);
+	const indexPromiseRef = useRef<Promise<void> | null>(null);
+	const hasInitialRouteRef = useRef(Boolean(routeString.trim()));
 
 	useEffect(() => {
 		fetch("metadata.json")
@@ -70,24 +73,37 @@ function App() {
 			.catch((err) => console.error("Failed to load metadata", err));
 	}, []);
 
-	useEffect(() => {
-		if (index || indexLoading) return;
+	const ensureIndex = useCallback(() => {
+		if (indexLoadedRef.current || indexPromiseRef.current) return;
 
-		const loadIndex = async () => {
-			setIndexLoading(true);
-			try {
-				const res = await fetch("search_index.json");
-				const data = await res.json();
+		setIndexLoading(true);
+		const promise = fetch("search_index.json")
+			.then((res) => {
+				if (!res.ok) {
+					throw new Error(`Failed to load search index: ${res.status}`);
+				}
+				return res.json();
+			})
+			.then((data: SearchIndex) => {
+				indexLoadedRef.current = true;
 				setIndex(data);
-			} catch (err) {
+			})
+			.catch((err) => {
 				console.error("Failed to load search index", err);
-			} finally {
+			})
+			.finally(() => {
+				indexPromiseRef.current = null;
 				setIndexLoading(false);
-			}
-		};
+			});
 
-		loadIndex();
-	}, [index, indexLoading]);
+		indexPromiseRef.current = promise;
+	}, []);
+
+	useEffect(() => {
+		if (hasInitialRouteRef.current) {
+			ensureIndex();
+		}
+	}, [ensureIndex]);
 
 	const [aeronauticalLayers, setAeronauticalLayers] =
 		useState<AeronauticalLayerState>(() => {
@@ -292,6 +308,7 @@ function App() {
 					onRouteStringChange={setRouteString}
 					index={index}
 					loading={indexLoading}
+					onRequestIndex={ensureIndex}
 					showTooltip={showTooltip}
 					setShowTooltip={setShowTooltip}
 				/>
@@ -305,6 +322,7 @@ function App() {
 					onRouteStringChange={setRouteString}
 					index={index}
 					loading={indexLoading}
+					onRequestIndex={ensureIndex}
 				/>
 			</div>
 		</Theme>

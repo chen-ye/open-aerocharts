@@ -56,6 +56,8 @@ import { FeatureList } from "./FeatureList";
 maplibregl.setWorkerUrl(workerUrl);
 
 const CANVAS_CONTEXT_ATTRIBUTES = { antialias: true };
+const LABEL_FONT_BOLD_DEFAULT = ["Noto Sans Medium"];
+const LABEL_FONT_BOLD_CARTO = ["Open Sans Bold", "Noto Sans Regular"];
 const INITIAL_VIEW_STATE = {
 	longitude: -121.596667, // San Martin Airport
 	latitude: 37.081667,
@@ -129,11 +131,14 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 		return style;
 	}, [basemapUrlOrId]);
 
-	// Derive light/dark mode from basemap identifier
+	// Derive light/dark mode and glyph font stack from basemap identifier
 	const isDarkMap = useMemo(() => {
 		const id = basemapUrlOrId.toLowerCase();
 		return id.includes("dark") || id.includes("black");
 	}, [basemapUrlOrId]);
+	const labelFontBold = basemapUrlOrId.toLowerCase().includes("cartocdn.com")
+		? LABEL_FONT_BOLD_CARTO
+		: LABEL_FONT_BOLD_DEFAULT;
 
 	// Theme-dependent colors
 	const textColor = isDarkMap ? "#ffffff" : "#000000";
@@ -504,14 +509,14 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				"icon-text-fit": "both",
 				"icon-text-fit-padding": [-2, 4, -2, 4],
 				"text-field": ["get", "airway"],
-				"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+				"text-font": labelFontBold,
 				"text-size": 11,
 				"text-allow-overlap": true,
 				"text-ignore-placement": true,
 				"text-rotation-alignment": "map",
 				"text-pitch-alignment": "map",
 			};
-		}, [aeronauticalLayers.declutterLevel]);
+		}, [aeronauticalLayers.declutterLevel, labelFontBold]);
 
 	const airwayMeaLayout: maplibregl.SymbolLayerSpecification["layout"] =
 		useMemo(() => {
@@ -526,7 +531,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 					minDetailZoom,
 					["to-string", ["get", "mea"]],
 				] as unknown as maplibregl.ExpressionSpecification,
-				"text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+				"text-font": ["Noto Sans Regular"],
 				"text-size": 10,
 				"text-offset": [0, -1.5],
 				"text-allow-overlap": true,
@@ -549,7 +554,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 					minDetailZoom,
 					["to-string", ["get", "distance"]],
 				] as unknown as maplibregl.ExpressionSpecification,
-				"text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+				"text-font": ["Noto Sans Regular"],
 				"text-size": 10,
 				"text-offset": [0, 1.5],
 				"text-allow-overlap": true,
@@ -645,7 +650,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				"icon-allow-overlap": true,
 				"icon-ignore-placement": false,
 				"text-field": ["get", "id"],
-				"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+				"text-font": labelFontBold,
 				"text-size": [
 					"interpolate",
 					["linear"],
@@ -699,7 +704,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 					],
 				] as unknown as maplibregl.ExpressionSpecification,
 			}),
-			[],
+			[labelFontBold],
 		);
 
 	const airportSymbolPaint: maplibregl.SymbolLayerSpecification["paint"] =
@@ -735,7 +740,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 					"-",
 					["get", "upper_limit"],
 				] as unknown as maplibregl.ExpressionSpecification,
-				"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+				"text-font": labelFontBold,
 				"text-size": 12,
 				"symbol-placement": "line",
 				"text-keep-upright": true,
@@ -745,7 +750,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				"symbol-spacing": 350,
 				"text-offset": [0, 1],
 			}),
-			[],
+			[labelFontBold],
 		);
 
 	const boundaryLabelLayout: maplibregl.SymbolLayerSpecification["layout"] =
@@ -824,7 +829,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						"",
 					],
 				] as unknown as maplibregl.ExpressionSpecification,
-				"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+				"text-font": labelFontBold,
 				"text-size": 11,
 				"symbol-placement": "line",
 				"text-keep-upright": true,
@@ -834,7 +839,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 				"symbol-spacing": 400,
 				"text-offset": [0, 1],
 			}),
-			[],
+			[labelFontBold],
 		);
 
 	const getZoomRankFilter = (
@@ -1188,6 +1193,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						type="raster-dem"
 						tiles={["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]}
 						tileSize={512}
+						maxzoom={16}
 						encoding="terrarium"
 					/>
 					<Source
@@ -1195,6 +1201,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						type="raster-dem"
 						tiles={["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"]}
 						tileSize={512}
+						maxzoom={16}
 						encoding="terrarium"
 					/>
 				</>
@@ -1356,7 +1363,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										["to-string", ["coalesce", ["get", "hundreds"], ""]],
 										{ "font-scale": 0.65, "vertical-align": "top" },
 									] as unknown as maplibregl.ExpressionSpecification,
-									"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+									"text-font": labelFontBold,
 									"text-size": [
 										"interpolate",
 										["linear"],
@@ -1765,10 +1772,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 													],
 												],
 											] as unknown as maplibregl.ExpressionSpecification,
-											"text-font": [
-												"Open Sans Regular",
-												"Arial Unicode MS Regular",
-											],
+											"text-font": ["Noto Sans Regular"],
 											"text-size": 10,
 											"text-allow-overlap": false,
 											"text-ignore-placement": false,
@@ -1879,10 +1883,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										minzoom={12}
 										layout={{
 											"text-field": ["get", "label"],
-											"text-font": [
-												"Open Sans Bold",
-												"Arial Unicode MS Regular",
-											],
+											"text-font": labelFontBold,
 											"text-size": 11,
 											"text-allow-overlap": true,
 											"symbol-placement": "point",
@@ -2547,10 +2548,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 													],
 												],
 											] as unknown as maplibregl.ExpressionSpecification,
-											"text-font": [
-												"Open Sans Bold",
-												"Arial Unicode MS Regular",
-											],
+											"text-font": labelFontBold,
 											"text-size": [
 												"interpolate",
 												["linear"],
@@ -2699,7 +2697,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											],
 										],
 									] as unknown as maplibregl.ExpressionSpecification,
-									"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+									"text-font": labelFontBold,
 									"text-size": 10,
 									"text-keep-upright": true,
 									"text-max-angle": 30,
@@ -2887,7 +2885,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 									10,
 									["concat", ["to-string", ["get", "agl"]], "'"],
 								] as unknown as maplibregl.ExpressionSpecification,
-								"text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+								"text-font": ["Noto Sans Regular"],
 								"text-size": 9,
 								"text-offset": [0, 1.2],
 								"text-anchor": "top",
@@ -2948,10 +2946,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											"",
 										],
 									] as unknown as maplibregl.ExpressionSpecification,
-									"text-font": [
-										"Open Sans Regular",
-										"Arial Unicode MS Regular",
-									],
+									"text-font": ["Noto Sans Regular"],
 									"text-size": 10,
 									"text-offset": [0, 1.1],
 									"text-anchor": "top",
@@ -2981,7 +2976,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
                 'icon-allow-overlap': true,
                 'icon-ignore-placement': true,
                 'text-field': ['get', 'ident'],
-                'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                'text-font': ['Noto Sans Regular'],
                 'text-size': 9,
                 'text-offset': [1, 0],
                 'text-anchor': 'left',
@@ -3044,10 +3039,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 									"icon-allow-overlap": false,
 									"icon-ignore-placement": false,
 									"text-field": ["get", "id"],
-									"text-font": [
-										"Open Sans Regular",
-										"Arial Unicode MS Regular",
-									],
+									"text-font": ["Noto Sans Regular"],
 									"text-size": 9,
 									"text-offset": [0, 1.2],
 									"text-anchor": "top",
@@ -3103,10 +3095,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 										"icon-allow-overlap": false,
 										"icon-ignore-placement": false,
 										"text-field": ["get", "id"],
-										"text-font": [
-											"Open Sans Regular",
-											"Arial Unicode MS Regular",
-										],
+										"text-font": ["Noto Sans Regular"],
 										"text-size": 9,
 										"text-offset": [0, 1.2],
 										"text-anchor": "top",
@@ -3148,10 +3137,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 											"icon-allow-overlap": false,
 											"icon-ignore-placement": false,
 											"text-field": ["get", "id"],
-											"text-font": [
-												"Open Sans Regular",
-												"Arial Unicode MS Regular",
-											],
+											"text-font": ["Noto Sans Regular"],
 											"text-size": 9,
 											"text-offset": [0, 1.2],
 											"text-anchor": "top",
@@ -3198,7 +3184,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 									"icon-allow-overlap": true,
 									"icon-ignore-placement": true,
 									"text-field": ["get", "id"],
-									"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+									"text-font": labelFontBold,
 									"text-size": 11,
 									"text-offset": [0, 1.2],
 									"text-anchor": "top",
@@ -3416,7 +3402,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 						filter={["==", "$type", "Point"]}
 						layout={{
 							"text-field": ["get", "id"],
-							"text-font": ["Open Sans Bold", "Arial Unicode MS Regular"],
+							"text-font": labelFontBold,
 							"text-size": 12,
 							"text-offset": [1.2, 0],
 							"text-anchor": "left",

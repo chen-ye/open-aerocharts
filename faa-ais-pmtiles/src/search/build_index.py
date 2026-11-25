@@ -66,7 +66,7 @@ def build_search_index(
     for a in c.get_airports():
         if not a.has_primary():
             continue
-        p = a.to_dict()["primary"]
+        p = a.primary.to_dict()
         ident = (p.get("airport_id") or "").strip()
         lat, lon = p.get("lat"), p.get("lon")
         if ident and lat is not None and lon is not None and ident not in fixes and ident not in seen_nasr_ids:
@@ -81,7 +81,7 @@ def build_search_index(
     for h in c.get_heliports():
         if not h.has_primary():
             continue
-        p = h.to_dict()["primary"]
+        p = h.primary.to_dict()
         ident = (p.get("heliport_id") or "").strip()
         lat, lon = p.get("lat"), p.get("lon")
         if ident and lat is not None and lon is not None and ident not in fixes and ident not in seen_nasr_ids:
@@ -94,7 +94,9 @@ def build_search_index(
 
     # Navaids
     for nav in c.get_vhf_navaids():
-        p = nav.to_dict()["primary"]
+        if hasattr(nav, "has_primary") and not nav.has_primary():
+            continue
+        p = nav.primary.to_dict()
         ident = (p.get("vhf_id") or p.get("dme_id") or "").strip()
         lat = p.get("lat") or p.get("dme_lat")
         lon = p.get("lon") or p.get("dme_lon")
@@ -107,7 +109,9 @@ def build_search_index(
             }
 
     for nav in c.get_ndb_navaids():
-        p = nav.to_dict()["primary"]
+        if hasattr(nav, "has_primary") and not nav.has_primary():
+            continue
+        p = nav.primary.to_dict()
         ident = (p.get("ndb_id") or "").strip()
         lat, lon = p.get("lat"), p.get("lon")
         if ident and lat is not None and lon is not None:
@@ -122,7 +126,7 @@ def build_search_index(
     for wp in c.get_enroute_waypoints() + c.get_terminal_waypoints():
         if hasattr(wp, "has_primary") and not wp.has_primary():
             continue
-        p = wp.to_dict()["primary"]
+        p = wp.primary.to_dict()
         ident = (p.get("waypoint_id") or "").strip()
         lat, lon = p.get("lat"), p.get("lon")
         if ident and lat is not None and lon is not None:
@@ -159,7 +163,9 @@ def build_search_index(
     proc_list = c.get_procedures()
     grouped = defaultdict(list)
     for proc in proc_list:
-        p = proc.to_dict()["primary"]
+        if hasattr(proc, "has_primary") and not proc.has_primary():
+            continue
+        p = proc.primary.to_dict()
         # fac_id is airport, procedure_id is name (TECKY4), transition_id is transition (VLREE)
         key = (p.get("fac_id"), p.get("procedure_id"), p.get("transition_id"))
         grouped[key].append(p)
@@ -214,7 +220,9 @@ def build_search_index(
     print("Indexing airways...", flush=True)
     airway_data = defaultdict(list)
     for ap in c.get_airway_points():
-        p = ap.to_dict()["primary"]
+        if hasattr(ap, "has_primary") and not ap.has_primary():
+            continue
+        p = ap.primary.to_dict()
         airway_id = p.get("airway_id")
         point_id = (p.get("point_id") or "").strip()
         seq_no = p.get("seq_no") or 0

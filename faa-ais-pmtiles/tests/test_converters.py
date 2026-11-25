@@ -606,10 +606,19 @@ class TestNasrFetch(unittest.TestCase):
                 os.chdir(orig_cwd)
 
 
+class _DummyPrimary:
+    def __init__(self, primary: dict) -> None:
+        self._primary = primary
+
+    def to_dict(self) -> dict:
+        return self._primary
+
+
 class _DummyCifpRecord:
     def __init__(self, primary: dict | None, has_primary_flag: bool = True) -> None:
         self._primary = primary
         self._has_primary = has_primary_flag
+        self.primary = _DummyPrimary(primary) if (has_primary_flag and primary is not None) else None
 
     def has_primary(self) -> bool:
         return self._has_primary
@@ -963,15 +972,17 @@ class TestCifpNasrMergeAndSearchIndex(unittest.TestCase):
             _DummyCifpRecord({"heliport_id": "KJRA", "heliport_name": "WEST 30TH ST", "lat": 40.75, "lon": -74.00}),
         ]
         mock_cifp.get_vhf_navaids.return_value = [
+            _DummyCifpRecord(None, has_primary_flag=False),
             _DummyCifpRecord({"vhf_id": "SJC", "vhf_name": "SAN JOSE", "lat": 37.37, "lon": -121.93}),
         ]
         mock_cifp.get_ndb_navaids.return_value = [
+            _DummyCifpRecord(None, has_primary_flag=False),
             _DummyCifpRecord({"ndb_id": "MHM", "ndb_name": "MINCHUMINA NDB", "lat": 63.88, "lon": -152.31}),
         ]
         mock_cifp.get_enroute_waypoints.return_value = []
         mock_cifp.get_terminal_waypoints.return_value = []
-        mock_cifp.get_procedures.return_value = []
-        mock_cifp.get_airway_points.return_value = []
+        mock_cifp.get_procedures.return_value = [_DummyCifpRecord(None, has_primary_flag=False)]
+        mock_cifp.get_airway_points.return_value = [_DummyCifpRecord(None, has_primary_flag=False)]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             fac_path = os.path.join(tmpdir, "nasr_facilities.json")
@@ -1136,8 +1147,8 @@ class TestGridMoraAndCifpVfrWaypoints(unittest.TestCase):
         mock_cifp = MagicMock()
         mock_cifp.get_airports.return_value = []
         mock_cifp.get_heliports.return_value = []
-        mock_cifp.get_vhf_navaids.return_value = []
-        mock_cifp.get_ndb_navaids.return_value = []
+        mock_cifp.get_vhf_navaids.return_value = [_DummyCifpRecord(None, has_primary_flag=False)]
+        mock_cifp.get_ndb_navaids.return_value = [_DummyCifpRecord(None, has_primary_flag=False)]
         mock_cifp.get_enroute_waypoints.return_value = [
             _DummyCifpRecord({"waypoint_id": "VPBAY", "lat": 37.80, "lon": -122.40, "type": "V  ", "name_description": "CIFP BAY"}),
             _DummyCifpRecord(
@@ -1152,10 +1163,10 @@ class TestGridMoraAndCifpVfrWaypoints(unittest.TestCase):
                 {"waypoint_id": "SEC01", "lat": 37.30, "lon": -121.80, "type": "C  ", "usage": "L", "name_description": "ALUM ROCK"}
             ),
         ]
-        mock_cifp.get_procedures.return_value = []
-        mock_cifp.get_airway_points.return_value = []
-        mock_cifp.get_runways.return_value = []
-        mock_cifp.get_loc_gss.return_value = []
+        mock_cifp.get_procedures.return_value = [_DummyCifpRecord(None, has_primary_flag=False)]
+        mock_cifp.get_airway_points.return_value = [_DummyCifpRecord(None, has_primary_flag=False)]
+        mock_cifp.get_runways.return_value = [_DummyCifpRecord(None, has_primary_flag=False)]
+        mock_cifp.get_loc_gss.return_value = [_DummyCifpRecord(None, has_primary_flag=False)]
         mock_cifp.get_moras.return_value = [
             _DummyCifpRecord({"start_lat": "N37", "start_lon": "W123", "mora_1": 6500}),
         ]

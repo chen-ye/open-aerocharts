@@ -75,7 +75,7 @@ def build_grid_mora_features(moras: list) -> tuple[list[geojson.Feature], list[g
     for m in moras:
         if hasattr(m, "has_primary") and not m.has_primary():
             continue
-        p = m.to_dict().get("primary") or {}
+        p = m.primary.to_dict() if m.primary else {}
         start_lat = p.get("start_lat")
         start_lon = p.get("start_lon")
         if not start_lat or not start_lon:
@@ -186,7 +186,7 @@ def build_airport_features(
     for a in cifp_airports:
         if not a.has_primary():
             continue
-        p = a.to_dict()["primary"]
+        p = a.primary.to_dict()
         lat, lon = p.get("lat"), p.get("lon")
         ident = (p.get("airport_id") or "").strip()
         if not ident or lat is None or lon is None:
@@ -211,7 +211,7 @@ def build_airport_features(
     for h in cifp_heliports:
         if not h.has_primary():
             continue
-        p = h.to_dict()["primary"]
+        p = h.primary.to_dict()
         lat, lon = p.get("lat"), p.get("lon")
         ident = (p.get("heliport_id") or "").strip()
         if not ident or lat is None or lon is None:
@@ -420,7 +420,9 @@ def build_pmtiles_fgb(cifp_path):
     print("Extracting Navaids...", flush=True)
     navaid_features = []
     for nav in c.get_vhf_navaids():
-        p = nav.to_dict()["primary"]
+        if hasattr(nav, "has_primary") and not nav.has_primary():
+            continue
+        p = nav.primary.to_dict()
         lat = p.get("lat") or p.get("dme_lat")
         lon = p.get("lon") or p.get("dme_lon")
         if lat is not None and lon is not None:
@@ -469,7 +471,9 @@ def build_pmtiles_fgb(cifp_path):
                 fixes[ident] = (lon, lat, elev)
 
     for nav in c.get_ndb_navaids():
-        p = nav.to_dict()["primary"]
+        if hasattr(nav, "has_primary") and not nav.has_primary():
+            continue
+        p = nav.primary.to_dict()
         lat, lon = p.get("lat"), p.get("lon")
         if lat is not None and lon is not None:
             elev = float(p.get("elevation") or 0.0)
@@ -497,7 +501,7 @@ def build_pmtiles_fgb(cifp_path):
     for wp in c.get_enroute_waypoints() + c.get_terminal_waypoints():
         if hasattr(wp, "has_primary") and not wp.has_primary():
             continue
-        p = wp.to_dict()["primary"]
+        p = wp.primary.to_dict()
         if p.get("lat") is not None and p.get("lon") is not None:
             ident = (p.get("waypoint_id") or "").strip()
             fixes[ident] = (p.get("lon"), p.get("lat"), 0.0)
@@ -623,7 +627,9 @@ def build_pmtiles_fgb(cifp_path):
     print("Processing Procedures...", flush=True)
     proc_groups = defaultdict(list)
     for proc in c.get_procedures():
-        p = proc.to_dict()["primary"]
+        if hasattr(proc, "has_primary") and not proc.has_primary():
+            continue
+        p = proc.primary.to_dict()
         key = (p.get("fac_id"), p.get("procedure_id"), p.get("transition_id"))
         proc_groups[key].append(p)
 
@@ -660,7 +666,9 @@ def build_pmtiles_fgb(cifp_path):
     print("Processing Airways...", flush=True)
     airway_groups = defaultdict(list)
     for ap in c.get_airway_points():
-        p = ap.to_dict()["primary"]
+        if hasattr(ap, "has_primary") and not ap.has_primary():
+            continue
+        p = ap.primary.to_dict()
         key = p.get("airway_id")
         if key:
             airway_groups[key].append(p)
@@ -735,7 +743,9 @@ def build_pmtiles_fgb(cifp_path):
     print("Extracting Runways...", flush=True)
     thresholds = []
     for rw in c.get_runways():
-        p = rw.to_dict()["primary"]
+        if hasattr(rw, "has_primary") and not rw.has_primary():
+            continue
+        p = rw.primary.to_dict()
         lat, lon = p.get("lat"), p.get("lon")
         if lat is not None and lon is not None:
             elev = float(p.get("threshold_elevation") or 0.0)
@@ -864,7 +874,9 @@ def build_pmtiles_fgb(cifp_path):
     print("Extracting Localizers...", flush=True)
     loc_features = []
     for loc in c.get_loc_gss():
-        p = loc.to_dict()["primary"]
+        if hasattr(loc, "has_primary") and not loc.has_primary():
+            continue
+        p = loc.primary.to_dict()
         lat, lon = p.get("loc_lat"), p.get("loc_lon")
         if lat is not None and lon is not None:
             elev = float(p.get("gs_elevation") or 0.0)

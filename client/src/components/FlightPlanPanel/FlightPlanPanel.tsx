@@ -31,6 +31,7 @@ interface FlightPlanContentProps {
 	onRouteStringChange: (route: string) => void;
 	index: SearchIndex | null;
 	loading: boolean;
+	onRequestIndex?: () => void;
 	style?: React.CSSProperties;
 }
 
@@ -40,12 +41,15 @@ export const FlightPlanContent: React.FC<FlightPlanContentProps> = ({
 	onRouteStringChange,
 	index,
 	loading,
+	onRequestIndex,
 	style,
 }) => {
 	const [activePlan, setActivePlan] = useState<FlightPlan | null>(null);
 	const initialPlotDone = React.useRef(false);
 
-	// No longer needed as we fetch in App.tsx
+	useEffect(() => {
+		onRequestIndex?.();
+	}, [onRequestIndex]);
 
 	const handlePlot = useCallback(() => {
 		if (!index) return;
@@ -195,6 +199,7 @@ interface FlightPlanPanelProps {
 	onRouteStringChange: (route: string) => void;
 	index: SearchIndex | null;
 	loading: boolean;
+	onRequestIndex?: () => void;
 	showTooltip: boolean;
 	setShowTooltip: (show: boolean) => void;
 }
@@ -205,6 +210,7 @@ export const FlightPlanPanel: React.FC<FlightPlanPanelProps> = ({
 	onRouteStringChange,
 	index,
 	loading,
+	onRequestIndex,
 	showTooltip,
 	setShowTooltip,
 }) => {
@@ -224,7 +230,10 @@ export const FlightPlanPanel: React.FC<FlightPlanPanelProps> = ({
 						size="3"
 						variant="surface"
 						color={grayColor}
-						onClick={() => setIsOpen(true)}
+						onClick={() => {
+							onRequestIndex?.();
+							setIsOpen(true);
+						}}
 						title="Flight Plan"
 						style={{
 							backgroundColor: "var(--glass-bg)",
@@ -321,6 +330,7 @@ export const FlightPlanPanel: React.FC<FlightPlanPanelProps> = ({
 					onRouteStringChange={onRouteStringChange}
 					index={index}
 					loading={loading}
+					onRequestIndex={onRequestIndex}
 				/>
 			</Card>
 		</Box>

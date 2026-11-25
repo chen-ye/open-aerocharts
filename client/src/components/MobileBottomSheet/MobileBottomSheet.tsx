@@ -24,6 +24,7 @@ interface MobileBottomSheetProps {
 	onRouteStringChange: (route: string) => void;
 	index: SearchIndex | null;
 	loading: boolean;
+	onRequestIndex?: () => void;
 }
 
 export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
@@ -34,6 +35,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
 	onRouteStringChange,
 	index,
 	loading,
+	onRequestIndex,
 }) => {
 	const [isCollapsed, setIsCollapsed] = React.useState(true);
 
@@ -53,7 +55,12 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
 			>
 				<Tabs.Root
 					defaultValue="inspector"
-					onValueChange={() => setIsCollapsed(false)}
+					onValueChange={(value) => {
+						setIsCollapsed(false);
+						if (value === "flightplan") {
+							onRequestIndex?.();
+						}
+					}}
 				>
 					<Box pt="1">
 						<Flex align="center" justify="between" pr="2">
@@ -125,6 +132,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
 								onRouteStringChange={onRouteStringChange}
 								index={index}
 								loading={loading}
+								onRequestIndex={onRequestIndex}
 								style={{ height: "auto" }}
 							/>
 						</Tabs.Content>

@@ -35,6 +35,9 @@ list-enums = "src.tools.enums:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv.sources]
+cifparse = { git = "https://github.com/chen-ye/cifparse.git", rev = "08accf1a94d9314a77566d36dd0e2d1383faf14c" }
+
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
 
