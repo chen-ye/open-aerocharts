@@ -68,6 +68,21 @@ in float instanceAglFlags;
 out vec4 vColor;
 
 vec3 project_offset_normal(vec3 vector) {
+  if (project.projectionMode == PROJECTION_MODE_GLOBE) {
+    vec3 scaled = vec3(
+      vector.x,
+      vector.y * max(cos(radians(geometry.worldPosition.y)), 1e-4),
+      vector.z
+    );
+    vec3 localNormal = dot(scaled, scaled) > 0.0
+      ? normalize(scaled)
+      : vec3(0.0, 0.0, 1.0);
+    mat3 rotation;
+    if (project_needs_rotation(geometry.position.xyz, rotation)) {
+      return rotation * localNormal;
+    }
+    return localNormal;
+  }
   if (project.coordinateSystem == COORDINATE_SYSTEM_LNGLAT ||
     project.coordinateSystem == COORDINATE_SYSTEM_LNGLAT_OFFSETS) {
     return normalize(vector * project.commonUnitsPerWorldUnit);

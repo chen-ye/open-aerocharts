@@ -134,9 +134,11 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 
 		rawMap.on("move", syncCullBounds);
 		rawMap.on("resize", syncCullBounds);
+		rawMap.on("projectiontransition", syncCullBounds);
 		return () => {
 			rawMap.off("move", syncCullBounds);
 			rawMap.off("resize", syncCullBounds);
+			rawMap.off("projectiontransition", syncCullBounds);
 		};
 	}, [mapRef, visible]);
 
@@ -234,9 +236,22 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 	useEffect(() => {
 		overlay.setProps({ layers: deckLayers });
 		const rawMap = mapRef?.getMap();
-		rawMap?.triggerRepaint();
+		if (!rawMap) return undefined;
+		rawMap.triggerRepaint();
 
-		if (!rawMap || deckLayers.length === 0) return undefined;
+		// @deck.gl/maplibre interleaved mode only refreshes views on styledata/setProps,
+		// whereas MapLibre's setProjection / GlobeControl fires projectiontransition.
+		const syncProjection = () => {
+			overlay.setProps({ layers: deckLayers });
+			rawMap.triggerRepaint();
+		};
+		rawMap.on("projectiontransition", syncProjection);
+
+		if (deckLayers.length === 0) {
+			return () => {
+				rawMap.off("projectiontransition", syncProjection);
+			};
+		}
 
 		// @deck.gl/maplibre skips adding deck-maplibre-layer-group-last while tiles are
 		// in-flight (!map.isStyleLoaded()) and only retries on styledata, not tile completion.
@@ -254,6 +269,7 @@ export const AirspaceOverlay: React.FC<AirspaceOverlayProps> = ({
 		rawMap.on("sourcedata", syncLayerGroup);
 		rawMap.on("idle", syncLayerGroup);
 		return () => {
+			rawMap.off("projectiontransition", syncProjection);
 			rawMap.off("styledata", syncLayerGroup);
 			rawMap.off("sourcedata", syncLayerGroup);
 			rawMap.off("idle", syncLayerGroup);

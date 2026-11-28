@@ -36,6 +36,7 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
 import React, { useCallback, useMemo, useState } from "react";
 import ReactMap, {
+	GlobeControl,
 	Layer,
 	NavigationControl,
 	Popup,
@@ -228,6 +229,9 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 	const injectedThemeRef = React.useRef<boolean | null>(null);
 	const styleEpochRef = React.useRef(0);
 	const lastInjectedEpochRef = React.useRef(-1);
+	const loadedStyleEpochRef = React.useRef(0);
+	const desiredProjectionRef = React.useRef<"mercator" | "globe">("mercator");
+	const projectionCleanupRef = React.useRef<(() => void) | null>(null);
 	const prevBasemapRef = React.useRef<string>(basemapUrlOrId);
 	if (prevBasemapRef.current !== basemapUrlOrId) {
 		prevBasemapRef.current = basemapUrlOrId;
@@ -237,6 +241,8 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 	React.useEffect(() => {
 		return () => {
 			iconGenRef.current += 1;
+			projectionCleanupRef.current?.();
+			projectionCleanupRef.current = null;
 		};
 	}, []);
 
@@ -256,10 +262,36 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const onMapLoad = useCallback(
 		(e: any) => {
-			mapRef.current = e.target;
-			setIsTilted(e.target.getPitch() > 10);
+			const map = e.target as Maplibre;
+			mapRef.current = map;
+			setIsTilted(map.getPitch() > 10);
 			lastInjectedEpochRef.current = styleEpochRef.current;
-			injectMapIcons(e.target);
+			loadedStyleEpochRef.current = styleEpochRef.current;
+			injectMapIcons(map);
+
+			// Preserve GlobeControl's projection choice across full basemap style swaps.
+			projectionCleanupRef.current?.();
+			const onProjectionTransition = () => {
+				if (loadedStyleEpochRef.current === styleEpochRef.current) {
+					desiredProjectionRef.current =
+						map.getProjection()?.type === "globe" ? "globe" : "mercator";
+				}
+			};
+			const onStyleLoad = () => {
+				loadedStyleEpochRef.current = styleEpochRef.current;
+				if (
+					desiredProjectionRef.current === "globe" &&
+					map.getProjection()?.type !== "globe"
+				) {
+					map.setProjection({ type: "globe" });
+				}
+			};
+			map.on("projectiontransition", onProjectionTransition);
+			map.on("style.load", onStyleLoad);
+			projectionCleanupRef.current = () => {
+				map.off("projectiontransition", onProjectionTransition);
+				map.off("style.load", onStyleLoad);
+			};
 		},
 		[injectMapIcons],
 	);
@@ -914,7 +946,6 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			}
 			initialViewState={INITIAL_VIEW_STATE}
 			maxPitch={85}
-			// projection={{ type: 'globe' }}
 			mapStyle={mapStyle}
 			styleDiffing={false}
 			style={MAP_CONTAINER_STYLE}
@@ -927,6 +958,7 @@ export const AeroMap: React.FC<AeroMapProps> = ({
 			}
 		>
 			<NavigationControl position="bottom-right" visualizePitch={true} />
+			<GlobeControl position="bottom-right" />
 
 			{/* Feature Sidebar (Left) */}
 			{aeronauticalLayers.showAll && selectedFeatures && (

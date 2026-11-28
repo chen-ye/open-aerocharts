@@ -397,6 +397,16 @@ async function main() {
 		await page.mouse.up();
 		await waitForTwoFrames(page);
 		await waitForMapCanvasPixels(page);
+		// Toggle MapLibre GlobeControl on in 3D view and verify it persists across basemap swap
+		await page.getByRole("button", { name: "Close Settings" }).click();
+		await page.locator(".maplibregl-ctrl-globe").click();
+		await page
+			.locator(".maplibregl-ctrl-globe-enabled")
+			.waitFor({ state: "attached", timeout: 5000 });
+		await waitForTwoFrames(page);
+		await waitForMapCanvasPixels(page);
+
+		await page.getByRole("button", { name: "Open Settings" }).click();
 		await page.getByRole("button", { name: "VFR Sectional" }).click();
 		await page.waitForFunction(() => {
 			const p = new URLSearchParams(window.location.search);
@@ -412,6 +422,18 @@ async function main() {
 			throw new Error("VFR Sectional preset should be active");
 		}
 		await waitForTwoFrames(page);
+		await page
+			.locator(".maplibregl-ctrl-globe-enabled")
+			.waitFor({ state: "attached", timeout: 5000 });
+
+		// Toggle back to Mercator
+		await page.getByRole("button", { name: "Close Settings" }).click();
+		await page.locator(".maplibregl-ctrl-globe-enabled").click();
+		await page
+			.locator(".maplibregl-ctrl-globe")
+			.waitFor({ state: "attached", timeout: 5000 });
+		await waitForTwoFrames(page);
+		await page.getByRole("button", { name: "Open Settings" }).click();
 
 		await page.getByRole("button", { name: "IFR High" }).click();
 		await page.waitForFunction(
