@@ -76,7 +76,7 @@ wheels = [
 [[package]]
 name = "cifparse"
 version = "2.0.9"
-source = { git = "https://github.com/chen-ye/cifparse.git?rev=08accf1a94d9314a77566d36dd0e2d1383faf14c#08accf1a94d9314a77566d36dd0e2d1383faf14c" }
+source = { git = "https://github.com/chen-ye/cifparse.git?rev=019d7388009fd8408563d4662bdca97ef60fbcb1#019d7388009fd8408563d4662bdca97ef60fbcb1" }
 
 [[package]]
 name = "faa-ais-pmtiles"
@@ -100,7 +100,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cifparse", git = "https://github.com/chen-ye/cifparse.git?rev=08accf1a94d9314a77566d36dd0e2d1383faf14c" },
+    { name = "cifparse", git = "https://github.com/chen-ye/cifparse.git?rev=019d7388009fd8408563d4662bdca97ef60fbcb1" },
     { name = "geojson", specifier = ">=3.3.0" },
     { name = "geopandas", specifier = ">=1.2.0" },
     { name = "pillow", specifier = ">=13.0.0" },
